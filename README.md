@@ -1,6 +1,8 @@
 # CG Convertor
 
-Transcode & rewrap rapid catre ProRes si DNxHD/DNxHR, construit pentru workflow-uri DaVinci Resolve.
+[🇷🇴 Română](README.md) &middot; [🇬🇧 English](README.en.md) &middot; [🇪🇸 Español](README.es.md)
+
+**Transcode & Rewrap pentru DaVinci Resolve** — Mac și Windows, complet standalone.
 
 **Pagina de prezentare:** https://gordasgdc.github.io/CGConvertor/
 
@@ -8,43 +10,43 @@ Creat de **Cristi Gordas** (GDC) — [YouTube](https://youtube.com/@cristigordas
 
 ---
 
-## 📦 Descarcă aplicația
+## 📦 Descarcă și instalează
 
-Ultima versiune este disponibilă în [Releases](https://github.com/gordasgdc/CGConvertor/releases/latest).
+Nu trebuie să instalezi nimic separat — FFmpeg e inclus în pachet.
 
-### Instalare
+| Platformă | Fișier | Instalare |
+|---|---|---|
+| Mac | `CGConvertor-mac.pkg` | Dublu-click → urmează instalatorul |
+| Mac (alternativ) | `CGConvertor-mac.zip` | Dezarhivezi și muți `.app`-ul în `/Applications` |
+| Windows | `CGConvertor-windows.exe` | Dublu-click pentru a rula |
 
-1. Descarcă `CGConvertor-X.X.X.pkg` din secțiunea **Assets** a ultimei versiuni
-2. Dublu-click pe fișierul `.pkg` și urmează instalatorul
-3. Aplicația se instalează în `/Applications`
-4. La prima rulare, macOS va afișa un avertisment ("dezvoltator neidentificat") — click-dreapta pe aplicație → **Open**, apoi confirmi
-   - Alternativ, în Terminal: `xattr -cr /Applications/CGConvertor.app`
+Ultima versiune: [Releases](https://github.com/gordasgdc/CGConvertor/releases/latest)
 
-> Aplicația nu este semnată cu un cont Apple Developer plătit (dezvoltator individual, fără echipă). Avertismentul de mai sus e normal și nu indică o problemă reală.
+> Pe Mac, la prima rulare: click-dreapta pe aplicație → **Open** (aplicația nu e semnată cu cont Apple Developer plătit). Alternativ: `xattr -cr /Applications/CGConvertor.app` în Terminal.
 
-### Alternativă (arhivă .zip)
+## ✨ Caracteristici
 
-Poți descărca și `CGConvertor-X.X.X.zip`, dezarhiva și muta manual `.app`-ul în `/Applications`.
-
-## ⚙️ Cerințe
-
-- macOS, Apple Silicon sau Intel (binar universal)
-- [FFmpeg](https://ffmpeg.org) instalat via Homebrew: `brew install ffmpeg`
-
-## ✨ Ce face
-
-- **Rewrap** — schimbare rapidă de container, fără re-encode
-- **Transcode** — re-encode complet cu encoder hardware Apple (VideoToolbox)
-- Codecuri: ProRes 422 / 422 HQ / 422 LT / 4444, DNxHD, DNxHR HQ
-- Păstrează timecode-ul și metadata originală
-- Drag & drop, procesare batch, progres per fișier
+- Rewrap (rapid, fără re-encode) și Transcode (re-encode complet)
+- ProRes 422 / 422 HQ / 422 LT / 4444, DNxHD, DNxHR HQ
+- Interfață drag-and-drop, procesare batch
+- Multilingv: RO / EN / ES
+- Complet standalone — FFmpeg inclus
 
 ## 🛠️ Dezvoltare
 
-Proiect Xcode standard (SwiftUI). Deschizi `CGConvertor.xcodeproj` și rulezi.
+```bash
+pip install -r requirements.txt
+python main.py
+```
 
-Release-urile sunt automatizate prin `.github/workflows/release.yml`: la fiecare `git tag vX.X.X` urmat de `git push origin vX.X.X`, se construiește automat un binar universal (arm64 + x86_64), se generează `.zip` și `.pkg`, și se publică pe GitHub Releases cu note generate automat.
+Build local:
+```bash
+pyinstaller build-mac.spec       # sau build-windows.spec pe Windows
+```
 
-## 📄 Licență
+Release-urile sunt automatizate — un `git tag vX.X.X` + `git push origin vX.X.X` pornește build-urile pentru ambele platforme prin GitHub Actions.
 
-MIT — vezi [LICENSE](LICENSE).
+## 📄 Licențe
+
+Codul CGConvertor: MIT — vezi [LICENSE](LICENSE).
+Dependințe incluse (FFmpeg etc.): vezi [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
