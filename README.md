@@ -1,52 +1,65 @@
 # CG Convertor
 
-[🇷🇴 Română](README.md) &middot; [🇬🇧 English](README.en.md) &middot; [🇪🇸 Español](README.es.md)
-
-**Transcode & Rewrap pentru DaVinci Resolve** — Mac și Windows, complet standalone.
+Transcode & rewrap rapid catre ProRes si DNxHD/DNxHR, construit pentru workflow-uri DaVinci Resolve.
 
 **Pagina de prezentare:** https://gordasgdc.github.io/CGConvertor/
 
-Creat de **Cristi Gordas** (GDC) — [YouTube](https://youtube.com/@cristigordas) &middot; 
+Creat de **Cristi Gordas** (GDC) — [YouTube](https://youtube.com/@cristigordas) &middot; [resolvemaster.training](https://resolvemaster.training)
 
 ---
 
-## 📦 Descarcă și instalează
+## 📦 Doua versiuni disponibile
 
-Nu trebuie să instalezi nimic separat — FFmpeg e inclus în pachet.
+CG Convertor exista in doua variante independente. Poti instala oricare, sau ambele — nu se suprapun (nume de aplicatie diferite).
 
-| Platformă | Fișier | Instalare |
+| | **Swift (nativ)** | **Python (standalone)** |
 |---|---|---|
-| Mac | `CGConvertor-mac.pkg` | Dublu-click → urmează instalatorul |
-| Mac (alternativ) | `CGConvertor-mac.zip` | Dezarhivezi și muți `.app`-ul în `/Applications` |
-| Windows | `CGConvertor-windows.exe` | Dublu-click pentru a rula |
+| Platforme | macOS | macOS **si** Windows |
+| Interfata | SwiftUI, nativa 100% | Tkinter, multilingva (RO/EN/ES) |
+| FFmpeg | Necesita `brew install ffmpeg` | Inclus in pachet, nimic de instalat |
+| Cod sursa | rădăcina repo-ului (`CGConvertor.xcodeproj`) | `python/` |
+| Recomandat pentru | uz zilnic pe Mac, integrare nativa | echipe mixte Mac/Windows, zero setup |
 
-Ultima versiune: [Releases](https://github.com/gordasgdc/CGConvertor/releases/latest)
+Ambele descarcari sunt pe aceeași pagina de [Releases](https://github.com/gordasgdc/CGConvertor/releases/latest).
 
-> Pe Mac, la prima rulare: click-dreapta pe aplicație → **Open** (aplicația nu e semnată cu cont Apple Developer plătit). Alternativ: `xattr -cr /Applications/CGConvertor.app` în Terminal.
+### Instalare — versiunea Swift (Mac)
 
-## ✨ Caracteristici
+1. Descarcă `CGConvertor-X.X.X.pkg` din Releases
+2. Dublu-click → urmează instalatorul
+3. La prima rulare: click-dreapta pe aplicație → **Open** (nu e semnată cu cont Apple Developer plătit)
+   - Alternativ: `xattr -cr /Applications/CGConvertor.app`
+4. Instalezi FFmpeg o singură dată: `brew install ffmpeg`
 
-- Rewrap (rapid, fără re-encode) și Transcode (re-encode complet)
-- ProRes 422 / 422 HQ / 422 LT / 4444, DNxHD, DNxHR HQ
-- Interfață drag-and-drop, procesare batch
-- Multilingv: RO / EN / ES
-- Complet standalone — FFmpeg inclus
+### Instalare — versiunea Python (Mac sau Windows)
+
+1. Descarcă `CGConvertor-standalone-mac.pkg` (Mac) sau `CGConvertor-standalone-windows.exe` (Windows) din Releases
+2. Rulezi installer-ul / executabilul — nimic altceva de instalat, FFmpeg e deja inclus
+3. Mac: click-dreapta → Open la prima rulare. Windows: „More info" → „Run anyway" dacă apare SmartScreen
+
+## ✨ Ce fac ambele versiuni
+
+- **Rewrap** — schimbare rapidă de container, fără re-encode
+- **Transcode** — re-encode complet
+- Codecuri: ProRes 422 / 422 HQ / 422 LT / 4444, DNxHD, DNxHR HQ
+- Păstrează timecode-ul și metadata originală
+- Drag & drop, procesare batch, progres per fișier
 
 ## 🛠️ Dezvoltare
 
+**Swift:** deschizi `CGConvertor.xcodeproj` în Xcode și rulezi.
+
+**Python:**
 ```bash
+cd python
 pip install -r requirements.txt
 python main.py
 ```
 
-Build local:
-```bash
-pyinstaller build-mac.spec       # sau build-windows.spec pe Windows
-```
+Detalii complete pentru varianta Python (inclusiv licențierea FFmpeg): [python/README.md](python/README.md).
 
-Release-urile sunt automatizate — un `git tag vX.X.X` + `git push origin vX.X.X` pornește build-urile pentru ambele platforme prin GitHub Actions.
+Release-urile pentru ambele versiuni sunt automatizate prin GitHub Actions (`.github/workflows/`): la fiecare `git tag vX.X.X` + `git push origin vX.X.X` se construiesc automat toate pachetele — `.zip`/`.pkg` Swift, `.zip`/`.pkg` Python-Mac, `.exe` Python-Windows — și se publică pe același Release.
 
-## 📄 Licențe
+## 📄 Licență
 
-Codul CGConvertor: MIT — vezi [LICENSE](LICENSE).
-Dependințe incluse (FFmpeg etc.): vezi [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Codul CG Convertor: MIT — vezi [LICENSE](LICENSE).
+Dependințele versiunii Python (FFmpeg etc.): vezi [python/THIRD_PARTY_NOTICES.md](python/THIRD_PARTY_NOTICES.md).
