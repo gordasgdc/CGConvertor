@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CG Convertor — Transcode & Rewrap pentru DaVinci Resolve</title>
-<meta name="description" content="Aplicatie macOS pentru transcode si rewrap rapid catre ProRes si DNxHD/DNxHR, construita pentru workflow-uri DaVinci Resolve. De Cristi Gordas.">
+<meta name="description" content="Aplicatie pentru transcode si rewrap rapid catre ProRes si DNxHD/DNxHR, construita pentru workflow-uri DaVinci Resolve. Disponibila nativ pe macOS (Swift) sau standalone pe Mac si Windows (Python). De Cristi Gordas.">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -241,6 +241,74 @@
     margin-bottom: 48px;
   }
 
+  /* ── Versiuni ──────────────────────────────────────────────── */
+
+  .version-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .version-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .version-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 10px;
+  }
+
+  .version-card h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .version-desc {
+    color: var(--ink-dim);
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  .version-facts {
+    list-style: none;
+    margin-bottom: 22px;
+    flex-grow: 1;
+  }
+
+  .version-facts li {
+    font-size: 13px;
+    color: var(--ink-dim);
+    padding: 7px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .version-facts li:first-child { border-top: none; }
+
+  .version-facts code {
+    font-family: var(--mono);
+    color: var(--accent-safe);
+    background: var(--bg-elevated-2);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  .version-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
   /* ── Ce face: doua moduri ──────────────────────────────────── */
 
   .modes {
@@ -469,6 +537,7 @@
 
   @media (max-width: 640px) {
     .modes { grid-template-columns: 1fr; }
+    .version-grid { grid-template-columns: 1fr; }
     .reqs { grid-template-columns: 1fr; }
     .step { grid-template-columns: 36px 1fr; }
   }
@@ -502,12 +571,12 @@
     <div class="leader-icon"><img src="assets/icon.png" alt=""></div>
   </div>
 
-  <p class="hero-eyebrow">macOS &middot; Apple Silicon &amp; Intel</p>
+  <p class="hero-eyebrow">macOS nativ &middot; sau Mac &amp; Windows standalone</p>
   <h1>CG Convertor</h1>
   <p class="sub">Transcode &amp; rewrap rapid catre ProRes si DNxHD/DNxHR, construit pentru workflow-uri DaVinci Resolve.</p>
 
   <div class="hero-actions">
-    <a class="btn btn-primary" href="https://github.com/gordasgdc/CGConvertor/releases/latest">Descarca .pkg</a>
+    <a class="btn btn-primary" href="#versiuni">Alege versiunea</a>
     <a class="btn btn-ghost" href="https://github.com/gordasgdc/CGConvertor">Vezi codul sursa</a>
   </div>
 
@@ -515,6 +584,44 @@
 </section>
 
 <div class="wrap">
+
+  <section id="versiuni">
+    <p class="eyebrow">Doua versiuni</p>
+    <h2>Alege in functie de ce ai nevoie.</h2>
+    <p class="section-intro">CG Convertor exista in doua variante independente, dezvoltate in paralel. Poti instala oricare, sau ambele — nu se suprapun.</p>
+
+    <div class="version-grid">
+      <div class="version-card">
+        <p class="version-badge">Nativ &middot; recomandat pe Mac</p>
+        <h3>Versiunea Swift</h3>
+        <p class="version-desc">Aplicatie SwiftUI nativa, doar pentru macOS. Foloseste encoder-ul hardware Apple (VideoToolbox) direct, interfata e nativa 100%. Are nevoie de FFmpeg instalat separat prin Homebrew.</p>
+        <ul class="version-facts">
+          <li>macOS, Apple Silicon &amp; Intel &middot; binar universal</li>
+          <li>Necesita: <code>brew install ffmpeg</code></li>
+          <li>Interfata nativa macOS (SwiftUI)</li>
+        </ul>
+        <div class="version-actions">
+          <a class="btn btn-primary" href="https://github.com/gordasgdc/CGConvertor/releases/latest">Descarca .pkg</a>
+        </div>
+      </div>
+
+      <div class="version-card">
+        <p class="version-badge">Standalone &middot; Mac &amp; Windows</p>
+        <h3>Versiunea Python</h3>
+        <p class="version-desc">Aplicatie Python/Tkinter, complet independenta — FFmpeg e inclus in pachet, nu trebuie sa instalezi nimic separat. Disponibila si pentru colegii de pe Windows. Interfata multilingva RO/EN/ES.</p>
+        <ul class="version-facts">
+          <li>macOS si Windows &middot; nimic de instalat separat</li>
+          <li>FFmpeg inclus in pachet</li>
+          <li>Multilingv: RO / EN / ES</li>
+        </ul>
+        <div class="version-actions">
+          <a class="btn btn-primary" href="https://github.com/gordasgdc/CGConvertor/releases/latest">Descarca (Mac / Windows)</a>
+        </div>
+      </div>
+    </div>
+
+    <p class="codec-note">Ambele variante ofera aceleasi 6 codecuri de output si acelasi comportament de baza (Rewrap / Transcode). Diferenta e doar in motorul din spate si in ce trebuie sa ai instalat pe masina.</p>
+  </section>
 
   <section id="ce-face">
     <p class="eyebrow">Ce face</p>
@@ -553,23 +660,24 @@
   <section id="cum-se-foloseste">
     <p class="eyebrow">Cum se foloseste</p>
     <h2>De la descarcare la primul export.</h2>
+    <p class="section-intro">Pasii de mai jos sunt pentru <strong>versiunea Swift</strong>. Versiunea Python nu are pasul 02 — FFmpeg e deja inclus, iar avertismentul de securitate de la pasul 01 apare identic si pe Windows (SmartScreen), rezolvabil tot printr-un click pe „More info" → „Run anyway".</p>
 
     <div class="steps">
       <div class="step">
         <span class="step-num">01</span>
         <div>
           <h3>Descarca si instaleaza</h3>
-          <p>Iei ultimul <code>.pkg</code> din pagina de Releases si rulezi installer-ul. macOS va marca aplicatia ca venita de pe internet — e normal, aplicatia nu e semnata cu un cont de dezvoltator Apple platit.</p>
+          <p>Iei ultimul <code>.pkg</code> (Mac) sau <code>.exe</code> (Windows) din pagina de Releases si rulezi installer-ul. Sistemul va marca aplicatia ca venita de pe internet — e normal, aplicatia nu e semnata cu un cont de dezvoltator platit.</p>
           <div class="code-block">xattr -cr /Applications/CGConvertor.app</div>
-          <p class="step-note">Ruleaza comanda de mai sus in Terminal daca macOS refuza sa deschida aplicatia la primul click. Alternativ: click-dreapta pe aplicatie → Open.</p>
+          <p class="step-note">Ruleaza comanda de mai sus in Terminal (Mac) daca sistemul refuza sa deschida aplicatia la primul click. Alternativ: click-dreapta pe aplicatie → Open. Pe Windows: „More info" → „Run anyway" in fereastra SmartScreen.</p>
         </div>
       </div>
 
       <div class="step">
         <span class="step-num">02</span>
         <div>
-          <h3>Instaleaza FFmpeg</h3>
-          <p>Aplicatia foloseste FFmpeg pentru conversie. Daca nu-l ai deja, il instalezi o singura data cu Homebrew:</p>
+          <h3>Instaleaza FFmpeg <span style="font-weight:400;color:var(--ink-faint);font-size:13px;">(doar versiunea Swift)</span></h3>
+          <p>Versiunea Swift foloseste FFmpeg din sistem. Daca nu-l ai deja, il instalezi o singura data cu Homebrew. Versiunea Python sare peste acest pas — FFmpeg e deja inclus in pachet.</p>
           <div class="code-block">brew install ffmpeg</div>
         </div>
       </div>
