@@ -4,7 +4,7 @@ Transcode & rewrap rapid catre ProRes si DNxHD/DNxHR, construit pentru workflow-
 
 **Pagina de prezentare:** https://gordasgdc.github.io/CGConvertor/
 
-Creat de **Cristi Gordas** (GDC) — [YouTube](https://youtube.com/@cristigordas) &middot; [resolvemaster.training](https://resolvemaster.training)
+Creat de **Cristi Gordas** (GDC) — [YouTube](https://youtube.com/@cristigordas) &middot; 
 
 ---
 
