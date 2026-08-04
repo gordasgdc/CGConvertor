@@ -555,9 +555,54 @@
     outline: 2px solid var(--accent-gold);
     outline-offset: 2px;
   }
+
+  /* ── Lang switcher ─────────────────────────────────────────── */
+
+  .lang-switch {
+    position: fixed;
+    top: 22px;
+    right: 22px;
+    display: flex;
+    gap: 4px;
+    background: rgba(23,25,28,0.7);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 4px;
+    z-index: 50;
+  }
+
+  .lang-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    padding: 6px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+
+  .lang-btn:hover { color: var(--ink); }
+
+  .lang-btn.active {
+    color: #14110a;
+    background: var(--accent-gold);
+  }
+
+  @media (max-width: 480px) {
+    .lang-switch { top: 14px; right: 14px; }
+  }
 </style>
 </head>
 <body>
+
+<div class="lang-switch" role="group" aria-label="Limba paginii">
+  <button class="lang-btn active" data-lang="ro">RO</button>
+  <button class="lang-btn" data-lang="en">EN</button>
+  <button class="lang-btn" data-lang="es">ES</button>
+</div>
 
 <section class="hero">
   <div class="leader" aria-hidden="true">
@@ -571,80 +616,80 @@
     <div class="leader-icon"><img src="assets/icon.png" alt=""></div>
   </div>
 
-  <p class="hero-eyebrow">macOS nativ &middot; sau Mac &amp; Windows standalone</p>
+  <p class="hero-eyebrow" data-i18n="hero.eyebrow">macOS nativ &middot; sau Mac &amp; Windows standalone</p>
   <h1>CG Convertor</h1>
-  <p class="sub">Transcode &amp; rewrap rapid catre ProRes si DNxHD/DNxHR, construit pentru workflow-uri DaVinci Resolve.</p>
+  <p class="sub" data-i18n="hero.sub">Transcode &amp; rewrap rapid catre ProRes si DNxHD/DNxHR, construit pentru workflow-uri DaVinci Resolve.</p>
 
   <div class="hero-actions">
-    <a class="btn btn-primary" href="#versiuni">Alege versiunea</a>
-    <a class="btn btn-ghost" href="https://github.com/gordasgdc/CGConvertor">Vezi codul sursa</a>
+    <a class="btn btn-primary" href="#versiuni" data-i18n="hero.choose">Alege versiunea</a>
+    <a class="btn btn-ghost" href="https://github.com/gordasgdc/CGConvertor" data-i18n="hero.source">Vezi codul sursa</a>
   </div>
 
-  <p class="scroll-cue">DERULEAZA</p>
+  <p class="scroll-cue" data-i18n="hero.scroll">DERULEAZA</p>
 </section>
 
 <div class="wrap">
 
   <section id="versiuni">
-    <p class="eyebrow">Doua versiuni</p>
-    <h2>Alege in functie de ce ai nevoie.</h2>
-    <p class="section-intro">CG Convertor exista in doua variante independente, dezvoltate in paralel. Poti instala oricare, sau ambele — nu se suprapun.</p>
+    <p class="eyebrow" data-i18n="versions.eyebrow">Doua versiuni</p>
+    <h2 data-i18n="versions.title">Alege in functie de ce ai nevoie.</h2>
+    <p class="section-intro" data-i18n="versions.intro">CG Convertor exista in doua variante independente, dezvoltate in paralel. Poti instala oricare, sau ambele — nu se suprapun.</p>
 
     <div class="version-grid">
       <div class="version-card">
-        <p class="version-badge">Nativ &middot; recomandat pe Mac</p>
-        <h3>Versiunea Swift</h3>
-        <p class="version-desc">Aplicatie SwiftUI nativa, doar pentru macOS. Foloseste encoder-ul hardware Apple (VideoToolbox) direct, interfata e nativa 100%. Are nevoie de FFmpeg instalat separat prin Homebrew.</p>
+        <p class="version-badge" data-i18n="versions.swift.badge">Nativ &middot; recomandat pe Mac</p>
+        <h3 data-i18n="versions.swift.title">Versiunea Swift</h3>
+        <p class="version-desc" data-i18n="versions.swift.desc">Aplicatie SwiftUI nativa, doar pentru macOS. Foloseste encoder-ul hardware Apple (VideoToolbox) direct, interfata e nativa 100%. Are nevoie de FFmpeg instalat separat prin Homebrew.</p>
         <ul class="version-facts">
-          <li>macOS, Apple Silicon &amp; Intel &middot; binar universal</li>
-          <li>Necesita: <code>brew install ffmpeg</code></li>
-          <li>Interfata nativa macOS (SwiftUI)</li>
+          <li data-i18n="versions.swift.f1">macOS, Apple Silicon &amp; Intel &middot; binar universal</li>
+          <li data-i18n="versions.swift.f2">Necesita: <code>brew install ffmpeg</code></li>
+          <li data-i18n="versions.swift.f3">Interfata nativa macOS (SwiftUI)</li>
         </ul>
         <div class="version-actions">
-          <a class="btn btn-primary" href="https://github.com/gordasgdc/CGConvertor/releases/latest">Descarca .pkg</a>
+          <a class="btn btn-primary" href="https://github.com/gordasgdc/CGConvertor/releases/latest" data-i18n="versions.swift.cta">Descarca .pkg</a>
         </div>
       </div>
 
       <div class="version-card">
-        <p class="version-badge">Standalone &middot; Mac &amp; Windows</p>
-        <h3>Versiunea Python</h3>
-        <p class="version-desc">Aplicatie Python/Tkinter, complet independenta — FFmpeg e inclus in pachet, nu trebuie sa instalezi nimic separat. Disponibila si pentru colegii de pe Windows. Interfata multilingva RO/EN/ES.</p>
+        <p class="version-badge" data-i18n="versions.py.badge">Standalone &middot; Mac &amp; Windows</p>
+        <h3 data-i18n="versions.py.title">Versiunea Python</h3>
+        <p class="version-desc" data-i18n="versions.py.desc">Aplicatie Python/Tkinter, complet independenta — FFmpeg e inclus in pachet, nu trebuie sa instalezi nimic separat. Disponibila si pentru colegii de pe Windows. Interfata multilingva RO/EN/ES.</p>
         <ul class="version-facts">
-          <li>macOS si Windows &middot; nimic de instalat separat</li>
-          <li>FFmpeg inclus in pachet</li>
-          <li>Multilingv: RO / EN / ES</li>
+          <li data-i18n="versions.py.f1">macOS si Windows &middot; nimic de instalat separat</li>
+          <li data-i18n="versions.py.f2">FFmpeg inclus in pachet</li>
+          <li data-i18n="versions.py.f3">Multilingv: RO / EN / ES</li>
         </ul>
         <div class="version-actions">
-          <a class="btn btn-primary" href="https://github.com/gordasgdc/CGConvertor/releases/latest">Descarca (Mac / Windows)</a>
+          <a class="btn btn-primary" href="https://github.com/gordasgdc/CGConvertor/releases/latest" data-i18n="versions.py.cta">Descarca (Mac / Windows)</a>
         </div>
       </div>
     </div>
 
-    <p class="codec-note">Ambele variante ofera aceleasi 6 codecuri de output si acelasi comportament de baza (Rewrap / Transcode). Diferenta e doar in motorul din spate si in ce trebuie sa ai instalat pe masina.</p>
+    <p class="codec-note" data-i18n="versions.note">Ambele variante ofera aceleasi 6 codecuri de output si acelasi comportament de baza (Rewrap / Transcode). Diferenta e doar in motorul din spate si in ce trebuie sa ai instalat pe masina.</p>
   </section>
 
   <section id="ce-face">
-    <p class="eyebrow">Ce face</p>
-    <h2>Doua moduri, un singur scop: fisiere gata de grading.</h2>
-    <p class="section-intro">Aplicatia trece clipurile printr-o coada de procesare, pastrand timecode-ul si metadata originala la fiecare pas.</p>
+    <p class="eyebrow" data-i18n="what.eyebrow">Ce face</p>
+    <h2 data-i18n="what.title">Doua moduri, un singur scop: fisiere gata de grading.</h2>
+    <p class="section-intro" data-i18n="what.intro">Aplicatia trece clipurile printr-o coada de procesare, pastrand timecode-ul si metadata originala la fiecare pas.</p>
 
     <div class="modes">
       <div class="mode-card">
-        <p class="mode-label">Rewrap</p>
-        <h3>Rapid, fara re-encode</h3>
-        <p>Schimba doar containerul. Audio si video raman neatinse — ideal cand sursa e deja intr-un codec editabil si vrei doar compatibilitate cu Resolve.</p>
+        <p class="mode-label" data-i18n="what.rewrap.label">Rewrap</p>
+        <h3 data-i18n="what.rewrap.title">Rapid, fara re-encode</h3>
+        <p data-i18n="what.rewrap.desc">Schimba doar containerul. Audio si video raman neatinse — ideal cand sursa e deja intr-un codec editabil si vrei doar compatibilitate cu Resolve.</p>
       </div>
       <div class="mode-card">
-        <p class="mode-label">Transcode</p>
-        <h3>Re-encode complet</h3>
-        <p>Converteste video-ul folosind encoder-ul hardware Apple (VideoToolbox), respectand bitrate-urile oficiale ProRes — la fel ca EditReady sau Compressor.</p>
+        <p class="mode-label" data-i18n="what.transcode.label">Transcode</p>
+        <h3 data-i18n="what.transcode.title">Re-encode complet</h3>
+        <p data-i18n="what.transcode.desc">Converteste video-ul folosind encoder-ul hardware Apple (VideoToolbox), respectand bitrate-urile oficiale ProRes — la fel ca EditReady sau Compressor.</p>
       </div>
     </div>
   </section>
 
   <section id="codecuri">
-    <p class="eyebrow">Codecuri suportate</p>
-    <h2>Sase output-uri, pentru orice livrare.</h2>
+    <p class="eyebrow" data-i18n="codecs.eyebrow">Codecuri suportate</p>
+    <h2 data-i18n="codecs.title">Sase output-uri, pentru orice livrare.</h2>
 
     <div class="codec-grid">
       <span class="codec-chip"><span class="dot"></span>ProRes 422</span>
@@ -654,30 +699,30 @@
       <span class="codec-chip"><span class="dot"></span>DNxHD</span>
       <span class="codec-chip"><span class="dot"></span>DNxHR HQ</span>
     </div>
-    <p class="codec-note">ProRes 422 HQ e recomandat doar pentru surse deja 4:2:2 (ProRes, DNxHD, camere broadcast). Pe surse 4:2:0 (HEVC/H.264 de pe mirrorless), ProRes 422 simplu pastreaza acelasi detaliu fara sa umfle fisierul.</p>
+    <p class="codec-note" data-i18n="codecs.note">ProRes 422 HQ e recomandat doar pentru surse deja 4:2:2 (ProRes, DNxHD, camere broadcast). Pe surse 4:2:0 (HEVC/H.264 de pe mirrorless), ProRes 422 simplu pastreaza acelasi detaliu fara sa umfle fisierul.</p>
   </section>
 
   <section id="cum-se-foloseste">
-    <p class="eyebrow">Cum se foloseste</p>
-    <h2>De la descarcare la primul export.</h2>
-    <p class="section-intro">Pasii de mai jos sunt pentru <strong>versiunea Swift</strong>. Versiunea Python nu are pasul 02 — FFmpeg e deja inclus, iar avertismentul de securitate de la pasul 01 apare identic si pe Windows (SmartScreen), rezolvabil tot printr-un click pe „More info" → „Run anyway".</p>
+    <p class="eyebrow" data-i18n="steps.eyebrow">Cum se foloseste</p>
+    <h2 data-i18n="steps.title">De la descarcare la primul export.</h2>
+    <p class="section-intro" data-i18n="steps.intro">Pasii de mai jos sunt pentru <strong>versiunea Swift</strong>. Versiunea Python nu are pasul 02 — FFmpeg e deja inclus, iar avertismentul de securitate de la pasul 01 apare identic si pe Windows (SmartScreen), rezolvabil tot printr-un click pe „More info" → „Run anyway".</p>
 
     <div class="steps">
       <div class="step">
         <span class="step-num">01</span>
         <div>
-          <h3>Descarca si instaleaza</h3>
-          <p>Iei ultimul <code>.pkg</code> (Mac) sau <code>.exe</code> (Windows) din pagina de Releases si rulezi installer-ul. Sistemul va marca aplicatia ca venita de pe internet — e normal, aplicatia nu e semnata cu un cont de dezvoltator platit.</p>
+          <h3 data-i18n="steps.s1.title">Descarca si instaleaza</h3>
+          <p data-i18n="steps.s1.desc">Iei ultimul <code>.pkg</code> (Mac) sau <code>.exe</code> (Windows) din pagina de Releases si rulezi installer-ul. Sistemul va marca aplicatia ca venita de pe internet — e normal, aplicatia nu e semnata cu un cont de dezvoltator platit.</p>
           <div class="code-block">xattr -cr /Applications/CGConvertor.app</div>
-          <p class="step-note">Ruleaza comanda de mai sus in Terminal (Mac) daca sistemul refuza sa deschida aplicatia la primul click. Alternativ: click-dreapta pe aplicatie → Open. Pe Windows: „More info" → „Run anyway" in fereastra SmartScreen.</p>
+          <p class="step-note" data-i18n="steps.s1.note">Ruleaza comanda de mai sus in Terminal (Mac) daca sistemul refuza sa deschida aplicatia la primul click. Alternativ: click-dreapta pe aplicatie → Open. Pe Windows: „More info" → „Run anyway" in fereastra SmartScreen.</p>
         </div>
       </div>
 
       <div class="step">
         <span class="step-num">02</span>
         <div>
-          <h3>Instaleaza FFmpeg <span style="font-weight:400;color:var(--ink-faint);font-size:13px;">(doar versiunea Swift)</span></h3>
-          <p>Versiunea Swift foloseste FFmpeg din sistem. Daca nu-l ai deja, il instalezi o singura data cu Homebrew. Versiunea Python sare peste acest pas — FFmpeg e deja inclus in pachet.</p>
+          <h3><span data-i18n="steps.s2.title">Instaleaza FFmpeg</span> <span style="font-weight:400;color:var(--ink-faint);font-size:13px;" data-i18n="steps.s2.only">(doar versiunea Swift)</span></h3>
+          <p data-i18n="steps.s2.desc">Versiunea Swift foloseste FFmpeg din sistem. Daca nu-l ai deja, il instalezi o singura data cu Homebrew. Versiunea Python sare peste acest pas — FFmpeg e deja inclus in pachet.</p>
           <div class="code-block">brew install ffmpeg</div>
         </div>
       </div>
@@ -685,45 +730,45 @@
       <div class="step">
         <span class="step-num">03</span>
         <div>
-          <h3>Adauga fisierele</h3>
-          <p>Tragi clipurile direct in fereastra aplicatiei, sau folosesti butonul de selectie. Poti adauga oricate deodata — se proceseaza in coada, unul dupa altul.</p>
+          <h3 data-i18n="steps.s3.title">Adauga fisierele</h3>
+          <p data-i18n="steps.s3.desc">Tragi clipurile direct in fereastra aplicatiei, sau folosesti butonul de selectie. Poti adauga oricate deodata — se proceseaza in coada, unul dupa altul.</p>
         </div>
       </div>
 
       <div class="step">
         <span class="step-num">04</span>
         <div>
-          <h3>Alegi modul si destinatia</h3>
-          <p>Rewrap sau Transcode, apoi codecul dorit daca ai ales Transcode. Daca nu alegi un folder de destinatie, fisierele rezultate apar langa cele originale.</p>
+          <h3 data-i18n="steps.s4.title">Alegi modul si destinatia</h3>
+          <p data-i18n="steps.s4.desc">Rewrap sau Transcode, apoi codecul dorit daca ai ales Transcode. Daca nu alegi un folder de destinatie, fisierele rezultate apar langa cele originale.</p>
         </div>
       </div>
 
       <div class="step">
         <span class="step-num">05</span>
         <div>
-          <h3>Pornesti conversia</h3>
-          <p>Bara de progres iti arata stadiul fiecarui fisier. La final, timecode-ul original e reinjectat automat — Resolve vede exact acelasi punct de start ca sursa.</p>
+          <h3 data-i18n="steps.s5.title">Pornesti conversia</h3>
+          <p data-i18n="steps.s5.desc">Bara de progres iti arata stadiul fiecarui fisier. La final, timecode-ul original e reinjectat automat — Resolve vede exact acelasi punct de start ca sursa.</p>
         </div>
       </div>
     </div>
   </section>
 
   <section id="cerinte">
-    <p class="eyebrow">Cerinte</p>
-    <h2>Ce iti trebuie pe masina.</h2>
+    <p class="eyebrow" data-i18n="reqs.eyebrow">Cerinte</p>
+    <h2 data-i18n="reqs.title">Ce iti trebuie pe masina.</h2>
 
     <div class="reqs">
       <div class="req">
-        <p class="req-label">Sistem</p>
-        <p class="req-value">macOS, Apple Silicon &amp; Intel</p>
+        <p class="req-label" data-i18n="reqs.os.label">Sistem</p>
+        <p class="req-value" data-i18n="reqs.os.value">macOS &middot; Windows (varianta Python)</p>
       </div>
       <div class="req">
-        <p class="req-label">Dependinta</p>
-        <p class="req-value">FFmpeg (via Homebrew)</p>
+        <p class="req-label" data-i18n="reqs.dep.label">Dependinta</p>
+        <p class="req-value" data-i18n="reqs.dep.value">FFmpeg (inclus sau via Homebrew)</p>
       </div>
       <div class="req">
-        <p class="req-label">Encoding</p>
-        <p class="req-value">Hardware (VideoToolbox)</p>
+        <p class="req-label" data-i18n="reqs.enc.label">Encoding</p>
+        <p class="req-value" data-i18n="reqs.enc.value">Hardware (VideoToolbox pe Mac)</p>
       </div>
     </div>
   </section>
@@ -736,18 +781,17 @@
       <img src="assets/icon.png" alt="Emblema CG Convertor">
       <div>
         <p class="credit-name">Cristi Gordas (GDC)</p>
-        <p class="credit-role">Colorist &amp; video editor &middot; autorul aplicatiei</p>
+        <p class="credit-role" data-i18n="footer.role">Colorist &amp; video editor &middot; autorul aplicatiei</p>
       </div>
     </div>
 
     <div class="footer-links">
       <a href="https://youtube.com/@cristigordas" target="_blank" rel="noopener">YouTube — @cristigordas</a>
-      <a href="https://resolvemaster.training" target="_blank" rel="noopener">resolvemaster.training</a>
-      <a href="https://github.com/gordasgdc/CGConvertor" target="_blank" rel="noopener">Cod sursa pe GitHub</a>
-      <a href="https://github.com/gordasgdc/CGConvertor/releases" target="_blank" rel="noopener">Toate versiunile</a>
+      <a href="https://github.com/gordasgdc/CGConvertor" target="_blank" rel="noopener" data-i18n="footer.source">Cod sursa pe GitHub</a>
+      <a href="https://github.com/gordasgdc/CGConvertor/releases" target="_blank" rel="noopener" data-i18n="footer.releases">Toate versiunile</a>
     </div>
 
-    <p class="footer-fine">CG Convertor &middot; MIT License &middot; construit cu SwiftUI si FFmpeg</p>
+    <p class="footer-fine" data-i18n="footer.fine">CG Convertor &middot; MIT License &middot; construit cu SwiftUI, Python si FFmpeg</p>
   </div>
 </footer>
 
@@ -762,6 +806,221 @@
   sequence.forEach(step => {
     setTimeout(() => { if (numEl) numEl.textContent = step.n; }, step.t);
   });
+
+  const translations = {
+    ro: {
+      'hero.eyebrow': 'macOS nativ &middot; sau Mac &amp; Windows standalone',
+      'hero.sub': 'Transcode &amp; rewrap rapid catre ProRes si DNxHD/DNxHR, construit pentru workflow-uri DaVinci Resolve.',
+      'hero.choose': 'Alege versiunea',
+      'hero.source': 'Vezi codul sursa',
+      'hero.scroll': 'DERULEAZA',
+      'versions.eyebrow': 'Doua versiuni',
+      'versions.title': 'Alege in functie de ce ai nevoie.',
+      'versions.intro': 'CG Convertor exista in doua variante independente, dezvoltate in paralel. Poti instala oricare, sau ambele — nu se suprapun.',
+      'versions.swift.badge': 'Nativ &middot; recomandat pe Mac',
+      'versions.swift.title': 'Versiunea Swift',
+      'versions.swift.desc': 'Aplicatie SwiftUI nativa, doar pentru macOS. Foloseste encoder-ul hardware Apple (VideoToolbox) direct, interfata e nativa 100%. Are nevoie de FFmpeg instalat separat prin Homebrew.',
+      'versions.swift.f1': 'macOS, Apple Silicon &amp; Intel &middot; binar universal',
+      'versions.swift.f2': 'Necesita: <code>brew install ffmpeg</code>',
+      'versions.swift.f3': 'Interfata nativa macOS (SwiftUI)',
+      'versions.swift.cta': 'Descarca .pkg',
+      'versions.py.badge': 'Standalone &middot; Mac &amp; Windows',
+      'versions.py.title': 'Versiunea Python',
+      'versions.py.desc': 'Aplicatie Python/Tkinter, complet independenta — FFmpeg e inclus in pachet, nu trebuie sa instalezi nimic separat. Disponibila si pentru colegii de pe Windows. Interfata multilingva RO/EN/ES.',
+      'versions.py.f1': 'macOS si Windows &middot; nimic de instalat separat',
+      'versions.py.f2': 'FFmpeg inclus in pachet',
+      'versions.py.f3': 'Multilingv: RO / EN / ES',
+      'versions.py.cta': 'Descarca (Mac / Windows)',
+      'versions.note': 'Ambele variante ofera aceleasi 6 codecuri de output si acelasi comportament de baza (Rewrap / Transcode). Diferenta e doar in motorul din spate si in ce trebuie sa ai instalat pe masina.',
+      'what.eyebrow': 'Ce face',
+      'what.title': 'Doua moduri, un singur scop: fisiere gata de grading.',
+      'what.intro': 'Aplicatia trece clipurile printr-o coada de procesare, pastrand timecode-ul si metadata originala la fiecare pas.',
+      'what.rewrap.label': 'Rewrap',
+      'what.rewrap.title': 'Rapid, fara re-encode',
+      'what.rewrap.desc': 'Schimba doar containerul. Audio si video raman neatinse — ideal cand sursa e deja intr-un codec editabil si vrei doar compatibilitate cu Resolve.',
+      'what.transcode.label': 'Transcode',
+      'what.transcode.title': 'Re-encode complet',
+      'what.transcode.desc': 'Converteste video-ul folosind encoder-ul hardware Apple (VideoToolbox), respectand bitrate-urile oficiale ProRes — la fel ca EditReady sau Compressor.',
+      'codecs.eyebrow': 'Codecuri suportate',
+      'codecs.title': 'Sase output-uri, pentru orice livrare.',
+      'codecs.note': 'ProRes 422 HQ e recomandat doar pentru surse deja 4:2:2 (ProRes, DNxHD, camere broadcast). Pe surse 4:2:0 (HEVC/H.264 de pe mirrorless), ProRes 422 simplu pastreaza acelasi detaliu fara sa umfle fisierul.',
+      'steps.eyebrow': 'Cum se foloseste',
+      'steps.title': 'De la descarcare la primul export.',
+      'steps.intro': 'Pasii de mai jos sunt pentru <strong>versiunea Swift</strong>. Versiunea Python nu are pasul 02 — FFmpeg e deja inclus, iar avertismentul de securitate de la pasul 01 apare identic si pe Windows (SmartScreen), rezolvabil tot printr-un click pe „More info" → „Run anyway".',
+      'steps.s1.title': 'Descarca si instaleaza',
+      'steps.s1.desc': 'Iei ultimul <code>.pkg</code> (Mac) sau <code>.exe</code> (Windows) din pagina de Releases si rulezi installer-ul. Sistemul va marca aplicatia ca venita de pe internet — e normal, aplicatia nu e semnata cu un cont de dezvoltator platit.',
+      'steps.s1.note': 'Ruleaza comanda de mai sus in Terminal (Mac) daca sistemul refuza sa deschida aplicatia la primul click. Alternativ: click-dreapta pe aplicatie → Open. Pe Windows: „More info" → „Run anyway" in fereastra SmartScreen.',
+      'steps.s2.title': 'Instaleaza FFmpeg',
+      'steps.s2.only': '(doar versiunea Swift)',
+      'steps.s2.desc': 'Versiunea Swift foloseste FFmpeg din sistem. Daca nu-l ai deja, il instalezi o singura data cu Homebrew. Versiunea Python sare peste acest pas — FFmpeg e deja inclus in pachet.',
+      'steps.s3.title': 'Adauga fisierele',
+      'steps.s3.desc': 'Tragi clipurile direct in fereastra aplicatiei, sau folosesti butonul de selectie. Poti adauga oricate deodata — se proceseaza in coada, unul dupa altul.',
+      'steps.s4.title': 'Alegi modul si destinatia',
+      'steps.s4.desc': 'Rewrap sau Transcode, apoi codecul dorit daca ai ales Transcode. Daca nu alegi un folder de destinatie, fisierele rezultate apar langa cele originale.',
+      'steps.s5.title': 'Pornesti conversia',
+      'steps.s5.desc': 'Bara de progres iti arata stadiul fiecarui fisier. La final, timecode-ul original e reinjectat automat — Resolve vede exact acelasi punct de start ca sursa.',
+      'reqs.eyebrow': 'Cerinte',
+      'reqs.title': 'Ce iti trebuie pe masina.',
+      'reqs.os.label': 'Sistem',
+      'reqs.os.value': 'macOS &middot; Windows (varianta Python)',
+      'reqs.dep.label': 'Dependinta',
+      'reqs.dep.value': 'FFmpeg (inclus sau via Homebrew)',
+      'reqs.enc.label': 'Encoding',
+      'reqs.enc.value': 'Hardware (VideoToolbox pe Mac)',
+      'footer.role': 'Colorist &amp; video editor &middot; autorul aplicatiei',
+      'footer.source': 'Cod sursa pe GitHub',
+      'footer.releases': 'Toate versiunile',
+      'footer.fine': 'CG Convertor &middot; MIT License &middot; construit cu SwiftUI, Python si FFmpeg'
+    },
+    en: {
+      'hero.eyebrow': 'Native macOS &middot; or standalone Mac &amp; Windows',
+      'hero.sub': 'Fast transcode &amp; rewrap to ProRes and DNxHD/DNxHR, built for DaVinci Resolve workflows.',
+      'hero.choose': 'Choose a version',
+      'hero.source': 'View source code',
+      'hero.scroll': 'SCROLL',
+      'versions.eyebrow': 'Two versions',
+      'versions.title': 'Pick the one you need.',
+      'versions.intro': 'CG Convertor exists as two independent variants, developed in parallel. Install either, or both — they don\'t conflict.',
+      'versions.swift.badge': 'Native &middot; recommended on Mac',
+      'versions.swift.title': 'Swift version',
+      'versions.swift.desc': 'Native SwiftUI app, macOS only. Uses Apple\'s hardware encoder (VideoToolbox) directly, 100% native interface. Needs FFmpeg installed separately via Homebrew.',
+      'versions.swift.f1': 'macOS, Apple Silicon &amp; Intel &middot; universal binary',
+      'versions.swift.f2': 'Requires: <code>brew install ffmpeg</code>',
+      'versions.swift.f3': 'Native macOS interface (SwiftUI)',
+      'versions.swift.cta': 'Download .pkg',
+      'versions.py.badge': 'Standalone &middot; Mac &amp; Windows',
+      'versions.py.title': 'Python version',
+      'versions.py.desc': 'Python/Tkinter app, fully self-contained — FFmpeg is bundled, nothing to install separately. Also available for Windows-based colleagues. Multilingual interface RO/EN/ES.',
+      'versions.py.f1': 'macOS and Windows &middot; nothing else to install',
+      'versions.py.f2': 'FFmpeg bundled',
+      'versions.py.f3': 'Multilingual: RO / EN / ES',
+      'versions.py.cta': 'Download (Mac / Windows)',
+      'versions.note': 'Both variants offer the same 6 output codecs and the same core behavior (Rewrap / Transcode). The difference is just the engine underneath and what you need installed.',
+      'what.eyebrow': 'What it does',
+      'what.title': 'Two modes, one goal: files ready for grading.',
+      'what.intro': 'The app runs your clips through a processing queue, preserving the original timecode and metadata at every step.',
+      'what.rewrap.label': 'Rewrap',
+      'what.rewrap.title': 'Fast, no re-encode',
+      'what.rewrap.desc': 'Changes only the container. Audio and video stay untouched — ideal when the source is already in an editable codec and you just need Resolve compatibility.',
+      'what.transcode.label': 'Transcode',
+      'what.transcode.title': 'Full re-encode',
+      'what.transcode.desc': 'Encodes the video using Apple\'s hardware encoder (VideoToolbox), respecting official ProRes bitrates — just like EditReady or Compressor.',
+      'codecs.eyebrow': 'Supported codecs',
+      'codecs.title': 'Six outputs, for any delivery.',
+      'codecs.note': 'ProRes 422 HQ is only recommended for sources already at 4:2:2 (ProRes, DNxHD, broadcast cameras). On 4:2:0 sources (HEVC/H.264 from mirrorless cameras), plain ProRes 422 keeps the same detail without bloating the file.',
+      'steps.eyebrow': 'How to use it',
+      'steps.title': 'From download to your first export.',
+      'steps.intro': 'The steps below are for the <strong>Swift version</strong>. The Python version skips step 02 — FFmpeg is already bundled — and the security warning in step 01 appears the same way on Windows (SmartScreen), solved the same way via "More info" → "Run anyway".',
+      'steps.s1.title': 'Download and install',
+      'steps.s1.desc': 'Grab the latest <code>.pkg</code> (Mac) or <code>.exe</code> (Windows) from the Releases page and run the installer. The system will flag the app as downloaded from the internet — that\'s normal, the app isn\'t signed with a paid developer account.',
+      'steps.s1.note': 'Run the command above in Terminal (Mac) if the system refuses to open the app on first click. Alternative: right-click the app → Open. On Windows: "More info" → "Run anyway" in the SmartScreen window.',
+      'steps.s2.title': 'Install FFmpeg',
+      'steps.s2.only': '(Swift version only)',
+      'steps.s2.desc': 'The Swift version uses FFmpeg from your system. If you don\'t have it yet, install it once via Homebrew. The Python version skips this step — FFmpeg is already bundled.',
+      'steps.s3.title': 'Add your files',
+      'steps.s3.desc': 'Drag clips straight into the app window, or use the file picker. Add as many as you want at once — they process in a queue, one after another.',
+      'steps.s4.title': 'Pick the mode and destination',
+      'steps.s4.desc': 'Rewrap or Transcode, then the desired codec if you picked Transcode. If you don\'t choose a destination folder, output files appear next to the originals.',
+      'steps.s5.title': 'Start the conversion',
+      'steps.s5.desc': 'The progress bar shows each file\'s status. At the end, the original timecode is automatically re-injected — Resolve sees the exact same start point as the source.',
+      'reqs.eyebrow': 'Requirements',
+      'reqs.title': 'What you\'ll need.',
+      'reqs.os.label': 'System',
+      'reqs.os.value': 'macOS &middot; Windows (Python version)',
+      'reqs.dep.label': 'Dependency',
+      'reqs.dep.value': 'FFmpeg (bundled or via Homebrew)',
+      'reqs.enc.label': 'Encoding',
+      'reqs.enc.value': 'Hardware (VideoToolbox on Mac)',
+      'footer.role': 'Colorist &amp; video editor &middot; app author',
+      'footer.source': 'Source code on GitHub',
+      'footer.releases': 'All releases',
+      'footer.fine': 'CG Convertor &middot; MIT License &middot; built with SwiftUI, Python and FFmpeg'
+    },
+    es: {
+      'hero.eyebrow': 'macOS nativo &middot; o Mac y Windows independiente',
+      'hero.sub': 'Transcode y rewrap rapido a ProRes y DNxHD/DNxHR, creado para flujos de trabajo de DaVinci Resolve.',
+      'hero.choose': 'Elige una version',
+      'hero.source': 'Ver codigo fuente',
+      'hero.scroll': 'DESPLAZAR',
+      'versions.eyebrow': 'Dos versiones',
+      'versions.title': 'Elige segun lo que necesites.',
+      'versions.intro': 'CG Convertor existe en dos variantes independientes, desarrolladas en paralelo. Puedes instalar cualquiera, o ambas — no se superponen.',
+      'versions.swift.badge': 'Nativa &middot; recomendada en Mac',
+      'versions.swift.title': 'Version Swift',
+      'versions.swift.desc': 'App SwiftUI nativa, solo para macOS. Usa el codificador por hardware de Apple (VideoToolbox) directamente, interfaz 100% nativa. Necesita FFmpeg instalado por separado via Homebrew.',
+      'versions.swift.f1': 'macOS, Apple Silicon y Intel &middot; binario universal',
+      'versions.swift.f2': 'Requiere: <code>brew install ffmpeg</code>',
+      'versions.swift.f3': 'Interfaz nativa de macOS (SwiftUI)',
+      'versions.swift.cta': 'Descargar .pkg',
+      'versions.py.badge': 'Independiente &middot; Mac y Windows',
+      'versions.py.title': 'Version Python',
+      'versions.py.desc': 'App Python/Tkinter, totalmente independiente — FFmpeg viene incluido, nada que instalar por separado. Tambien disponible para companeros con Windows. Interfaz multilingue RO/EN/ES.',
+      'versions.py.f1': 'macOS y Windows &middot; nada que instalar aparte',
+      'versions.py.f2': 'FFmpeg incluido',
+      'versions.py.f3': 'Multilingue: RO / EN / ES',
+      'versions.py.cta': 'Descargar (Mac / Windows)',
+      'versions.note': 'Ambas variantes ofrecen los mismos 6 codecs de salida y el mismo comportamiento base (Rewrap / Transcode). La diferencia esta solo en el motor interno y en lo que necesitas tener instalado.',
+      'what.eyebrow': 'Que hace',
+      'what.title': 'Dos modos, un solo objetivo: archivos listos para grading.',
+      'what.intro': 'La app pasa tus clips por una cola de procesamiento, conservando el timecode y los metadatos originales en cada paso.',
+      'what.rewrap.label': 'Rewrap',
+      'what.rewrap.title': 'Rapido, sin re-codificacion',
+      'what.rewrap.desc': 'Cambia solo el contenedor. Audio y video quedan intactos — ideal cuando la fuente ya esta en un codec editable y solo necesitas compatibilidad con Resolve.',
+      'what.transcode.label': 'Transcode',
+      'what.transcode.title': 'Re-codificacion completa',
+      'what.transcode.desc': 'Codifica el video usando el codificador por hardware de Apple (VideoToolbox), respetando los bitrates oficiales de ProRes — igual que EditReady o Compressor.',
+      'codecs.eyebrow': 'Codecs soportados',
+      'codecs.title': 'Seis salidas, para cualquier entrega.',
+      'codecs.note': 'ProRes 422 HQ se recomienda solo para fuentes ya en 4:2:2 (ProRes, DNxHD, camaras broadcast). En fuentes 4:2:0 (HEVC/H.264 de camaras mirrorless), ProRes 422 simple mantiene el mismo detalle sin inflar el archivo.',
+      'steps.eyebrow': 'Como se usa',
+      'steps.title': 'De la descarga a tu primera exportacion.',
+      'steps.intro': 'Los pasos de abajo son para la <strong>version Swift</strong>. La version Python no tiene el paso 02 — FFmpeg ya viene incluido — y el aviso de seguridad del paso 01 aparece igual en Windows (SmartScreen), resuelto igual con "More info" → "Run anyway".',
+      'steps.s1.title': 'Descarga e instala',
+      'steps.s1.desc': 'Toma el ultimo <code>.pkg</code> (Mac) o <code>.exe</code> (Windows) desde la pagina de Releases y ejecuta el instalador. El sistema marcara la app como descargada de internet — es normal, la app no esta firmada con una cuenta de desarrollador de pago.',
+      'steps.s1.note': 'Ejecuta el comando de arriba en Terminal (Mac) si el sistema se niega a abrir la app al primer clic. Alternativa: clic derecho en la app → Open. En Windows: "More info" → "Run anyway" en la ventana de SmartScreen.',
+      'steps.s2.title': 'Instala FFmpeg',
+      'steps.s2.only': '(solo version Swift)',
+      'steps.s2.desc': 'La version Swift usa FFmpeg del sistema. Si no lo tienes, instalalo una vez via Homebrew. La version Python se salta este paso — FFmpeg ya viene incluido.',
+      'steps.s3.title': 'Agrega los archivos',
+      'steps.s3.desc': 'Arrastra los clips directamente a la ventana de la app, o usa el boton de seleccion. Puedes agregar tantos como quieras a la vez — se procesan en cola, uno tras otro.',
+      'steps.s4.title': 'Elige el modo y el destino',
+      'steps.s4.desc': 'Rewrap o Transcode, luego el codec deseado si elegiste Transcode. Si no eliges una carpeta de destino, los archivos resultantes aparecen junto a los originales.',
+      'steps.s5.title': 'Inicia la conversion',
+      'steps.s5.desc': 'La barra de progreso muestra el estado de cada archivo. Al final, el timecode original se reinyecta automaticamente — Resolve ve exactamente el mismo punto de inicio que la fuente.',
+      'reqs.eyebrow': 'Requisitos',
+      'reqs.title': 'Que necesitas en tu equipo.',
+      'reqs.os.label': 'Sistema',
+      'reqs.os.value': 'macOS &middot; Windows (version Python)',
+      'reqs.dep.label': 'Dependencia',
+      'reqs.dep.value': 'FFmpeg (incluido o via Homebrew)',
+      'reqs.enc.label': 'Codificacion',
+      'reqs.enc.value': 'Hardware (VideoToolbox en Mac)',
+      'footer.role': 'Colorista y editor de video &middot; autor de la aplicacion',
+      'footer.source': 'Codigo fuente en GitHub',
+      'footer.releases': 'Todas las versiones',
+      'footer.fine': 'CG Convertor &middot; Licencia MIT &middot; construido con SwiftUI, Python y FFmpeg'
+    }
+  };
+
+  function applyLang(lang) {
+    const dict = translations[lang];
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (dict[key]) el.innerHTML = dict[key];
+    });
+    document.documentElement.lang = lang;
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+    localStorage.setItem('cgc-lang', lang);
+  }
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyLang(btn.dataset.lang));
+  });
+
+  const savedLang = localStorage.getItem('cgc-lang');
+  if (savedLang && translations[savedLang]) applyLang(savedLang);
 </script>
 
 </body>
