@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CG Convertor — Transcode & Rewrap pentru DaVinci Resolve</title>
+<meta name="description" content="Aplicatie macOS pentru transcode si rewrap rapid catre ProRes si DNxHD/DNxHR, construita pentru workflow-uri DaVinci Resolve. De Cristi Gordas.">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0c0e;
+    --bg-elevated: #17191c;
+    --bg-elevated-2: #1e2124;
+    --ink: #edeae7;
+    --ink-dim: #8b8e90;
+    --ink-faint: #55585b;
+    --accent-gold: #c79a3d;
+    --accent-gold-bright: #e0b458;
+    --accent-safe: #5c9b79;
+    --line: #2a2d31;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --sans: 'Inter', -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+
+  ::selection { background: var(--accent-gold); color: #0b0c0e; }
+
+  .wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  /* ── Hero / Leader ─────────────────────────────────────────── */
+
+  .hero {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    padding: 40px 24px;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% 20%, rgba(199,154,61,0.07), transparent 60%),
+      var(--bg);
+  }
+
+  .leader {
+    position: relative;
+    width: 148px;
+    height: 148px;
+    margin-bottom: 34px;
+  }
+
+  .leader svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  .leader-ring {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 1.5;
+  }
+
+  .leader-cross {
+    stroke: var(--ink-faint);
+    stroke-width: 1;
+  }
+
+  .leader-hand {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1.5px;
+    height: 44%;
+    background: var(--ink);
+    transform-origin: bottom center;
+    transform: translateX(-50%) rotate(0deg);
+    animation: sweep 2.6s cubic-bezier(.65,.05,.36,1) forwards;
+  }
+
+  @keyframes sweep {
+    to { transform: translateX(-50%) rotate(360deg); }
+  }
+
+  .leader-number {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 40px;
+    color: var(--ink);
+  }
+
+  .leader-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.85);
+    animation: iconIn 0.6s ease-out 2.6s forwards;
+  }
+
+  .leader-icon img {
+    width: 84px;
+    height: 84px;
+    border-radius: 20px;
+  }
+
+  @keyframes iconIn {
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    opacity: 0;
+    animation: fadeUp 0.7s ease-out 2.7s forwards;
+  }
+
+  .hero h1 {
+    font-size: clamp(38px, 7vw, 60px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 10px 0 14px;
+    opacity: 0;
+    animation: fadeUp 0.7s ease-out 2.85s forwards;
+  }
+
+  .hero p.sub {
+    color: var(--ink-dim);
+    font-size: 17px;
+    max-width: 480px;
+    margin: 0 auto;
+    opacity: 0;
+    animation: fadeUp 0.7s ease-out 3s forwards;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeUp 0.7s ease-out 3.15s forwards;
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 13px 22px;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+
+  .btn:hover { transform: translateY(-1px); }
+
+  .btn-primary {
+    background: var(--accent-gold);
+    color: #14110a;
+  }
+  .btn-primary:hover { background: var(--accent-gold-bright); }
+
+  .btn-ghost {
+    border-color: var(--line);
+    color: var(--ink);
+  }
+  .btn-ghost:hover { border-color: var(--ink-faint); }
+
+  .scroll-cue {
+    position: absolute;
+    bottom: 30px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.1em;
+    opacity: 0;
+    animation: fadeUp 0.7s ease-out 3.3s forwards;
+  }
+
+  /* ── Sections generale ────────────────────────────────────────*/
+
+  section { padding: 90px 0; border-top: 1px solid var(--line); }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 12px;
+  }
+
+  h2 {
+    font-size: clamp(26px, 4vw, 34px);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 16px;
+  }
+
+  .section-intro {
+    color: var(--ink-dim);
+    max-width: 560px;
+    font-size: 16px;
+    margin-bottom: 48px;
+  }
+
+  /* ── Ce face: doua moduri ──────────────────────────────────── */
+
+  .modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .mode-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mode-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent-gold);
+    opacity: 0.5;
+  }
+
+  .mode-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-gold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .mode-card h3 {
+    font-size: 19px;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .mode-card p {
+    color: var(--ink-dim);
+    font-size: 14.5px;
+  }
+
+  /* ── Codecuri: chips tip eticheta de banda ────────────────────*/
+
+  .codec-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .codec-chip {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-elevated);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .codec-chip .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-gold);
+  }
+
+  .codec-note {
+    margin-top: 20px;
+    color: var(--ink-dim);
+    font-size: 14px;
+    max-width: 560px;
+  }
+
+  /* ── Pasi de utilizare ─────────────────────────────────────── */
+
+  .steps {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 20px;
+    padding: 26px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .step:last-child { border-bottom: none; }
+
+  .step-num {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent-gold);
+    padding-top: 2px;
+  }
+
+  .step h3 {
+    font-size: 16.5px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .step p {
+    color: var(--ink-dim);
+    font-size: 14.5px;
+    max-width: 540px;
+  }
+
+  .code-block {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--bg-elevated-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    color: var(--accent-safe);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .step-note {
+    font-size: 13px;
+    color: var(--ink-faint);
+    margin-top: 10px;
+  }
+
+  /* ── Cerinte ───────────────────────────────────────────────── */
+
+  .reqs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .req {
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px;
+  }
+
+  .req-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+
+  .req-value {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  /* ── Footer / credite ──────────────────────────────────────── */
+
+  footer {
+    padding: 70px 0 50px;
+    border-top: 1px solid var(--line);
+  }
+
+  .credit-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 34px;
+  }
+
+  .credit-row img {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+  }
+
+  .credit-name {
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .credit-role {
+    color: var(--ink-dim);
+    font-size: 13.5px;
+    margin-top: 2px;
+  }
+
+  .footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .footer-links a {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--ink-dim);
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .footer-links a:hover {
+    color: var(--ink);
+    border-color: var(--ink-faint);
+  }
+
+  .footer-fine {
+    margin-top: 40px;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+  }
+
+  /* ── Responsive ────────────────────────────────────────────── */
+
+  @media (max-width: 640px) {
+    .modes { grid-template-columns: 1fr; }
+    .reqs { grid-template-columns: 1fr; }
+    .step { grid-template-columns: 36px 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .leader-hand, .hero-eyebrow, .hero h1, .hero p.sub, .hero-actions, .scroll-cue, .leader-icon {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+    .leader-number { display: none; }
+  }
+
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="leader" aria-hidden="true">
+    <svg viewBox="0 0 200 200">
+      <circle class="leader-ring" cx="100" cy="100" r="90"></circle>
+      <line class="leader-cross" x1="100" y1="14" x2="100" y2="186"></line>
+      <line class="leader-cross" x1="14" y1="100" x2="186" y2="100"></line>
+    </svg>
+    <div class="leader-hand"></div>
+    <div class="leader-number" id="leaderNumber">3</div>
+    <div class="leader-icon"><img src="assets/icon.png" alt=""></div>
+  </div>
+
+  <p class="hero-eyebrow">macOS &middot; Apple Silicon &amp; Intel</p>
+  <h1>CG Convertor</h1>
+  <p class="sub">Transcode &amp; rewrap rapid catre ProRes si DNxHD/DNxHR, construit pentru workflow-uri DaVinci Resolve.</p>
+
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="https://github.com/gordasgdc/CGConvertor/releases/latest">Descarca .pkg</a>
+    <a class="btn btn-ghost" href="https://github.com/gordasgdc/CGConvertor">Vezi codul sursa</a>
+  </div>
+
+  <p class="scroll-cue">DERULEAZA</p>
+</section>
+
+<div class="wrap">
+
+  <section id="ce-face">
+    <p class="eyebrow">Ce face</p>
+    <h2>Doua moduri, un singur scop: fisiere gata de grading.</h2>
+    <p class="section-intro">Aplicatia trece clipurile printr-o coada de procesare, pastrand timecode-ul si metadata originala la fiecare pas.</p>
+
+    <div class="modes">
+      <div class="mode-card">
+        <p class="mode-label">Rewrap</p>
+        <h3>Rapid, fara re-encode</h3>
+        <p>Schimba doar containerul. Audio si video raman neatinse — ideal cand sursa e deja intr-un codec editabil si vrei doar compatibilitate cu Resolve.</p>
+      </div>
+      <div class="mode-card">
+        <p class="mode-label">Transcode</p>
+        <h3>Re-encode complet</h3>
+        <p>Converteste video-ul folosind encoder-ul hardware Apple (VideoToolbox), respectand bitrate-urile oficiale ProRes — la fel ca EditReady sau Compressor.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="codecuri">
+    <p class="eyebrow">Codecuri suportate</p>
+    <h2>Sase output-uri, pentru orice livrare.</h2>
+
+    <div class="codec-grid">
+      <span class="codec-chip"><span class="dot"></span>ProRes 422</span>
+      <span class="codec-chip"><span class="dot"></span>ProRes 422 HQ</span>
+      <span class="codec-chip"><span class="dot"></span>ProRes 422 LT</span>
+      <span class="codec-chip"><span class="dot"></span>ProRes 4444</span>
+      <span class="codec-chip"><span class="dot"></span>DNxHD</span>
+      <span class="codec-chip"><span class="dot"></span>DNxHR HQ</span>
+    </div>
+    <p class="codec-note">ProRes 422 HQ e recomandat doar pentru surse deja 4:2:2 (ProRes, DNxHD, camere broadcast). Pe surse 4:2:0 (HEVC/H.264 de pe mirrorless), ProRes 422 simplu pastreaza acelasi detaliu fara sa umfle fisierul.</p>
+  </section>
+
+  <section id="cum-se-foloseste">
+    <p class="eyebrow">Cum se foloseste</p>
+    <h2>De la descarcare la primul export.</h2>
+
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">01</span>
+        <div>
+          <h3>Descarca si instaleaza</h3>
+          <p>Iei ultimul <code>.pkg</code> din pagina de Releases si rulezi installer-ul. macOS va marca aplicatia ca venita de pe internet — e normal, aplicatia nu e semnata cu un cont de dezvoltator Apple platit.</p>
+          <div class="code-block">xattr -cr /Applications/CGConvertor.app</div>
+          <p class="step-note">Ruleaza comanda de mai sus in Terminal daca macOS refuza sa deschida aplicatia la primul click. Alternativ: click-dreapta pe aplicatie → Open.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="step-num">02</span>
+        <div>
+          <h3>Instaleaza FFmpeg</h3>
+          <p>Aplicatia foloseste FFmpeg pentru conversie. Daca nu-l ai deja, il instalezi o singura data cu Homebrew:</p>
+          <div class="code-block">brew install ffmpeg</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="step-num">03</span>
+        <div>
+          <h3>Adauga fisierele</h3>
+          <p>Tragi clipurile direct in fereastra aplicatiei, sau folosesti butonul de selectie. Poti adauga oricate deodata — se proceseaza in coada, unul dupa altul.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="step-num">04</span>
+        <div>
+          <h3>Alegi modul si destinatia</h3>
+          <p>Rewrap sau Transcode, apoi codecul dorit daca ai ales Transcode. Daca nu alegi un folder de destinatie, fisierele rezultate apar langa cele originale.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="step-num">05</span>
+        <div>
+          <h3>Pornesti conversia</h3>
+          <p>Bara de progres iti arata stadiul fiecarui fisier. La final, timecode-ul original e reinjectat automat — Resolve vede exact acelasi punct de start ca sursa.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="cerinte">
+    <p class="eyebrow">Cerinte</p>
+    <h2>Ce iti trebuie pe masina.</h2>
+
+    <div class="reqs">
+      <div class="req">
+        <p class="req-label">Sistem</p>
+        <p class="req-value">macOS, Apple Silicon &amp; Intel</p>
+      </div>
+      <div class="req">
+        <p class="req-label">Dependinta</p>
+        <p class="req-value">FFmpeg (via Homebrew)</p>
+      </div>
+      <div class="req">
+        <p class="req-label">Encoding</p>
+        <p class="req-value">Hardware (VideoToolbox)</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="credit-row">
+      <img src="assets/icon.png" alt="Emblema CG Convertor">
+      <div>
+        <p class="credit-name">Cristi Gordas (GDC)</p>
+        <p class="credit-role">Colorist &amp; video editor &middot; autorul aplicatiei</p>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <a href="https://youtube.com/@cristigordas" target="_blank" rel="noopener">YouTube — @cristigordas</a>
+      <a href="https://resolvemaster.training" target="_blank" rel="noopener">resolvemaster.training</a>
+      <a href="https://github.com/gordasgdc/CGConvertor" target="_blank" rel="noopener">Cod sursa pe GitHub</a>
+      <a href="https://github.com/gordasgdc/CGConvertor/releases" target="_blank" rel="noopener">Toate versiunile</a>
+    </div>
+
+    <p class="footer-fine">CG Convertor &middot; MIT License &middot; construit cu SwiftUI si FFmpeg</p>
+  </div>
+</footer>
+
+<script>
+  const numEl = document.getElementById('leaderNumber');
+  const sequence = [
+    { t: 0,    n: '3' },
+    { t: 870,  n: '2' },
+    { t: 1740, n: '1' },
+    { t: 2600, n: '' }
+  ];
+  sequence.forEach(step => {
+    setTimeout(() => { if (numEl) numEl.textContent = step.n; }, step.t);
+  });
+</script>
+
+</body>
+</html>
