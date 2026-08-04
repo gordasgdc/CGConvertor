@@ -6,8 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BDB9B4732FF3DD4A00B2FCCA /* ffprobe in Resources */ = {isa = PBXBuildFile; fileRef = BDB9B4722FF3DD4A00B2FCCA /* ffprobe */; };
+		BDB9B4742FF3DD4A00B2FCCA /* ffmpeg in Resources */ = {isa = PBXBuildFile; fileRef = BDB9B4712FF3DD4A00B2FCCA /* ffmpeg */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		BDB9B4432FF3C9E300B2FCCA /* CGConvertor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CGConvertor.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BDB9B4712FF3DD4A00B2FCCA /* ffmpeg */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = ffmpeg; sourceTree = "<group>"; };
+		BDB9B4722FF3DD4A00B2FCCA /* ffprobe */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = ffprobe; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -32,6 +39,8 @@
 		BDB9B43A2FF3C9E200B2FCCA = {
 			isa = PBXGroup;
 			children = (
+				BDB9B4712FF3DD4A00B2FCCA /* ffmpeg */,
+				BDB9B4722FF3DD4A00B2FCCA /* ffprobe */,
 				BDB9B4452FF3C9E300B2FCCA /* CGConvertor */,
 				BDB9B4442FF3C9E300B2FCCA /* Products */,
 			);
@@ -109,6 +118,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BDB9B4732FF3DD4A00B2FCCA /* ffprobe in Resources */,
+				BDB9B4742FF3DD4A00B2FCCA /* ffmpeg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -251,16 +262,15 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cristigordas.CGConvertor;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -281,16 +291,15 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cristigordas.CGConvertor;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
