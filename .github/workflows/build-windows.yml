@@ -1,0 +1,61 @@
+name: Build CGConvertor (Windows .exe)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: python
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Build LGPL "essentials" (fara libx264/libx265) — vezi THIRD_PARTY_NOTICES.md.
+      # Nu foloseste build-ul "full" (GPL), ca sa evitam obligatiile de redistribuire GPL.
+      - name: Download FFmpeg (LGPL essentials)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath .
+          $dir = Get-ChildItem -Directory -Filter "ffmpeg-*-essentials_build" | Select-Object -First 1
+          New-Item -ItemType Directory -Force -Path ffmpeg
+          Copy-Item "$($dir.FullName)\bin\ffmpeg.exe" ffmpeg\
+          Copy-Item "$($dir.FullName)\bin\ffprobe.exe" ffmpeg\
+
+      - name: Build .exe
+        run: pyinstaller build-windows.spec
+
+      - name: Verifica .exe rezultat
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist\CGConvertor.exe")) {
+            Write-Error "Build-ul nu a produs CGConvertor.exe"
+            exit 1
+          }
+
+      - name: Redenumeste artefactul
+        run: Copy-Item dist\CGConvertor.exe "$env:GITHUB_WORKSPACE\CGConvertor-standalone-windows.exe"
+
+      - name: Creeaza / actualizeaza Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: CGConvertor-standalone-windows.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
