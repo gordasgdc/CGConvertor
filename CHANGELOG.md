@@ -4,6 +4,16 @@ Toate modificările notabile ale acestui proiect sunt documentate aici.
 
 ## [Unreleased]
 
+### Faza A — Relocare & Curățare (2026-08-26)
+- Repo mutat din `~/Desktop/CGConvertor` în `~/Developer/CGConvertor`
+  (regulă permanentă, vezi `CLAUDE.md`).
+- Eliminat token GitHub expus în clar din `.git/config` — remote
+  resetat fără credențiale în URL.
+- Adăugat `.gitignore` (lipsea complet) — `__pycache__/` scos din
+  tracking, `venv/` exclus.
+- Verificat `Downloads/CGConvertor-trilingv` și `-update`: subseturi
+  vechi, deja depășite — nimic de fuzionat.
+
 ## [1.0.0] - 2026-08-04
 
 ### Adăugat

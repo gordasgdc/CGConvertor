@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+venv/
+.venv/
+.DS_Store
+build/
+dist/
+*.egg-info/
+.build/
+.swiftpm/
+xcuserdata/
+*.xcodeproj/xcuserdata/
