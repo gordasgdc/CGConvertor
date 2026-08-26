@@ -1,4 +1,4 @@
-name: Build CGConvertor (Windows .exe)
+name: Build CGConvertor (Windows installer)
 
 on:
   push:
@@ -49,13 +49,31 @@ jobs:
             exit 1
           }
 
+      - name: Sincronizeaza versiunea installer-ului cu config.py
+        shell: pwsh
+        run: |
+          $version = (python -c "from config import APP_VERSION; print(APP_VERSION)").Trim()
+          (Get-Content installer.iss) -replace '#define MyAppVersion ".*"', "#define MyAppVersion `"$version`"" | Set-Content installer.iss
+
+      - name: Compileaza instalatorul (Inno Setup — preinstalat pe runner-ul windows-latest)
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+
+      - name: Verifica instalatorul rezultat
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "Output\CGConvertorSetup.exe")) {
+            Write-Error "Inno Setup nu a produs CGConvertorSetup.exe"
+            exit 1
+          }
+
       - name: Redenumeste artefactul
-        run: Copy-Item dist\CGConvertor.exe "$env:GITHUB_WORKSPACE\CGConvertor-standalone-windows.exe"
+        run: Copy-Item Output\CGConvertorSetup.exe "$env:GITHUB_WORKSPACE\CGConvertor-Windows-Setup.exe"
 
       - name: Creeaza / actualizeaza Release
         uses: softprops/action-gh-release@v2
         with:
-          files: CGConvertor-standalone-windows.exe
+          files: CGConvertor-Windows-Setup.exe
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

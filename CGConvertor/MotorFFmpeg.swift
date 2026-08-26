@@ -4,6 +4,7 @@ import Foundation
 enum EroareFFmpeg: LocalizedError {
     case binarNegasit
     case esecProces(cod: Int32, mesaj: String)
+    case anulat
 
     var errorDescription: String? {
         switch self {
@@ -11,8 +12,26 @@ enum EroareFFmpeg: LocalizedError {
             return "FFmpeg nu a fost gasit. Instaleaza-l cu Homebrew: brew install ffmpeg"
         case .esecProces(let cod, let mesaj):
             return "FFmpeg a esuat (cod \(cod)): \(mesaj)"
+        case .anulat:
+            return "Anulat de utilizator."
         }
     }
+}
+
+/// Handle intors de `ruleazaConversie`, ca apelantul sa poata opri
+/// conversia in curs (buton "Opreste" din UI) — tine o referinta slaba la
+/// procesul FFmpeg activ in acel moment (primul sau al doilea pas, cel de
+/// injectare timecode), ca `anuleaza()` sa il termine pe oricare ruleaza.
+final class ConversieHandle {
+    fileprivate weak var procesActiv: Process?
+    private var esteAnulat = false
+
+    func anuleaza() {
+        esteAnulat = true
+        procesActiv?.terminate()
+    }
+
+    fileprivate var aFostAnulat: Bool { esteAnulat }
 }
 
 /// Gaseste si ruleaza binarul FFmpeg instalat prin Homebrew
@@ -142,7 +161,10 @@ final class MotorFFmpeg {
         return args
     }
 
-    /// Ruleaza conversia unui singur job, raportand progresul prin callback (0.0 - 1.0)
+    /// Ruleaza conversia unui singur job, raportand progresul prin callback (0.0 - 1.0).
+    /// Intoarce un `ConversieHandle` — apelantul il poate folosi ca sa
+    /// anuleze conversia in curs (`.anuleaza()`).
+    @discardableResult
     static func ruleazaConversie(
         job: VideoJob,
         mod: ModConversie,
@@ -150,10 +172,12 @@ final class MotorFFmpeg {
         destinatie: URL,
         progresCallback: @escaping (Double) -> Void,
         finalizareCallback: @escaping (Result<Void, Error>) -> Void
-    ) {
+    ) -> ConversieHandle {
+        let handle = ConversieHandle()
+
         guard let ffmpegPath = gasesteBinar() else {
             finalizareCallback(.failure(EroareFFmpeg.binarNegasit))
-            return
+            return handle
         }
 
         // Extrage timecode-ul sursei INAINTE de conversie
@@ -169,11 +193,12 @@ final class MotorFFmpeg {
         let pipeEroare = Pipe()
         proces.standardError = pipeEroare
         proces.standardOutput = Pipe()
+        handle.procesActiv = proces
 
         var mesajEroareAcumulat = ""
 
-        pipeEroare.fileHandleForReading.readabilityHandler = { handle in
-            let data = handle.availableData
+        pipeEroare.fileHandleForReading.readabilityHandler = { fh in
+            let data = fh.availableData
             guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
             mesajEroareAcumulat += text
 
@@ -189,6 +214,12 @@ final class MotorFFmpeg {
             pipeEroare.fileHandleForReading.readabilityHandler = nil
 
             guard proc.terminationStatus == 0 else {
+                if handle.aFostAnulat {
+                    DispatchQueue.main.async {
+                        finalizareCallback(.failure(EroareFFmpeg.anulat))
+                    }
+                    return
+                }
                 let ultimeleLinii = mesajEroareAcumulat
                     .split(separator: "\n").suffix(5).joined(separator: " ")
                 DispatchQueue.main.async {
@@ -226,6 +257,7 @@ final class MotorFFmpeg {
             ]
             proc2.standardOutput = Pipe()
             proc2.standardError = Pipe()
+            handle.procesActiv = proc2
 
             proc2.terminationHandler = { proc2result in
                 DispatchQueue.main.async {
@@ -267,6 +299,7 @@ final class MotorFFmpeg {
         } catch {
             finalizareCallback(.failure(error))
         }
+        return handle
     }
 
     /// Extrage timpul curent (in secunde) dintr-o linie de output FFmpeg de forma "time=00:01:23.45"

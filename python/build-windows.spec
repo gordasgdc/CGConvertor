@@ -8,8 +8,12 @@ a = Analysis(
         ('ffmpeg/ffmpeg.exe', '.'),
         ('ffmpeg/ffprobe.exe', '.'),
     ],
-    datas=[],
-    hiddenimports=['tkinterdnd2'],
+    # CGConvertor.ico e bundle-uit si ca DATA (nu doar ca --icon al exe-ului
+    # insusi) - main.py._set_window_icon() il citeste la runtime din
+    # sys._MEIPASS ca sa seteze explicit iconita FERESTREI (title bar +
+    # taskbar), separat de iconita exe-ului setata mai jos.
+    datas=[('CGConvertor.ico', '.')],
+    hiddenimports=['tkinterdnd2', 'cryptography.hazmat.bindings._rust'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -1,34 +1,32 @@
 # theme.py
 import sys
 
+# Identitatea vizuala "Shift" — aceeasi paleta ca varianta nativa Swift
+# (vezi CGConvertor/Theme.swift, `enum Shift`): dark, pro, accent
+# cupru/amber inspirat de paginile de Color din DaVinci Resolve. Tkinter
+# nu suporta un mod "light" la fel de bine ca SwiftUI in acest caz — de
+# aceea ramane doar varianta dark, mereu (settings["dark_mode"] e pastrat
+# pentru compatibilitate cu fisiere de config vechi, dar LIGHT nu se mai
+# foloseste activ).
 DARK = {
-    "bg": "#1a1a1a",
-    "bg_panel": "#222222",
-    "bg_elevated": "#2a2a2a",
-    "fg": "#e8e8e8",
-    "fg_dim": "#9a9a9a",
-    "accent": "#c79a3d",
-    "accent_hover": "#e0b458",
-    "success": "#5c9b79",
-    "error": "#d16b5c",
-    "line": "#3a3a3a",
+    "bg": "#14161A",
+    "bg_panel": "#1A1D22",
+    "bg_elevated": "#23262C",
+    "fg": "#EDEFF2",
+    "fg_dim": "#93989F",
+    "fg_faint": "#5C6169",
+    "accent": "#E8963C",
+    "accent_hover": "#F2A94F",
+    "accent_ink": "#1A1108",
+    "success": "#4CAF7D",
+    "error": "#E2584A",
+    "line": "#2B2F36",
 }
 
-LIGHT = {
-    "bg": "#f4f4f4",
-    "bg_panel": "#ffffff",
-    "bg_elevated": "#ececec",
-    "fg": "#1a1a1a",
-    "fg_dim": "#6a6a6a",
-    "accent": "#a97b1f",
-    "accent_hover": "#c79a3d",
-    "success": "#3f7d5c",
-    "error": "#b5493a",
-    "line": "#d5d5d5",
-}
+LIGHT = DARK  # [ISTORIC] varianta light a fost retrasa odata cu tema Shift — pastrata ca alias, ca fisierele de config vechi (dark_mode=false) sa nu crape.
 
 FONT_MONO = "Menlo" if sys.platform == "darwin" else "Consolas"
 FONT_FAMILY = "Helvetica" if sys.platform == "darwin" else "Segoe UI"
 
 def get(dark_mode: bool):
-    return DARK if dark_mode else LIGHT
+    return DARK

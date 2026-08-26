@@ -83,7 +83,12 @@ class Converter:
             args += ["-c", "copy"]
         else:
             args += CODEC_ARGS.get(codec, CODEC_ARGS["ProRes 422 HQ"])
-            args += ["-c:a", "pcm_s16le"]
+            # FIX (aliniere cu varianta Swift, MotorFFmpeg.swift): "-c:a copy"
+            # pastreaza exact bit depth-ul original al sursei (16/24/32-bit
+            # PCM sau orice alt codec audio) — fortarea la "pcm_s16le" (cum
+            # facea acest fisier inainte) DEGRADEAZA silentios orice sursa
+            # cu audio pe mai mult de 16 biti, fara niciun avertisment.
+            args += ["-c:a", "copy"]
         args += ["-map_metadata", "0", "-map", "0", "-ignore_unknown", output_path]
 
         try:

@@ -4,6 +4,12 @@ import os
 import sys
 from pathlib import Path
 
+# Sursa unica de adevar pentru versiunea afisata in UI si trimisa la
+# actualizare de versiune (build-windows.spec / build-mac.spec citesc tot
+# de-aici, prin --version, la fiecare tag nou) — actualizeaza aici la
+# fiecare "git tag vX.Y.Z", sincron cu MARKETING_VERSION din varianta Swift.
+APP_VERSION = "2.0.0"
+
 def _config_dir():
     """Folder de configurare specific platformei."""
     if sys.platform == "darwin":

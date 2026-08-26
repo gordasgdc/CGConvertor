@@ -1,5 +1,8 @@
 # build-mac.spec
 # -*- mode: python ; coding: utf-8 -*-
+import sys
+sys.path.insert(0, '.')
+from config import APP_VERSION  # sursa unica de adevar, vezi config.py
 
 a = Analysis(
     ['main.py'],
@@ -9,7 +12,7 @@ a = Analysis(
         ('ffmpeg/ffprobe', '.'),
     ],
     datas=[],
-    hiddenimports=['tkinterdnd2'],
+    hiddenimports=['tkinterdnd2', 'cryptography.hazmat.bindings._rust'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -48,8 +51,8 @@ app = BUNDLE(
     icon='CGConvertor.icns',
     bundle_identifier='com.gordasgdc.CGConvertor.standalone',
     info_plist={
-        'CFBundleShortVersionString': '1.0.0',
-        'CFBundleVersion': '1.0.0',
+        'CFBundleShortVersionString': APP_VERSION,
+        'CFBundleVersion': APP_VERSION,
         'NSHumanReadableCopyright': 'Copyright (c) 2026 Cristi Gordas',
         'NSHighResolutionCapable': True,
     }

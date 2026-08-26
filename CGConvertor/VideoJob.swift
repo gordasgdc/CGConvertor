@@ -4,6 +4,7 @@ enum StareJob: Equatable {
     case astept
     case inLucru(progres: Double)
     case finalizat
+    case anulat
     case eroare(mesaj: String)
 }
 
