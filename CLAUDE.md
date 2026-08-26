@@ -66,6 +66,28 @@ de limbă (adăugată 2026-08-04) — locuiește ÎN ACEST repo, nu pe
 `gordas.dev`; rămâne de decis (Faza C) dacă devine `gordas.dev/cg-convertor`
 sau un subdomeniu dedicat.
 
+## DIRECTIVĂ PERMANENTĂ: Standardul ghidurilor PDF (2026-08-26)
+Aplicabilă la orice `Instructiuni_Utilizare.pdf` generat pentru aplicațiile
+GDC de-acum. **Regula de aur: redactare ultra-detaliată, zero presupuneri**
+— scris ca pentru un utilizator complet începător, fără cunoștințe tehnice.
+Secțiuni obligatorii, când sunt relevante pentru aplicație:
+1. **Panoul de Dependențe** — explică EXACT ce înseamnă indicatorul
+   Roșu/Verde, și pas cu pas ce face userul când vede roșu (unde dă clic,
+   ce se deschide, ce buton apasă).
+2. **Homebrew (doar Mac, dacă aplicația îl menționează)** — NU doar
+   "instalează Homebrew". Pași concreți, la nivel de acțiune: (1) apasă
+   butonul de copiere din aplicație, (2) deschide Terminal (Spotlight,
+   `⌘+Space`), (3) lipește (`⌘+V`) și apasă Enter, (4) explică ce urmează
+   — parola de Mac cerută (caractere invizibile la tastare) + Enter din
+   nou.
+3. **Fluxul de conversie/utilizare + acțiuni post-proces** — cum se
+   adaugă fișiere (drag&drop sau buton), ce face fiecare buton rezultat
+   (ex. "Deschide fișierul"/"Arată în Finder-Explorer").
+4. **Licență & Donație** — trial-ul gratuit explicit (zile), suma exactă
+   ca DONAȚIE (niciodată "preț"/"vânzare" — vezi directiva de terminologie
+   financiară de mai sus).
+Vezi `installer/generate_pdf.py` pentru implementarea de referință.
+
 ## DIRECTIVĂ PERMANENTĂ SUPREMĂ: Checklist obligatoriu la FIECARE release
 Aceeași regulă aplicată în tot ecosistemul GDC (CursorPro, GDC Plugin
 Manager, GDC Vault, DataMover, GDC Production Manager) — vezi
@@ -149,6 +171,69 @@ canalele, RO/EN/ES:
   afișată ca `note()` separată de `trial_note` (schimbare de calculator),
   în toate 3 limbi. Regenerat, verificat cu `pypdf` că textul „23 €"/
   „€23" apare efectiv în conținutul extras.
+## HOTFIX CRITIC 2026-08-26 (v2.1.0) — FFmpeg crash pe Mac + Manager de Dependințe
+
+**Bug real, raportat de Cristi cu screenshot**: `FFmpeg a eșuat (cod 6):
+dyld: Library not loaded: /opt/homebrew/Cellar/ffmpeg/8.1.2/lib/libavdevice.62.dylib`.
+**Cauza reală, confirmată cu `otool -L`**: binarul `ffmpeg`/`ffprobel`
+de la rădăcina repo-ului (bundle-uit în `.app` via
+`PBXFileSystemSynchronizedRootGroup`) era o copie brută a build-ului
+Homebrew de pe mașina de dezvoltare — legat DINAMIC de căi
+`/opt/homebrew/Cellar/ffmpeg/<versiune>/lib/*.dylib`. Funcționează DOAR
+pe mașina cu exact acea versiune Homebrew instalată; se sparge pe orice
+alt Mac, sau chiar pe aceeași mașină după un `brew upgrade` (exact ce s-a
+întâmplat aici — versiunea din Cellar avansase, dylib-urile vechi nu mai
+existau).
+
+**Fix real (nu doar patch cosmetic)**: binarele de la rădăcina repo-ului
+înlocuite cu un build STATIC nativ arm64 de la `osxexperts.net`
+(`ffmpeg9arm.zip`/`ffprobe9arm.zip`) — verificat cu `otool -L`: ZERO
+dependințe externe (doar framework-uri de sistem), include
+`prores_videotoolbox`/`dnxhd` (verificat cu `-encoders`). Testat rulând
+direct binarul din `.app`-ul compilat local — pornește curat, fără
+`dyld` errors.
+
+**Plus, cerut explicit — Manager Modular de Dependințe (standard nou
+pentru tot ecosistemul GDC de-acum, "Managerul Modular de Dependințe la
+Cerere")**: `DependencyManager.swift`/`python/dependency_manager.py` —
+listă generică de componente (`DependencyItem`), fiecare cu propriul
+`check()` headless + acțiune. Nu doar FFmpeg — arhitectura e explicit
+extensibilă pentru orice dependință viitoare, fără schimbare de UI.
+- **Badge global** (bulină + text) în header — verde DOAR pe baza
+  componentelor OBLIGATORII (FFmpeg); Homebrew fiind opțional nu-l
+  face roșu — click deschide panoul.
+- **Panou "Verificare & Dependențe Sistem"** (sheet/Toplevel modal) —
+  câte un rând per componentă, stare + descriere + buton de acțiune:
+  FFmpeg lipsă → "Descarcă & Instalează Automat" (descarcă build-ul
+  static potrivit arhitecturii curente în `~/Library/Application
+  Support/CGConvertor/bin/`, chmod +x + elimină quarantine, reverifică);
+  Homebrew lipsă → "Copiază comanda de instalare" (`brew.sh`) + "Deschide
+  brew.sh" — informativ, NU blochează nimic.
+- `MotorFFmpeg.gasesteBinar()`/`dependency_manager.find_ffmpeg()`
+  actualizate: ordinea de căutare e acum (1) copie descărcată prin
+  Manager, (2) bundle-uit în aplicație, (3) Homebrew/PATH — un download
+  reușit are mereu prioritate față de un bundle posibil stricat.
+
+**BUG REAL PRINS LA TESTARE (Windows/Python), înainte de commit**:
+apelarea `self.after(0, ...)` dintr-un thread de fundal pornit SINCRON,
+direct din `__init__` (înainte ca `mainloop()` să fi pornit efectiv)
+arunca `RuntimeError: main thread is not in main loop` — reprodus
+consistent cu un test headless (`app.mainloop()` real, nu doar
+`app.update()` în buclă — acesta din urmă NU declanșează bug-ul, deci un
+test superficial l-ar fi ratat). Fix: verificarea inițială de dependințe
+amânată cu `self.after(100, self._refresh_dependencies)`, exact tiparul
+deja folosit (și deja corect) de verificarea de actualizări
+(`self.after(800, self._check_updates_silently)`). Verificat din nou cu
+`mainloop()` real după fix — funcționează curat.
+
+**Opțiuni post-conversie (cerute explicit)**: pe rândul unui job
+finalizat — Mac: butoane "Deschide fișierul" (`NSWorkspace.shared.open`)
++ "Arată în Finder" (`activateFileViewerSelecting`); Windows: dublu-click
+sau click-dreapta pe rând → meniu contextual cu aceleași două acțiuni
+(`os.startfile`/`explorer /select,`). Active DOAR dacă fișierul de
+destinație chiar există pe disc la momentul click-ului (nu doar dacă
+statusul spune "finalizat" — fișierul putea fi mutat/șters între timp).
+
 - **Site** (`docs/index.html`) — secțiunea de licențiere redenumită
   „Susține dezvoltarea" / „Support development" / „Apoya el desarrollo",
   badge „Donație Lifetime", preț afișat explicit (`23 €` + „donație

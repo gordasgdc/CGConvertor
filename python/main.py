@@ -1,5 +1,6 @@
 # main.py
 import os
+import subprocess
 import sys
 import threading
 import tkinter as tk
@@ -17,6 +18,8 @@ import theme
 import update_checker
 from translations import t
 from converter import Converter, CODEC_ARGS
+from dependency_manager import DependencyManager
+from dependency_panel import DependencyPanel
 
 BASE_CLASS = TkinterDnD.Tk if HAS_DND else tk.Tk
 
@@ -40,6 +43,7 @@ class CGConvertorApp(BASE_CLASS):
         self.lang = self.settings["language"]
         self.th = theme.get(self.settings["dark_mode"])
         self.converter = Converter()
+        self.deps = DependencyManager()
 
         self.jobs = []  # list of dicts: {path, status, progress, output}
         self.is_running = False
@@ -54,8 +58,15 @@ class CGConvertorApp(BASE_CLASS):
         self._build_ui()
         self._refresh_texts()
 
-        if not self.converter.is_available():
-            self._show_ffmpeg_warning()
+        # BUG real prins la testare (2026-08-26): pornirea thread-ului de
+        # verificare SINCRON, direct din __init__, risca sa cheme
+        # self.after(...) din thread-ul de fundal INAINTE ca self.mainloop()
+        # sa fi pornit efectiv (fereastra nu e inca "in main loop") -
+        # Tkinter arunca "RuntimeError: main thread is not in main loop".
+        # Fix: intarziat cu self.after(...), exact ca update checker-ul de
+        # mai jos, care avea deja acest tipar corect - garanteaza ca
+        # mainloop() a pornit pana se executa thread-ul.
+        self.after(100, self._refresh_dependencies)
 
         # Verificare automata de actualizari la lansare, o singura data,
         # tacuta daca nu e nimic nou — la fel ca UpdateChecker.swift (Mac).
@@ -134,6 +145,19 @@ class CGConvertorApp(BASE_CLASS):
                                     bg=th["bg"], fg=th["fg_dim"], cursor="hand2")
         self.update_btn.pack(side="right")
         self.update_btn.bind("<Button-1>", lambda e: self._check_updates_manually())
+
+        # Badge Manager de Dependinte — bulina + text, click deschide
+        # panoul "Verificare & Dependinte Sistem" (dependency_panel.py).
+        self.deps_badge = tk.Frame(title_row, bg=th["bg_elevated"], cursor="hand2")
+        self.deps_badge.pack(side="right", padx=(0, 10))
+        self.deps_dot = tk.Canvas(self.deps_badge, width=8, height=8, bg=th["bg_elevated"], highlightthickness=0)
+        self.deps_dot_id = self.deps_dot.create_oval(1, 1, 7, 7, fill=th["error"], outline="")
+        self.deps_dot.pack(side="left", padx=(8, 4), pady=5)
+        self.deps_label = tk.Label(self.deps_badge, font=(theme.FONT_FAMILY, 9, "bold"),
+                                    bg=th["bg_elevated"], fg=th["fg"])
+        self.deps_label.pack(side="left", padx=(0, 8), pady=5)
+        for w in (self.deps_badge, self.deps_dot, self.deps_label):
+            w.bind("<Button-1>", lambda e: self._open_dependency_panel())
 
         self.subtitle_label = tk.Label(header, font=(theme.FONT_FAMILY, 11),
                                         bg=th["bg"], fg=th["fg_dim"])
@@ -245,6 +269,11 @@ class CGConvertorApp(BASE_CLASS):
         self.tree.heading("status", text="Status")
         self.tree.column("#0", width=420)
         self.tree.column("status", width=200)
+
+        # Actiuni post-conversie: dublu-click SAU click-dreapta pe un rand
+        # finalizat -> "Deschide fisierul" / "Arata in Explorer".
+        self.tree.bind("<Double-Button-1>", self._on_tree_double_click)
+        self.tree.bind("<Button-3>", self._on_tree_right_click)
 
         bottom_bar = tk.Frame(right, bg=th["bg"])
         bottom_bar.pack(fill="x", pady=(8, 0))
@@ -371,6 +400,7 @@ class CGConvertorApp(BASE_CLASS):
             self.drop_label.pack_forget()
             self.choose_files_btn.pack_forget()
             self.tree.pack(fill="both", expand=True, padx=10, pady=10)
+        self._update_deps_badge()
 
     def _clear_list(self):
         if self.is_running:
@@ -378,6 +408,7 @@ class CGConvertorApp(BASE_CLASS):
         self.jobs.clear()
         self.tree.delete(*self.tree.get_children())
         self.tree.pack_forget()
+        self._update_deps_badge()
         self.drop_label.pack(pady=(40, 6))
         self.choose_files_btn.pack()
 
@@ -420,6 +451,7 @@ class CGConvertorApp(BASE_CLASS):
             ext = self.converter.output_extension(mode, codec)
             out_dir = dest_dir or os.path.dirname(src)
             out_path = os.path.join(out_dir, f"{base}_convertit.{ext}")
+            job["output"] = out_path
 
             self._update_status(job, t(self.lang, "status_processing"))
 
@@ -450,12 +482,84 @@ class CGConvertorApp(BASE_CLASS):
         self.after(0, lambda: self.tree.set(job["item_id"], "status",
                                              f'{t(self.lang, "status_processing")} {pct}%'))
 
-    def _show_ffmpeg_warning(self):
-        messagebox.showwarning(
-            t(self.lang, "app_title"),
-            "FFmpeg nu a fost gasit. Aplicatia standalone ar trebui sa il includa — "
-            "verifica build-ul PyInstaller."
-        )
+    # ── Actiuni post-conversie ───────────────────────────────────────
+
+    def _job_for_item(self, item_id):
+        return next((j for j in self.jobs if j.get("item_id") == item_id), None)
+
+    def _finished_output_path(self, job):
+        """Intoarce calea fisierului convertit DOAR daca jobul chiar s-a
+        finalizat cu succes si fisierul inca exista pe disc — altfel None
+        (jobul e inca in asteptare/eroare/anulat, sau fisierul a fost
+        mutat/sters intre timp)."""
+        if not job:
+            return None
+        output = job.get("output")
+        if output and os.path.isfile(output):
+            return output
+        return None
+
+    def _open_file(self, path):
+        try:
+            if sys.platform == "win32":
+                os.startfile(path)
+            elif sys.platform == "darwin":
+                subprocess.run(["open", path])
+            else:
+                subprocess.run(["xdg-open", path])
+        except Exception:
+            pass
+
+    def _show_in_explorer(self, path):
+        try:
+            if sys.platform == "win32":
+                subprocess.run(["explorer", "/select,", path])
+            elif sys.platform == "darwin":
+                subprocess.run(["open", "-R", path])
+            else:
+                subprocess.run(["xdg-open", os.path.dirname(path)])
+        except Exception:
+            pass
+
+    def _on_tree_double_click(self, event):
+        item_id = self.tree.identify_row(event.y)
+        path = self._finished_output_path(self._job_for_item(item_id))
+        if path:
+            self._open_file(path)
+
+    def _on_tree_right_click(self, event):
+        item_id = self.tree.identify_row(event.y)
+        if not item_id:
+            return
+        path = self._finished_output_path(self._job_for_item(item_id))
+        if not path:
+            return
+        self.tree.selection_set(item_id)
+        menu = tk.Menu(self, tearoff=0)
+        menu.add_command(label=t(self.lang, "job_open_file"), command=lambda: self._open_file(path))
+        menu.add_command(label=t(self.lang, "job_show_in_explorer"), command=lambda: self._show_in_explorer(path))
+        menu.tk_popup(event.x_root, event.y_root)
+
+    # ── Manager de Dependinte ────────────────────────────────────────
+
+    def _refresh_dependencies(self):
+        """Verificare headless, rulata la lansare + dupa orice schimbare
+        din panou — actualizeaza doar badge-ul, fara sa deschida nimic."""
+        threading.Thread(target=self._deps_check_worker, daemon=True).start()
+
+    def _deps_check_worker(self):
+        self.deps.refresh_all()
+        self.after(0, self._update_deps_badge)
+
+    def _update_deps_badge(self):
+        th = self.th
+        ready = self.deps.is_ready
+        self.deps_dot.itemconfig(self.deps_dot_id, fill=th["success"] if ready else th["error"])
+        self.deps_label.config(text=t(self.lang, "deps_badge_ok" if ready else "deps_badge_missing"))
+        self.start_btn.config(state="normal" if (ready and self.jobs) else "disabled")
+
+    def _open_dependency_panel(self):
+        DependencyPanel(self, self.deps, self.lang, t, on_change=self._update_deps_badge)
 
     # ── Actualizari ──────────────────────────────────────────────────
 

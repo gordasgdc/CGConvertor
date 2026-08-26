@@ -37,16 +37,28 @@ final class ConversieHandle {
 /// Gaseste si ruleaza binarul FFmpeg instalat prin Homebrew
 final class MotorFFmpeg {
 
-    /// Cauta ffmpeg: intai in interiorul aplicatiei (self-contained), apoi in Homebrew
+    /// Cauta ffmpeg, in ordine: (1) copie descarcata manual prin Managerul
+    /// de Dependinte (DependencyManager) — verificata INTAI, ca un download
+    /// nou sa aiba mereu prioritate fata de un bundle posibil stricat;
+    /// (2) binarul bundle-uit in aplicatie (self-contained, build static);
+    /// (3) Homebrew, ca fallback pentru un mediu de dezvoltare.
     static func gasesteBinar() -> String? {
-        // 1. In bundle-ul aplicatiei (Resources/ffmpeg) — varianta self-contained
+        // 1. Descarcat prin Managerul de Dependinte (~/Library/Application Support/CGConvertor/bin/)
+        if let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            let caleDescarcata = support.appendingPathComponent("CGConvertor/bin/ffmpeg").path
+            if FileManager.default.isExecutableFile(atPath: caleDescarcata) {
+                return caleDescarcata
+            }
+        }
+
+        // 2. In bundle-ul aplicatiei (Resources/ffmpeg) — build static, self-contained
         if let caleBundle = Bundle.main.path(forResource: "ffmpeg", ofType: nil) {
             if FileManager.default.fileExists(atPath: caleBundle) {
                 return caleBundle
             }
         }
 
-        // 2. Locatii standard Homebrew (Apple Silicon si Intel) — fallback
+        // 3. Locatii standard Homebrew (Apple Silicon si Intel) — fallback
         let caiPosibile = [
             "/opt/homebrew/bin/ffmpeg",   // Apple Silicon
             "/usr/local/bin/ffmpeg",      // Intel Mac

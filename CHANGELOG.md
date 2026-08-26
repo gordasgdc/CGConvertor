@@ -4,6 +4,34 @@ Toate modificările notabile ale acestui proiect sunt documentate aici.
 
 ## [Unreleased]
 
+### v2.1.0 — Hotfix critic FFmpeg + Manager Modular de Dependințe (2026-08-26)
+- **Fix critic Mac**: binarul FFmpeg bundle-uit anterior era legat dinamic
+  de un path local Homebrew (`/opt/homebrew/Cellar/ffmpeg/...`), provocând
+  crash `dyld: Library not loaded` pe orice alt calculator/versiune Homebrew.
+  Înlocuit cu build-uri statice, fără dependințe externe (verificat
+  `otool -L` = zero dylib-uri Homebrew), arm64 nativ (osxexperts.net).
+- **Manager Modular de Dependințe** (nou standard arhitectural pentru tot
+  ecosistemul GDC, opt-in): indicator global 🟢/🔴 în header, panou dedicat
+  "Verificare & Dependințe Sistem" cu listă de componente (FFmpeg static,
+  Homebrew opțional pe Mac), fiecare cu status individual + buton de
+  acțiune ("Descarcă & Instalează Automat" / "Copiază Comanda Homebrew").
+  Descărcare 1-click FFmpeg static, autonomă, în `Application Support/bin/`.
+  Implementat identic pe Mac (Swift: `DependencyManager.swift`,
+  `DependencyPanel.swift`) și Windows (Python: `dependency_manager.py`,
+  `dependency_panel.py`, ffmpeg static gyan.dev).
+- **Acțiuni post-conversie**: pentru fiecare fișier convertit cu succes,
+  butoane "Deschide fișierul" (redare în playerul implicit) și "Arată în
+  Finder/Explorer" (evidențiază fișierul în folderul destinație) — Mac+Win.
+- **Standard PDF ultra-detaliat** (directivă permanentă nouă, vezi
+  CLAUDE.md): `Instructiuni_Utilizare.pdf` regenerat cu 4 secțiuni
+  obligatorii — panoul de dependințe roșu/verde explicat pas-cu-pas,
+  ghid Homebrew la nivel de acțiune (Spotlight, Terminal, parolă
+  invizibilă), fluxul de conversie + explicația butoanelor post-conversie,
+  licență/trial 15 zile + donație 23 € — RO/EN/ES.
+- Fix real de concurență (Python): apel `.after()` cross-thread înainte
+  de pornirea `mainloop()` cauza `RuntimeError: main thread is not in
+  main loop` — rezolvat prin `self.after(100, self._refresh_dependencies)`.
+
 ### Faza C: packaging semnat, installer Windows, pagină web (2026-08-26)
 - Pachet Mac `.pkg` semnat Developer ID Application+Installer, notarizat,
   stapled — instalare 100% automată în `/Applications`, fără drag-and-drop.

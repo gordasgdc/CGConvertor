@@ -5,18 +5,18 @@ import sys
 import re
 import threading
 
+import dependency_manager
+
 def get_ffmpeg_path():
-    """Returneaza calea catre ffmpeg inclus in aplicatie (sau din PATH in dezvoltare)."""
-    if getattr(sys, 'frozen', False):
-        base_path = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
-        return os.path.join(base_path, "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
-    return "ffmpeg"
+    """Returneaza calea catre ffmpeg — vezi dependency_manager.find_ffmpeg()
+    pentru ordinea reala de cautare (descarcat manual > bundle-uit > PATH).
+    Fallback pe "ffmpeg" simplu (asteapta-l in PATH) doar daca nimic nu a
+    fost gasit, ca subprocess.run sa dea o eroare clara FileNotFoundError,
+    nu un None care ar crapa mai criptic mai departe."""
+    return dependency_manager.find_ffmpeg() or "ffmpeg"
 
 def get_ffprobe_path():
-    if getattr(sys, 'frozen', False):
-        base_path = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
-        return os.path.join(base_path, "ffprobe.exe" if sys.platform == "win32" else "ffprobe")
-    return "ffprobe"
+    return dependency_manager.find_ffprobe() or "ffprobe"
 
 # Codecuri: fiecare valoare e o LISTA de argumente, niciodata un string cu mai multe flag-uri
 # (bug-ul din varianta initiala trimitea "prores_ks -profile:v 3" ca UN singur argument catre FFmpeg)

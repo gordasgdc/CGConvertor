@@ -4,10 +4,12 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @StateObject private var vm = ConvertorViewModel()
     @ObservedObject private var license = LicenseManager.shared
+    @ObservedObject private var deps = DependencyManager.shared
     @State private var seAfiseazaDropTarget = false
     @State private var showActivation = false
     @State private var showUpdateAlert = false
     @State private var updateAlertVersion = ""
+    @State private var showDependencyPanel = false
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
@@ -18,9 +20,6 @@ struct ContentView: View {
             antet
             if !license.isLicensed {
                 trialBanner
-            }
-            if !vm.ffmpegInstalat {
-                avertismentFFmpeg
             }
 
             HStack(spacing: 0) {
@@ -34,6 +33,7 @@ struct ContentView: View {
         .foregroundStyle(Shift.text)
         .onAppear {
             vm.verificaFFmpeg()
+            deps.refreshAll()
             UpdateChecker.checkSilentlyOnLaunch { newVersion in
                 updateAlertVersion = newVersion
                 showUpdateAlert = true
@@ -41,6 +41,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showActivation) {
             ActivationSheet(license: license, isPresented: $showActivation)
+        }
+        .sheet(isPresented: $showDependencyPanel) {
+            DependencyPanel(deps: deps, isPresented: $showDependencyPanel)
         }
         .alert(L.t("update.available.title"), isPresented: $showUpdateAlert) {
             Button(L.t("update.download")) {
@@ -76,6 +79,7 @@ struct ContentView: View {
             if vm.seRuleazaCoada {
                 ProgressView().controlSize(.small).tint(Shift.accent)
             }
+            DependencyBadge(deps: deps, showPanel: $showDependencyPanel)
             langSwitch
             Button { UpdateChecker.checkAndShowAlert() } label: {
                 Image(systemName: "arrow.triangle.2.circlepath")
@@ -120,22 +124,6 @@ struct ContentView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 7)
         .background(license.isTrialActive ? Shift.elevated : Shift.error.opacity(0.12))
-        .overlay(Rectangle().frame(height: 1).foregroundStyle(Shift.border), alignment: .bottom)
-    }
-
-    private var avertismentFFmpeg: some View {
-        HStack {
-            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-            (Text(L.t("ffmpeg.missing") + " ") + Text("brew install ffmpeg").bold().monospaced())
-                .font(.callout)
-            Spacer()
-            Button(L.t("ffmpeg.recheck")) { vm.verificaFFmpeg() }
-                .buttonStyle(.plain)
-                .foregroundStyle(Shift.accent)
-        }
-        .padding(10)
-        .padding(.horizontal, 8)
-        .background(Color.orange.opacity(0.12))
         .overlay(Rectangle().frame(height: 1).foregroundStyle(Shift.border), alignment: .bottom)
     }
 
@@ -262,14 +250,14 @@ struct ContentView: View {
                 .foregroundStyle(pornireDezactivata ? Shift.faint : Shift.accentInk)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .font(.system(size: 13, weight: .semibold))
-                .disabled(vm.joburi.isEmpty || !vm.ffmpegInstalat)
+                .disabled(vm.joburi.isEmpty || !deps.isReady)
                 .keyboardShortcut(.return, modifiers: [.command])
             }
         }
     }
 
     private var pornireDezactivata: Bool {
-        vm.joburi.isEmpty || !vm.ffmpegInstalat
+        vm.joburi.isEmpty || !deps.isReady
     }
 
     // ── Panou lista joburi (dreapta) ────────────────────────────────────────
@@ -401,9 +389,21 @@ private struct RandJob: View {
                             .frame(maxWidth: 260)
                             .tint(Shift.accent)
                     case .finalizat:
-                        Label(L.t("queue.status.done"), systemImage: "checkmark.circle.fill")
-                            .font(.system(size: 10.5))
-                            .foregroundStyle(Shift.success)
+                        HStack(spacing: 10) {
+                            Label(L.t("queue.status.done"), systemImage: "checkmark.circle.fill")
+                                .font(.system(size: 10.5))
+                                .foregroundStyle(Shift.success)
+                            if let destinatie = job.urlDestinatie {
+                                Button(L.t("job.openFile")) { NSWorkspace.shared.open(destinatie) }
+                                    .buttonStyle(.plain)
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .foregroundStyle(Shift.accent)
+                                Button(L.t("job.showInFinder")) { NSWorkspace.shared.activateFileViewerSelecting([destinatie]) }
+                                    .buttonStyle(.plain)
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .foregroundStyle(Shift.accent)
+                            }
+                        }
                     case .anulat:
                         Label(L.t("queue.status.canceled"), systemImage: "xmark.circle")
                             .font(.system(size: 10.5))

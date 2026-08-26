@@ -107,6 +107,38 @@ enum L {
 
         "menu.about": [.ro: "Despre CG Convertor", .en: "About CG Convertor", .es: "Acerca de CG Convertor"],
         "menu.checkForUpdates": [.ro: "Caută actualizări…", .en: "Check for Updates…", .es: "Buscar actualizaciones…"],
+
+        // MARK: - Dependency Manager
+
+        "deps.badge.ok": [.ro: "Sistem pregătit", .en: "System ready", .es: "Sistema listo"],
+        "deps.badge.missing": [.ro: "Dependențe lipsă", .en: "Missing dependencies", .es: "Dependencias faltantes"],
+        "deps.panel.title": [.ro: "Verificare & Dependențe Sistem", .en: "System Check & Dependencies", .es: "Verificación y dependencias del sistema"],
+        "deps.panel.subtitle": [.ro: "Fiecare componentă se testează independent — instalezi doar ce ai nevoie, când ai nevoie.",
+                                 .en: "Each component is tested independently — install only what you need, when you need it.",
+                                 .es: "Cada componente se comprueba de forma independiente — instala solo lo que necesites, cuando lo necesites."],
+        "deps.refresh": [.ro: "Reverifică", .en: "Recheck", .es: "Volver a comprobar"],
+        "deps.close": [.ro: "Închide", .en: "Close", .es: "Cerrar"],
+        "deps.state.ok": [.ro: "Activ (static)", .en: "Active (static)", .es: "Activo (estático)"],
+        "deps.state.missing": [.ro: "Inactiv / lipsă", .en: "Inactive / missing", .es: "Inactivo / faltante"],
+        "deps.state.optionalMissing": [.ro: "Opțional — neinstalat", .en: "Optional — not installed", .es: "Opcional — no instalado"],
+        "deps.state.checking": [.ro: "Se verifică…", .en: "Checking…", .es: "Comprobando…"],
+        "deps.ffmpeg.hint": [.ro: "Motorul de conversie video (transcode + rewrap). Obligatoriu pentru a folosi aplicația.",
+                              .en: "The video conversion engine (transcode + rewrap). Required to use the app.",
+                              .es: "El motor de conversión de vídeo (transcode y rewrap). Obligatorio para usar la app."],
+        "deps.ffmpeg.install": [.ro: "Descarcă & Instalează Automat", .en: "Download & Install Automatically", .es: "Descargar e instalar automáticamente"],
+        "deps.ffmpeg.downloading": [.ro: "Se descarcă…", .en: "Downloading…", .es: "Descargando…"],
+        "deps.homebrew.hint": [.ro: "Recomandat pentru un mediu de dezvoltare Mac complet — nu e necesar pentru conversii.",
+                                .en: "Recommended for a full Mac development environment — not required for conversions.",
+                                .es: "Recomendado para un entorno de desarrollo Mac completo — no es necesario para las conversiones."],
+        "deps.homebrew.copy": [.ro: "Copiază comanda de instalare", .en: "Copy install command", .es: "Copiar comando de instalación"],
+        "deps.homebrew.copied": [.ro: "Comanda copiată! Lipește-o în Terminal.", .en: "Command copied! Paste it into Terminal.", .es: "¡Comando copiado! Pégalo en Terminal."],
+        "deps.homebrew.openSite": [.ro: "Deschide brew.sh", .en: "Open brew.sh", .es: "Abrir brew.sh"],
+        "deps.error.title": [.ro: "Instalarea a eșuat", .en: "Install failed", .es: "La instalación falló"],
+
+        // MARK: - Post-conversie
+
+        "job.openFile": [.ro: "Deschide fișierul", .en: "Open file", .es: "Abrir archivo"],
+        "job.showInFinder": [.ro: "Arată în Finder", .en: "Show in Finder", .es: "Mostrar en Finder"],
         "update.upToDate.title": [.ro: "Ești la zi", .en: "You're up to date", .es: "Estás al día"],
         "update.upToDate.body": [.ro: "Rulezi deja ultima versiune (%@).", .en: "You're already running the latest version (%@).", .es: "Ya tienes la última versión (%@)."],
         "update.available.title": [.ro: "Este disponibilă o versiune nouă", .en: "A new version is available", .es: "Hay una nueva versión disponible"],
