@@ -78,8 +78,83 @@ Manager, GDC Vault, DataMover, GDC Production Manager) — vezi
 
 ## Plan Faze (2026-08-26, cerut explicit de Cristi)
 - **Faza A** (relocare + curățare) — **COMPLETĂ**.
-- **Faza B** (licențiere + UI "Shift" + versiune/update checker) — **COMPLETĂ pe Mac și Windows**, vezi jurnal mai jos.
-- **Faza C** (pachete semnate Mac+Windows + pagină web dedicată) — parțial pornită (installer Windows Inno Setup, vezi mai jos); pachetul `.pkg` semnat+notarizat pe Mac și pagina web dedicată rămân TODO.
+- **Faza B** (licențiere + UI "Shift" + versiune/update checker) — **COMPLETĂ pe Mac și Windows**.
+- **Faza C** (pachete semnate Mac+Windows + pagină web dedicată) — **COMPLETĂ**, vezi jurnal mai jos.
+
+## Faza C — jurnal de implementare (2026-08-26)
+
+**Cerință critică — instalare 100% automată, fără drag-and-drop manual:**
+- **Mac**: `build_installer.sh` (nou, port al tiparului `GDCVault`/`CursorPro`,
+  adaptat pentru `xcodebuild` în loc de `swift build`) — `pkgbuild
+  --install-location "/"` cu payload-ul la `Applications/CGConvertor.app`
+  scrie DIRECT în `/Applications` la instalare, fără niciun pas manual.
+  Verificat cu `pkgutil --payload-files` — confirmă `./Applications/CGConvertor.app`.
+- **Windows**: `installer.iss` (creat la completarea de iconițe, vezi mai
+  sus) — `DefaultDirName={autopf}\GDC\CG Convertor` (Program Files),
+  scurtături automate Desktop + Start Menu deja cablate.
+
+**CI curățat — elimină sursele de confuzie găsite:**
+Existau ANTERIOR **trei workflow-uri** care produceau, la un singur tag
+`v*`, **cinci fișiere Mac diferite** (`release.yml`: `.zip`+`.pkg`
+NESEMNATE din varianta Swift; `build-mac.yml`: `.zip`+`.pkg` NESEMNATE
+din varianta Python "Standalone") — exact tiparul de "prea multe fișiere
+confuze" semnalat explicit de Cristi la alte aplicații din ecosistem.
+**Șterse complet** `release.yml` și `build-mac.yml` — Mac-ul se
+construiește acum LOCAL (`build_installer.sh`, certificat real din
+Keychain), la fel ca toate celelalte aplicații GDC. Rămâne un singur
+pachet Mac oficial: `CGConvertor-Mac.zip` (native Swift, semnat+notarizat).
+
+**Pachet Mac (`CGConvertor-Mac.zip`)** — exact 3 fișiere la rădăcină:
+`CGConvertor.pkg` (semnat Developer ID Application+Installer, notarizat,
+stapled — verificat `pkgutil --check-signature`), `Dezinstalare_CGConvertor.command`
+(nou), `Instructiuni_Utilizare.pdf` (nou, RO/EN/ES, 6 pagini,
+`installer/generate_pdf.py`, același tipar ca GDCVault). `codesigning/`
+copiat din GDCVault. `installer/scripts/preinstall` (pkill + rm -rf pe
+instalarea veche, fără hack-uri) + `installer/License.txt` (nou).
+
+**Pagina web dedicată** — `docs/index.html` din ACEST repo (NU
+gordas.dev) e deja servită live la `https://gordas.dev/CGConvertor/`
+**și** `https://gordasgdc.github.io/CGConvertor/` (GitHub Pages cu
+`build_type: legacy`, `path: /docs` — confirmat via `gh api
+repos/.../pages`; Cloudflare-ul din fața `gordas.dev` rutează
+`/CGConvertor/*` acolo, mecanism preexistent, nu creat acum). Pagina
+veche descria DOUĂ variante paralele (Swift nesemnat + Python
+"Standalone") cu link-uri către pagina generică de Releases și un
+avertisment explicit "aplicația nu e semnată" — TOATE FALSE acum.
+Rescrisă complet: o singură poveste (pachet Mac semnat+notarizat +
+installer Windows), butoane cu link DIRECT către
+`releases/latest/download/CGConvertor-Mac.zip` /
+`.../CGConvertor-Windows-Setup.exe`, temă "Shift" (aceeași paletă ca
+aplicația), RO/EN/ES cu switch (tipar `data-i18n` identic cu
+`gdc-vault`/situl principal). **Bug prins la testare locală** (server
+Python + Browser, înainte de commit — regulă din incidentul JS-crash al
+sitului principal GDCPluginManager, 2026-08-25): 3 blocuri de instrucțiuni
+conțineau tag-uri HTML (`<code>`, `<b>`) dar erau marcate `data-i18n`
+(text simplu) în loc de `data-i18n-html` — tag-urile apăreau literal pe
+pagină. Reparat, verificat vizual + `read_console_messages` (fără erori)
+înainte de push.
+
+## Completare 2026-08-26 — terminologie financiară obligatorie: DONAȚIE, nu preț
+Cerință explicită: niciodată „Preț"/„Cumpără"/„Vânzare" — valoarea (23 €)
+se exprimă EXCLUSIV ca donație pentru continuarea dezvoltării, pe toate
+canalele, RO/EN/ES:
+- **UI Mac** (`Localization.swift`, cheia `license.note`, afișată în
+  `ActivationSheet.swift`) — actualizată cu suma explicită și formularea
+  de donație.
+- **UI Windows** (`python/activation.py`) — nu avea NICIUN text de preț/
+  donație în dialog înainte; adăugat `donation_note` (cheie nouă în
+  `TEXTS`) + label vizibil în `ActivationDialog._build_ui`, înaintea
+  butonului WhatsApp. Fereastra crescută 480→560px ca să încapă textul.
+- **PDF** (`installer/generate_pdf.py`) — cheie nouă `donation_note`,
+  afișată ca `note()` separată de `trial_note` (schimbare de calculator),
+  în toate 3 limbi. Regenerat, verificat cu `pypdf` că textul „23 €"/
+  „€23" apare efectiv în conținutul extras.
+- **Site** (`docs/index.html`) — secțiunea de licențiere redenumită
+  „Susține dezvoltarea" / „Support development" / „Apoya el desarrollo",
+  badge „Donație Lifetime", preț afișat explicit (`23 €` + „donație
+  unică"), nota RO veche ("Prețul se stabilește...") conținea EXACT
+  cuvântul interzis — înlocuită complet. Testat local (server + Browser,
+  `read_console_messages` fără erori) înainte de commit.
 
 ## Faza B — jurnal de implementare (2026-08-26)
 

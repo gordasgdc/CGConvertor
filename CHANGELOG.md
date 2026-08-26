@@ -4,6 +4,22 @@ Toate modificările notabile ale acestui proiect sunt documentate aici.
 
 ## [Unreleased]
 
+### Faza C: packaging semnat, installer Windows, pagină web (2026-08-26)
+- Pachet Mac `.pkg` semnat Developer ID Application+Installer, notarizat,
+  stapled — instalare 100% automată în `/Applications`, fără drag-and-drop.
+  `CGConvertor-Mac.zip`: exact 3 fișiere (pkg + `Dezinstalare_CGConvertor.command`
+  + `Instructiuni_Utilizare.pdf` RO/EN/ES).
+- Installer Windows (Inno Setup) — instalare automată în Program Files,
+  scurtături Desktop + Start Menu.
+- Eliminate 2 workflow-uri CI care produceau 4 fișiere Mac nesemnate,
+  confuze (`release.yml`, `build-mac.yml`) — un singur pachet Mac oficial.
+- Pagină web dedicată (`docs/index.html`, servită la
+  `gordas.dev/CGConvertor/`) rescrisă complet — temă Shift, RO/EN/ES,
+  linkuri directe la `releases/latest/download/...`.
+- **Terminologie financiară**: valoarea (23 €) exprimată exclusiv ca
+  donație pentru dezvoltare, niciodată "preț"/"cumpără"/"vânzare" — UI
+  Mac+Windows, PDF, site.
+
 ### v2.0.0 — Faza B: UI "Shift", licențiere, update checker (2026-08-26)
 - **UI rescris complet** pe ambele platforme, temă "Shift" (dark, accent
   cupru/amber, inspirat de paginile de Color din DaVinci Resolve).

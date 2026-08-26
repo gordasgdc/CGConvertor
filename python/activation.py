@@ -47,6 +47,7 @@ TEXTS = {
         "whatsapp_btn": "💬 Scrie-mi pe WhatsApp",
         "whatsapp_prefill": "Salut! Vreau sa activez CG Convertor. ID masina: {id}",
         "copy": "Copiază",
+        "donation_note": "Donație de 23 € pentru continuarea dezvoltării aplicației și a platformei — nu un preț de listă, nu o vânzare. Se activează după cele 15 zile de probă gratuită.",
     },
     "en": {
         "title": "Activate CG Convertor",
@@ -63,6 +64,7 @@ TEXTS = {
         "whatsapp_btn": "💬 Message me on WhatsApp",
         "whatsapp_prefill": "Hi! I'd like to activate CG Convertor. Machine ID: {id}",
         "copy": "Copy",
+        "donation_note": "A €23 donation to support ongoing development of the app and the platform — not a list price, not a sale. Applies after the 15-day free trial.",
     },
     "es": {
         "title": "Activar CG Convertor",
@@ -79,6 +81,7 @@ TEXTS = {
         "whatsapp_btn": "💬 Escríbeme por WhatsApp",
         "whatsapp_prefill": "Hola! Quiero activar CG Convertor. ID de máquina: {id}",
         "copy": "Copiar",
+        "donation_note": "Una donación de 23 € para apoyar el desarrollo continuo de la app y la plataforma — no un precio de lista, no una venta. Se activa tras los 15 días de prueba gratuita.",
     },
 }
 
@@ -146,7 +149,7 @@ class ActivationDialog(tk.Toplevel):
         self.t = TEXTS[_current_language()]
         self.trial_expired = trial_expired
         self.title(self.t["title"])
-        self.geometry("540x480")
+        self.geometry("540x560")
         self.resizable(False, False)
         self.configure(bg=self.th["bg"])
         self.activated = False
@@ -183,6 +186,12 @@ class ActivationDialog(tk.Toplevel):
         id_entry.pack(side="left", fill="x", expand=True, ipady=4)
         _make_button(id_row, self.t["copy"], lambda: self._copy_to_clipboard(machine_id_value),
                      bg=th["bg_elevated"], fg=th["fg"], hover_bg=th["line"]).pack(side="left", padx=(6, 0))
+
+        # Terminologie obligatorie: DONATIE, niciodata "pret"/"cumpara"/
+        # "vanzare" - vezi CLAUDE.md, sectiunea Faza C / terminologie financiara.
+        tk.Label(body, text=self.t["donation_note"], bg=th["bg_elevated"], fg=th["fg_dim"],
+                 font=(theme.FONT_FAMILY, 9), wraplength=470, justify="left",
+                 padx=10, pady=8).pack(fill="x", pady=(0, 12))
 
         _make_button(body, self.t["whatsapp_btn"], lambda: self._open_whatsapp(machine_id_value),
                      bg="#25D366", fg="white", hover_bg="#1EBE5A").pack(anchor="w", pady=(0, 16))
