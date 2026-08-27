@@ -382,7 +382,24 @@ doar un link:
   versiunii noi** (pop-up, texte, dismissal) — doar acțiunea butonului
   principal se schimbă: NU mai deschide un link, cheamă Self-Updater-ul.
 
-**Status acest repo (2026-08-27): NEIMPLEMENTAT — OBLIGATORIU la următoarea actualizare.** Are `UpdateChecker.swift` (verifică versiunea), dar butonul de update încă deschide browserul, nu descarcă/instalează. Doar aplicație Mac (fără client Windows) — portează `SelfUpdater.swift` 1:1 din `GDCVault`/`DataMover`.
+**Status acest repo (2026-08-27): IMPLEMENTAT pe AMBELE platforme.**
+Mac: `CGConvertor/SelfUpdater.swift` (nou, port 1:1 din `GDCVault`/
+`DataMover`) — `UpdateChecker.swift` citește acum și URL-ul asset-ului
+`CGConvertor.pkg` din `assets[]`. Windows (Python/Tkinter, NU C# — vezi
+nota din Partea 2 despre variantele paralele): `python/self_updater.py`
+(nou) — descarcă `CGConvertor-Windows-Setup.exe` cu `urllib` direct pe
+disc, îl lansează cu `subprocess.Popen` (`DETACHED_PROCESS`), apoi
+`sys.exit()`; `python/update_checker.py` extrage acum `download_url` din
+`assets[]`. Fereastră de progres minimală (`tk.Toplevel` + `Progressbar`
+indeterminat) în `main.py._start_self_update`. Versiune → `2.2.0`.
+**WARNING nemodificat**: pasul de instalare efectiv (promptul de parolă
+Mac, wizardul Inno pe Windows) nu poate fi verificat automat — necesită
+confirmare manuală, o dată, de Cristi, pe fiecare platformă. **De
+asemenea**: la următorul release, `build_installer.sh` (Mac) trebuie să
+publice și `CGConvertor.pkg`/`CGConvertor-<versiune>.pkg` ca asset-uri
+separate pe GitHub Release (nu doar în interiorul `CGConvertor-Mac.zip`)
+— altfel Self-Updater-ul Mac nu găsește niciun `.pkg` de descărcat și
+face fallback la pagina de Releases.
 
 ## [PARTEA 2: SPECIFICAȚII TEHNICE PROIECT]
 

@@ -16,7 +16,7 @@
 ;   5. Rezultatul apare in Output\CGConvertorSetup.exe
 
 #define MyAppName "CG Convertor"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.2.0"
 #define MyAppPublisher "Cristi Gordas"
 #define MyAppExeName "CGConvertor.exe"
 #define MyAppURL "https://github.com/gordasgdc/CGConvertor"

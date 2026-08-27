@@ -14,6 +14,7 @@ except ImportError:
 
 import activation
 import config
+import self_updater
 import theme
 import update_checker
 from translations import t
@@ -570,7 +571,7 @@ class CGConvertorApp(BASE_CLASS):
                 dismissed_key = f"_dismissed_update_{result['version']}"
                 if self.settings.get(dismissed_key):
                     return
-                self.after(0, lambda: self._show_update_popup(result["version"], silent=True))
+                self.after(0, lambda: self._show_update_popup(result["version"], result.get("download_url"), silent=True))
         threading.Thread(target=worker, daemon=True).start()
 
     def _check_updates_manually(self):
@@ -579,22 +580,65 @@ class CGConvertorApp(BASE_CLASS):
             if result.get("error"):
                 self.after(0, lambda: messagebox.showerror(t(self.lang, "app_title"), t(self.lang, "update_error")))
             elif result["available"]:
-                self.after(0, lambda: self._show_update_popup(result["version"], silent=False))
+                self.after(0, lambda: self._show_update_popup(result["version"], result.get("download_url"), silent=False))
             else:
                 self.after(0, lambda: messagebox.showinfo(
                     t(self.lang, "app_title"), t(self.lang, "update_none")))
         threading.Thread(target=worker, daemon=True).start()
 
-    def _show_update_popup(self, version, silent):
+    def _show_update_popup(self, version, download_url, silent):
         lang = self.lang
         body = t(lang, "update_available_body", version=version, current=config.APP_VERSION)
         answer = messagebox.askyesno(t(lang, "update_available_title"), body)
-        if answer:
-            import webbrowser
-            webbrowser.open(update_checker.RELEASES_PAGE_URL)
         if silent:
             self.settings[f"_dismissed_update_{version}"] = True
             config.save(self.settings)
+        if answer:
+            self._start_self_update(version, download_url)
+
+    def _start_self_update(self, version, download_url):
+        """Descarca si lanseaza installer-ul FARA sa treaca prin browser -
+        vezi self_updater.py si CLAUDE.md Partea 1, Regula 20."""
+        lang = self.lang
+        progress = tk.Toplevel(self)
+        progress.title(t(lang, "app_title"))
+        progress.resizable(False, False)
+        progress.transient(self)
+        title_label = ttk.Label(progress, text=f"CG Convertor {version}", font=("TkDefaultFont", 11, "bold"))
+        title_label.pack(padx=20, pady=(16, 4), anchor="w")
+        status_label = ttk.Label(progress, text=t(lang, "update_downloading"))
+        status_label.pack(padx=20, pady=(0, 10), anchor="w")
+        bar = ttk.Progressbar(progress, mode="indeterminate", length=280)
+        bar.pack(padx=20, pady=(0, 16))
+        bar.start(12)
+        progress.grab_set()
+
+        def on_status(stage):
+            text = t(lang, "update_downloading") if stage == "downloading" else t(lang, "update_launching")
+            self.after(0, lambda: status_label.config(text=text))
+
+        def on_done(error):
+            def finish():
+                bar.stop()
+                progress.destroy()
+                if error is None:
+                    self.destroy()
+                    sys.exit(0)
+                else:
+                    if messagebox.askyesno(
+                        t(lang, "update_failed_title"),
+                        t(lang, "update_failed_body", error=str(error)),
+                    ):
+                        import webbrowser
+                        webbrowser.open(update_checker.RELEASES_PAGE_URL)
+            self.after(0, finish)
+
+        threading.Thread(
+            target=self_updater.download_and_install,
+            args=(download_url, version),
+            kwargs={"on_status": on_status, "on_done": on_done},
+            daemon=True,
+        ).start()
 
 
 if __name__ == "__main__":

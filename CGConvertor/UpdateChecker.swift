@@ -1,10 +1,9 @@
 import AppKit
 
 /// "Check for Updates" — compară versiunea rulată cu ultimul tag de pe
-/// GitHub Releases și oferă un link direct de download dacă e mai nouă.
-/// Port 1:1 al UpdateChecker.swift din GDCVault/DataMover/CursorPro. Nu e
-/// updater silențios/automat — doar anunță și trimite spre pagina de
-/// descărcare.
+/// GitHub Releases și descarcă+instalează automat noua versiune, FĂRĂ să
+/// mai treacă prin browser/pagina de GitHub — vezi SelfUpdater.swift și
+/// CLAUDE.md Partea 1, Regula 20.
 enum UpdateChecker {
     private static let latestReleaseAPIURL = URL(string: "https://api.github.com/repos/gordasgdc/CGConvertor/releases/latest")!
     private static let releasesPageURL = URL(string: "https://github.com/gordasgdc/CGConvertor/releases/latest")!
@@ -16,12 +15,12 @@ enum UpdateChecker {
     /// Verificare automată, o singură dată per lansare, tăcută dacă nu e
     /// nimic nou. Dismissal per-versiune, ca update-ul deja văzut să nu
     /// reapară la fiecare pornire.
-    static func checkSilentlyOnLaunch(onNewVersion: @escaping (String) -> Void) {
+    static func checkSilentlyOnLaunch(onNewVersion: @escaping (String, URL) -> Void) {
         Task {
-            if case .newVersion(let version) = await fetchLatestTag() {
+            if case .newVersion(let version, let pkgURL) = await fetchLatestTag() {
                 let dismissedKey = "cgconvertor_dismissed_update_version"
                 if UserDefaults.standard.string(forKey: dismissedKey) == version { return }
-                await MainActor.run { onNewVersion(version) }
+                await MainActor.run { onNewVersion(version, pkgURL) }
             }
         }
     }
@@ -39,7 +38,7 @@ enum UpdateChecker {
 
     private enum Result {
         case upToDate
-        case newVersion(String)
+        case newVersion(String, URL)
         case error
     }
 
@@ -54,10 +53,16 @@ enum UpdateChecker {
                 return .error
             }
             let latest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
-            if isVersion(latest, newerThan: currentVersion) {
-                return .newVersion(latest)
+            guard isVersion(latest, newerThan: currentVersion) else { return .upToDate }
+
+            // Asset-ul .pkg cu nume STABIL ("CGConvertor.pkg") publicat de
+            // build_installer.sh la fiecare release.
+            let assets = json["assets"] as? [[String: Any]] ?? []
+            let pkgAsset = assets.first { ($0["name"] as? String) == "CGConvertor.pkg" }
+            guard let urlString = pkgAsset?["browser_download_url"] as? String, let pkgURL = URL(string: urlString) else {
+                return .newVersion(latest, releasesPageURL)
             }
-            return .upToDate
+            return .newVersion(latest, pkgURL)
         } catch {
             return .error
         }
@@ -82,15 +87,16 @@ enum UpdateChecker {
             alert.informativeText = String(format: L.t("update.upToDate.body"), currentVersion)
             alert.addButton(withTitle: "OK")
             alert.runModal()
-        case .newVersion(let version):
+        case .newVersion(let version, let pkgURL):
             alert.messageText = L.t("update.available.title")
             alert.informativeText = String(format: L.t("update.available.body"), version, currentVersion)
             alert.addButton(withTitle: L.t("update.download"))
             alert.addButton(withTitle: L.t("update.later"))
-            if alert.runModal() == .alertFirstButtonReturn {
-                NSWorkspace.shared.open(releasesPageURL)
-            }
+            let response = alert.runModal()
             markDismissed(version)
+            if response == .alertFirstButtonReturn {
+                Task { await SelfUpdater.downloadAndInstall(pkgURL: pkgURL, version: version) }
+            }
         case .error:
             alert.messageText = L.t("update.error.title")
             alert.informativeText = L.t("update.error.body")

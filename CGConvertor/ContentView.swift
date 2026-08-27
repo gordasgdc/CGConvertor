@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var showActivation = false
     @State private var showUpdateAlert = false
     @State private var updateAlertVersion = ""
+    @State private var updateAlertPkgURL: URL?
     @State private var showDependencyPanel = false
 
     private var appVersion: String {
@@ -34,8 +35,9 @@ struct ContentView: View {
         .onAppear {
             vm.verificaFFmpeg()
             deps.refreshAll()
-            UpdateChecker.checkSilentlyOnLaunch { newVersion in
+            UpdateChecker.checkSilentlyOnLaunch { newVersion, pkgURL in
                 updateAlertVersion = newVersion
+                updateAlertPkgURL = pkgURL
                 showUpdateAlert = true
             }
         }
@@ -47,8 +49,10 @@ struct ContentView: View {
         }
         .alert(L.t("update.available.title"), isPresented: $showUpdateAlert) {
             Button(L.t("update.download")) {
-                NSWorkspace.shared.open(URL(string: "https://github.com/gordasgdc/CGConvertor/releases/latest")!)
                 UpdateChecker.markDismissed(updateAlertVersion)
+                if let pkgURL = updateAlertPkgURL {
+                    Task { await SelfUpdater.downloadAndInstall(pkgURL: pkgURL, version: updateAlertVersion) }
+                }
             }
             Button(L.t("update.later"), role: .cancel) {
                 UpdateChecker.markDismissed(updateAlertVersion)
