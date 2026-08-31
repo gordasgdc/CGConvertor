@@ -4,6 +4,11 @@ Toate modificările notabile ale acestui proiect sunt documentate aici.
 
 ## [Unreleased]
 
+### v2.2.1 — Preț dinamic din Furnizor (2026-08-31)
+- Suma de donație din ecranul de Activare + mesajul WhatsApp se citește
+  acum din `pricing.json` (Furnizor), nu mai e fixă în cod — orice ofertă
+  programată apare automat, fără recompilare.
+
 ### v2.1.0 — Hotfix critic FFmpeg + Manager Modular de Dependințe (2026-08-26)
 - **Fix critic Mac**: binarul FFmpeg bundle-uit anterior era legat dinamic
   de un path local Homebrew (`/opt/homebrew/Cellar/ffmpeg/...`), provocând

@@ -10,6 +10,7 @@ struct ActivationSheet: View {
     @Binding var isPresented: Bool
     @State private var code: String = ""
     @State private var justCopied = false
+    @ObservedObject private var pricing = PricingChecker.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -35,12 +36,24 @@ struct ActivationSheet: View {
                 Text(error).foregroundStyle(.red).font(.system(size: 12))
             }
 
-            Text(L.t("license.note"))
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+            // Preț dinamic (Regula 27) - vezi PricingChecker. Fail-open pe
+            // pretul hardcodat din Localization.swift daca pricing.json
+            // nu e accesibil.
+            if let promo = pricing.activePromo {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("🔥 \(promo.label): \(formattedPrice(promo.price)) (în loc de \(formattedPrice(pricing.basePrice)))")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.orange)
+                    Text(L.t("license.note")).font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+            } else {
+                Text(L.t("license.note"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
 
             Button {
-                NSWorkspace.shared.open(WhatsAppLink.url(text: "Bună, vreau să activez CG Convertor. ID calculator: \(MachineID.display)"))
+                NSWorkspace.shared.open(WhatsAppLink.url(text: "Bună, vreau să activez CG Convertor. Donație \(formattedPrice(pricing.effectivePrice)). ID calculator: \(MachineID.display)"))
             } label: {
                 Label(L.t("license.whatsapp"), systemImage: "message.fill")
                     .font(.system(size: 12))
@@ -62,5 +75,11 @@ struct ActivationSheet: View {
         }
         .padding(20)
         .frame(width: 440)
+        .onAppear { pricing.refresh() }
+    }
+
+    private func formattedPrice(_ value: Double) -> String {
+        let isWhole = value.truncatingRemainder(dividingBy: 1) == 0
+        return "\(isWhole ? String(Int(value)) : String(value)) €"
     }
 }
