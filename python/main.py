@@ -10,8 +10,22 @@ from tkinter import ttk, filedialog, messagebox
 
 try:
     from tkinterdnd2 import DND_FILES, TkinterDnD
+    # Testare REALA, nu doar import — pe Windows ARM64 (confirmat live,
+    # Parallels pe Apple Silicon), `tkinterdnd2` se importa cu succes dar
+    # `TkinterDnD.Tk()` arunca la CONSTRUCTIE ("interpreter uses an
+    # incompatible stubs mechanism" / "Unable to load tkdnd library") —
+    # biblioteca nativa tkdnd bundle-uita in pachet nu e compatibila cu
+    # acest Tcl/Tk. Un simplu try/except pe IMPORT (cum era inainte) nu
+    # prindea deloc acest caz — aplicatia crapa abia la lansare, in
+    # `CGConvertorApp.__init__`. Se testeaza instantierea reala o
+    # singura data, aici, cu o fereastra ascunsa imediat si distrusa —
+    # daca esueaza, aplicatia porneste normal, doar fara drag-and-drop
+    # (butonul "Alege fisiere..." ramane functional).
+    _test_root = TkinterDnD.Tk()
+    _test_root.withdraw()
+    _test_root.destroy()
     HAS_DND = True
-except ImportError:
+except Exception:
     HAS_DND = False
 
 import activation
