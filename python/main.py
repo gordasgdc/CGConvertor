@@ -27,6 +27,27 @@ try:
     HAS_DND = True
 except Exception:
     HAS_DND = False
+    # BUG REAL gasit live (Windows ARM64): cand TkinterDnD.Tk() esueaza,
+    # `tkinter.Tk.__init__` (clasa de baza) a rulat DEJA cu succes INAINTE
+    # ca eroarea specifica tkdnd sa fie aruncata (in linia urmatoare din
+    # tkinterdnd2) — acel obiect a fost deja inregistrat ca
+    # `tkinter._default_root`, dar noi n-am apucat sa-l atribuim lui
+    # `_test_root` (exceptia intrerupe chiar acea linie), deci ramane
+    # ORFAN: "viu" la nivel de interpretor Tcl, fara nicio referinta
+    # Python, blocand pentru tot restul rularii slotul `_default_root`.
+    # Efect real, reprodus: fereastra principala functioneaza normal (isi
+    # gaseste propriile widget-uri direct), dar orice `tk.StringVar()`/
+    # `IntVar()` FARA `master` explicit din alta fereastra (PresetsDialog,
+    # SettingsDialog) arunca ulterior "Too early to create variable: no
+    # default root window", pentru ca root-ul REAL nu a putut revendica
+    # slotul (deja ocupat de orfan) la propria initializare.
+    orphan = tk._default_root
+    if orphan is not None:
+        try:
+            orphan.destroy()
+        except Exception:
+            pass
+        tk._default_root = None
 
 import activation
 import config
