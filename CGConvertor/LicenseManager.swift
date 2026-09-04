@@ -51,7 +51,11 @@ final class LicenseManager: ObservableObject {
 
     var isTrialActive: Bool { trialDaysRemaining > 0 }
 
-    var isUnlocked: Bool { isLicensed || isTrialActive }
+    // Regula 12 — revocare online, fail-open (vezi RevocationCheck.swift):
+    // o licenta deja activata local NU e blocata doar pentru ca userul e
+    // offline, dar un "true" explicit primit de la server opreste imediat
+    // butonul de start, indiferent de trial/licenta valida criptografic.
+    var isUnlocked: Bool { (isLicensed || isTrialActive) && !RevocationCheck.shared.isRevoked }
 
     @discardableResult
     func activate(code: String) -> Bool {

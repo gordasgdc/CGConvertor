@@ -5,12 +5,16 @@ struct ContentView: View {
     @StateObject private var vm = ConvertorViewModel()
     @ObservedObject private var license = LicenseManager.shared
     @ObservedObject private var deps = DependencyManager.shared
+    @ObservedObject private var revocation = RevocationCheck.shared
+    @ObservedObject private var settings = AppSettings.shared
     @State private var seAfiseazaDropTarget = false
     @State private var showActivation = false
     @State private var showUpdateAlert = false
     @State private var updateAlertVersion = ""
     @State private var updateAlertPkgURL: URL?
     @State private var showDependencyPanel = false
+    @State private var showPresetsManager = false
+    @State private var showSettingsSheet = false
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
@@ -19,7 +23,7 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             antet
-            if !license.isLicensed {
+            if !license.isLicensed || revocation.isRevoked {
                 trialBanner
             }
 
@@ -32,6 +36,7 @@ struct ContentView: View {
         }
         .background(Shift.bg)
         .foregroundStyle(Shift.text)
+        .dynamicTypeSize(settings.textScale.dynamicTypeSize)
         .onAppear {
             vm.verificaFFmpeg()
             deps.refreshAll()
@@ -40,12 +45,24 @@ struct ContentView: View {
                 updateAlertPkgURL = pkgURL
                 showUpdateAlert = true
             }
+            // Regula 12 — revocare online, fail-open (vezi RevocationCheck.swift).
+            revocation.refreshOnce()
+            revocation.startPeriodicRefresh()
         }
         .sheet(isPresented: $showActivation) {
             ActivationSheet(license: license, isPresented: $showActivation)
         }
         .sheet(isPresented: $showDependencyPanel) {
             DependencyPanel(deps: deps, isPresented: $showDependencyPanel)
+        }
+        .sheet(isPresented: $showPresetsManager) {
+            PresetsManagerSheet(presets: vm.presets, isPresented: $showPresetsManager) { updated in
+                PresetsManager.save(updated)
+                vm.reincarcaPresets()
+            }
+        }
+        .sheet(isPresented: $showSettingsSheet) {
+            SettingsSheet(isPresented: $showSettingsSheet)
         }
         .alert(L.t("update.available.title"), isPresented: $showUpdateAlert) {
             Button(L.t("update.download")) {
@@ -114,133 +131,154 @@ struct ContentView: View {
 
     private var trialBanner: some View {
         HStack {
-            Text(license.isTrialActive
-                 ? String(format: L.t("trial.daysLeft"), license.trialDaysRemaining)
-                 : L.t("trial.expired"))
+            Text(revocation.isRevoked
+                 ? L.t("license.revoked")
+                 : (license.isTrialActive
+                    ? String(format: L.t("trial.daysLeft"), license.trialDaysRemaining)
+                    : L.t("trial.expired")))
                 .font(.system(size: 11.5))
-                .foregroundStyle(license.isTrialActive ? Shift.muted : Shift.error)
+                .foregroundStyle((revocation.isRevoked || !license.isTrialActive) ? Shift.error : Shift.muted)
             Spacer()
-            Button(L.t("trial.activate")) { showActivation = true }
-                .buttonStyle(.plain)
-                .font(.system(size: 11.5, weight: .semibold))
-                .foregroundStyle(Shift.accent)
+            if !revocation.isRevoked {
+                Button(L.t("trial.activate")) { showActivation = true }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(Shift.accent)
+            }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 7)
-        .background(license.isTrialActive ? Shift.elevated : Shift.error.opacity(0.12))
+        .background((revocation.isRevoked || !license.isTrialActive) ? Shift.error.opacity(0.12) : Shift.elevated)
         .overlay(Rectangle().frame(height: 1).foregroundStyle(Shift.border), alignment: .bottom)
     }
 
     // ── Panou setari (stanga) ───────────────────────────────────────────────
-    private var sfatCodec: String {
-        switch vm.codecAles {
-        case .proRes422: return L.t("codec.hint.proRes422")
-        case .proRes422HQ: return L.t("codec.hint.proRes422HQ")
-        case .proRes422LT: return L.t("codec.hint.proRes422LT")
-        case .proRes4444: return L.t("codec.hint.proRes4444")
-        case .dnxhd, .dnxhr: return L.t("codec.hint.dnx")
-        }
-    }
-
     private var panouSetari: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                ShiftCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ShiftSectionLabel(text: L.t("mode.title"))
-                        VStack(spacing: 6) {
-                            modeRow(.rewrap, title: L.t("mode.rewrap"), hint: L.t("mode.rewrap.hint"), icon: "arrow.triangle.swap")
-                            modeRow(.transcode, title: L.t("mode.transcode"), hint: L.t("mode.transcode.hint"), icon: "wand.and.stars")
-                        }
-                    }
-                }
-
-                if vm.modConversie == .transcode {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
                     ShiftCard {
                         VStack(alignment: .leading, spacing: 8) {
-                            ShiftSectionLabel(text: L.t("codec.title"))
-                            Picker("", selection: $vm.codecAles) {
-                                ForEach(CodecOutput.allCases) { codec in
-                                    Text(codec.rawValue).tag(codec)
+                            ShiftSectionLabel(text: L.t("preset.title"))
+                            Picker("", selection: $vm.presetSelectatID) {
+                                ForEach(vm.presets) { preset in
+                                    Text(preset.label).tag(preset.id)
                                 }
                             }
                             .pickerStyle(.menu)
                             .labelsHidden()
                             .tint(Shift.text)
 
-                            Text(sfatCodec)
-                                .font(.system(size: 11))
-                                .foregroundStyle(Shift.muted)
-                                .fixedSize(horizontal: false, vertical: true)
+                            if let hint = presetHint {
+                                Text(hint)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Shift.muted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Button(L.t("preset.edit")) { showPresetsManager = true }
+                                .buttonStyle(ShiftGhostButtonStyle())
+
+                            // Accelerare hardware — pe Mac e mereu VideoToolbox
+                            // (Faza 1, secțiunea B); spre deosebire de Windows,
+                            // nu există alt vânzător de ales.
+                            Text("\(L.t("gpu.accel.prefix")) Apple VideoToolbox")
+                                .font(.system(size: 10))
+                                .foregroundStyle(Shift.faint)
                         }
                     }
-                }
 
-                ShiftCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ShiftSectionLabel(text: L.t("destination.title"))
-                        Text(vm.folderDestinatie?.path ?? L.t("destination.sameAsSource"))
-                            .font(.system(size: 11.5, design: .monospaced))
-                            .foregroundStyle(Shift.muted)
-                            .lineLimit(2)
-                            .truncationMode(.middle)
-                        Button(L.t("destination.choose")) { vm.alegeFolderDestinatie() }
-                            .buttonStyle(ShiftGhostButtonStyle())
+                    ShiftCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ShiftSectionLabel(text: L.t("destination.title"))
+                            Text(vm.folderDestinatie?.path ?? L.t("destination.sameAsSource"))
+                                .font(.system(size: 11.5, design: .monospaced))
+                                .foregroundStyle(Shift.muted)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                            Button(L.t("destination.choose")) { vm.alegeFolderDestinatie() }
+                                .buttonStyle(ShiftGhostButtonStyle())
+                        }
                     }
+
+                    Text(L.t("shortcuts.hint"))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(Shift.faint)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: 0)
+
+                    actiuneButon
                 }
-
-                Text(L.t("shortcuts.hint"))
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(Shift.faint)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Spacer(minLength: 0)
-
-                actiuneButon
+                .padding(16)
             }
-            .padding(16)
+            .background(Shift.bg)
+
+            // Sidebar Profil + Setari (Regula 12 — sidebar obligatoriu,
+            // FRATE al ScrollView-ului de mai sus, nu safeAreaInset direct
+            // pe scroll — Regula 24, evită bug-ul de suprapunere la resize).
+            Divider().overlay(Shift.border)
+            profilSidebar
         }
-        .background(Shift.bg)
     }
 
-    private func modeRow(_ mod: ModConversie, title: String, hint: String, icon: String) -> some View {
-        Button { vm.modConversie = mod } label: {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 13))
-                    .frame(width: 18)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(.system(size: 12.5, weight: .medium))
-                    Text(hint).font(.system(size: 10.5)).foregroundStyle(Shift.muted)
-                }
-                Spacer()
-                Image(systemName: vm.modConversie == mod ? "largecircle.fill.circle" : "circle")
-                    .foregroundStyle(vm.modConversie == mod ? Shift.accent : Shift.faint)
+    private var presetHint: String? {
+        guard let preset = vm.presetSelectat, preset.profileID != FormatRegistry.rewrapProfileID,
+              let profil = FormatRegistry.profile(id: preset.profileID) else { return nil }
+        return L.t(profil.hintKey)
+    }
+
+    private var profilSidebar: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(AppSettings.shared.userName.isEmpty ? L.t("sidebar.anonymous") : AppSettings.shared.userName)
+                    .font(.system(size: 11, weight: .semibold))
+                Text("\(L.t("sidebar.machineID")): \(MachineID.display)")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(Shift.faint)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
-            .padding(9)
-            .background(vm.modConversie == mod ? Shift.elevated : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 7))
+            Spacer()
+            Button { showSettingsSheet = true } label: {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Shift.muted)
+            .help(L.t("sidebar.settings"))
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(Shift.text)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Shift.elevated)
     }
 
     private var actiuneButon: some View {
         Group {
             if vm.seRuleazaCoada {
-                Button { vm.opresteCoada() } label: {
-                    Label(L.t("action.stop"), systemImage: "stop.fill")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
+                VStack(spacing: 6) {
+                    Button { vm.comutaPauza() } label: {
+                        Label(vm.estePauza ? L.t("resume.action") : L.t("pause.action"),
+                              systemImage: vm.estePauza ? "play.fill" : "pause.fill")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                    .buttonStyle(ShiftGhostButtonStyle())
+
+                    Button { vm.opresteCoada() } label: {
+                        Label(L.t("action.stop"), systemImage: "stop.fill")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, 8)
+                    .background(Shift.error)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .font(.system(size: 13, weight: .semibold))
                 }
-                .buttonStyle(.plain)
-                .padding(.vertical, 8)
-                .background(Shift.error)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .font(.system(size: 13, weight: .semibold))
             } else {
                 Button {
+                    guard !revocation.isRevoked else { return }
                     guard license.isUnlocked else { showActivation = true; return }
                     vm.pornesteCoada()
                 } label: {
@@ -254,7 +292,7 @@ struct ContentView: View {
                 .foregroundStyle(pornireDezactivata ? Shift.faint : Shift.accentInk)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .font(.system(size: 13, weight: .semibold))
-                .disabled(vm.joburi.isEmpty || !deps.isReady)
+                .disabled(vm.joburi.isEmpty || !deps.isReady || revocation.isRevoked)
                 .keyboardShortcut(.return, modifiers: [.command])
             }
         }
@@ -273,7 +311,10 @@ struct ContentView: View {
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         ForEach(vm.joburi) { job in
-                            RandJob(job: job) { vm.stergeJob(job) }
+                            RandJob(job: job, seRuleazaCoada: vm.seRuleazaCoada,
+                                    onSterge: { vm.stergeJob(job) },
+                                    onMutaSus: { vm.mutaJob(job, delta: -1) },
+                                    onMutaJos: { vm.mutaJob(job, delta: 1) })
                         }
                     }
                     .padding(14)
@@ -368,7 +409,10 @@ struct ShiftGhostButtonStyle: ButtonStyle {
 // ── Rand individual pentru un job ───────────────────────────────────────────
 private struct RandJob: View {
     let job: VideoJob
+    let seRuleazaCoada: Bool
     let onSterge: () -> Void
+    let onMutaSus: () -> Void
+    let onMutaJos: () -> Void
 
     var body: some View {
         ShiftCard(padding: 12) {
@@ -428,6 +472,11 @@ private struct RandJob: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(Shift.faint)
             }
+        }
+        // Reordonare (Faza 1, secțiunea F) — dezactivată cât timp coada rulează.
+        .contextMenu {
+            Button(L.t("queue.moveUp"), action: onMutaSus).disabled(seRuleazaCoada)
+            Button(L.t("queue.moveDown"), action: onMutaJos).disabled(seRuleazaCoada)
         }
     }
 }

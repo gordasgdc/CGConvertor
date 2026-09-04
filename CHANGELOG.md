@@ -4,6 +4,45 @@ Toate modificările notabile ale acestui proiect sunt documentate aici.
 
 ## [Unreleased]
 
+### v3.0.0 — Faza 1: Motor extins + Presets Manager + conformitate ecosistem (2026-09-04)
+
+Schimbare majoră de arhitectură — modelul fix "Mod (Rewrap/Transcode) +
+6 codecuri hardcodate" e înlocuit de un **Presets Manager** complet, iar
+motorul de transcodare capătă codecuri de livrare noi cu accelerare
+hardware, pe ambele platforme (Mac + Windows).
+
+- **Presets Manager** (nou, ambele platforme) — presetări denumite,
+  fiecare cu aplicație țintă (DaVinci/Premiere/FCP/Avid/Web/Personalizat),
+  codec, mod audio (Passthrough/PCM 16-24-bit/AAC) și layout de canale.
+  Complet editabil: creează/duplică/șterge/redenumește + Import/Export
+  JSON (portabil între Mac și Windows). 7 presetări implicite incluse
+  (ProRes 422 HQ, DNxHR HQ, H.264 Web, HEVC 10-bit Master, AV1,
+  Uncompressed, Rewrap Rapid).
+- **Codecuri de livrare noi**: H.264, HEVC 10-bit, AV1, Uncompressed
+  10-bit — pe lângă ProRes/DNxHR existente. Mac: accelerare hardware
+  VideoToolbox (AV1 rămâne software — niciun Mac nu are encoder AV1
+  hardware). Windows: detecție automată a plăcii video (Nvidia NVENC /
+  AMD AMF / Intel Quick Sync), cu fallback software și selector manual
+  în Setări pentru sisteme cu configurație neobișnuită.
+- **Audio extins**: pe lângă Passthrough (implicit, ca până acum),
+  presetările de livrare pot re-codifica explicit în PCM sau AAC, cu
+  layout de canale ales (Original/Stereo/5.1).
+- **Coadă**: Pauză/Reluare (nu doar Stop total — un job deja pornit
+  termină natural), procesare paralelă configurabilă (1-4 joburi
+  simultane), reordonare din meniul contextual, notificare nativă la
+  finalizarea întregii cozi.
+- **Profil + Machine ID vizibile în sidebar** (Nume opțional, ID mașină,
+  buton Setări) — aliniat cu restul ecosistemului GDC.
+- **Revocare de licență online** (fail-open — o licență deja activată
+  local nu se blochează niciodată doar pentru că ești offline) și **preț
+  de donație dinamic pe Windows** (Mac avea deja acest lucru din
+  v2.2.1) — ambele citesc din infrastructura comună a ecosistemului.
+- **Temă System/Dark/Light** și **Mărime text** (Mic/Normal/Mare/Foarte
+  mare), explicite în Setări, aplicate instant — fără repornire, pe
+  ambele platforme.
+- Modurile existente (Rewrap, ProRes, DNxHR) rămân neschimbate ca
+  rezultat — verificat direct, nu presupus.
+
 ### v2.2.1 — Preț dinamic din Furnizor (2026-08-31)
 - Suma de donație din ecranul de Activare + mesajul WhatsApp se citește
   acum din `pricing.json` (Furnizor), nu mai e fixă în cod — orice ofertă

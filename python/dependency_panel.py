@@ -38,7 +38,7 @@ class DependencyPanel(tk.Toplevel):
         self.lang = lang
         self.t = t
         self.on_change = on_change
-        self.th = theme.get(True)
+        self.th = master.th  # aceeasi tema (System/Dark/Light) ca fereastra principala
 
         self.title(self.t(self.lang, "deps_panel_title"))
         self.geometry("480x420")

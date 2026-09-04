@@ -17,6 +17,7 @@ LicenseManager.is_unlocked() folosit direct din main.py.)
 """
 
 import os
+import threading
 import time
 import urllib.parse
 import webbrowser
@@ -26,6 +27,7 @@ from tkinter import ttk, messagebox
 import config as cfg
 import license_validator
 import machine_id
+import pricing_checker
 import theme
 
 TRIAL_DAYS = 15
@@ -47,7 +49,10 @@ TEXTS = {
         "whatsapp_btn": "💬 Scrie-mi pe WhatsApp",
         "whatsapp_prefill": "Salut! Vreau sa activez CG Convertor. ID masina: {id}",
         "copy": "Copiază",
-        "donation_note": "Donație de 23 € pentru continuarea dezvoltării aplicației și a platformei — nu un preț de listă, nu o vânzare. Se activează după cele 15 zile de probă gratuită.",
+        # {price} e completat dinamic din pricing.json (Regula 27) — vezi
+        # pricing_checker.py; fallback pe suma hardcodată daca fara conexiune.
+        "donation_note": "Donație de {price} pentru continuarea dezvoltării aplicației și a platformei — nu un preț de listă, nu o vânzare. Se activează după cele 15 zile de probă gratuită.",
+        "promo_line": "🔥 {label}: {price} (în loc de {base})",
     },
     "en": {
         "title": "Activate CG Convertor",
@@ -64,7 +69,8 @@ TEXTS = {
         "whatsapp_btn": "💬 Message me on WhatsApp",
         "whatsapp_prefill": "Hi! I'd like to activate CG Convertor. Machine ID: {id}",
         "copy": "Copy",
-        "donation_note": "A €23 donation to support ongoing development of the app and the platform — not a list price, not a sale. Applies after the 15-day free trial.",
+        "donation_note": "A {price} donation to support ongoing development of the app and the platform — not a list price, not a sale. Applies after the 15-day free trial.",
+        "promo_line": "🔥 {label}: {price} (instead of {base})",
     },
     "es": {
         "title": "Activar CG Convertor",
@@ -81,9 +87,17 @@ TEXTS = {
         "whatsapp_btn": "💬 Escríbeme por WhatsApp",
         "whatsapp_prefill": "Hola! Quiero activar CG Convertor. ID de máquina: {id}",
         "copy": "Copiar",
-        "donation_note": "Una donación de 23 € para apoyar el desarrollo continuo de la app y la plataforma — no un precio de lista, no una venta. Se activa tras los 15 días de prueba gratuita.",
+        "donation_note": "Una donación de {price} para apoyar el desarrollo continuo de la app y la plataforma — no un precio de lista, no una venta. Se activa tras los 15 días de prueba gratuita.",
+        "promo_line": "🔥 {label}: {price} (en lugar de {base})",
     },
 }
+
+
+def _format_price(value, currency):
+    is_whole = float(value) == int(value)
+    amount = str(int(value)) if is_whole else str(value)
+    symbol = "€" if currency == "EUR" else currency
+    return f"{amount} {symbol}"
 
 
 def _current_language():
@@ -145,7 +159,7 @@ def _make_button(parent, text, command, bg, fg, hover_bg):
 class ActivationDialog(tk.Toplevel):
     def __init__(self, master, trial_expired=False):
         super().__init__(master)
-        self.th = theme.get(True)
+        self.th = theme.get(cfg.load().get("theme_pref", "system"))
         self.t = TEXTS[_current_language()]
         self.trial_expired = trial_expired
         self.title(self.t["title"])
@@ -189,9 +203,22 @@ class ActivationDialog(tk.Toplevel):
 
         # Terminologie obligatorie: DONATIE, niciodata "pret"/"cumpara"/
         # "vanzare" - vezi CLAUDE.md, sectiunea Faza C / terminologie financiara.
-        tk.Label(body, text=self.t["donation_note"], bg=th["bg_elevated"], fg=th["fg_dim"],
-                 font=(theme.FONT_FAMILY, 9), wraplength=470, justify="left",
-                 padx=10, pady=8).pack(fill="x", pady=(0, 12))
+        # Pret dinamic (Regula 27) - port Windows al PricingChecker.swift
+        # (Mac): pornim cu suma hardcodata (fallback instant, fara sa
+        # blocam deschiderea dialogului), apoi o inlocuim cu cea reala
+        # din pricing.json cand fetch-ul de fundal se termina.
+        self._price_frame = tk.Frame(body, bg=th["bg_elevated"])
+        self._price_frame.pack(fill="x", pady=(0, 12))
+        self._promo_label = tk.Label(self._price_frame, bg=th["bg_elevated"], fg=th["accent"],
+                                      font=(theme.FONT_FAMILY, 9, "bold"), wraplength=450,
+                                      justify="left", padx=10)
+        self._donation_label = tk.Label(
+            self._price_frame,
+            text=self.t["donation_note"].format(price=_format_price(pricing_checker.FALLBACK_PRICE, pricing_checker.FALLBACK_CURRENCY)),
+            bg=th["bg_elevated"], fg=th["fg_dim"], font=(theme.FONT_FAMILY, 9),
+            wraplength=450, justify="left", padx=10, pady=8)
+        self._donation_label.pack(fill="x")
+        threading.Thread(target=self._fetch_price_worker, daemon=True).start()
 
         _make_button(body, self.t["whatsapp_btn"], lambda: self._open_whatsapp(machine_id_value),
                      bg="#25D366", fg="white", hover_bg="#1EBE5A").pack(anchor="w", pady=(0, 16))
@@ -212,6 +239,26 @@ class ActivationDialog(tk.Toplevel):
                      bg=th["accent"], fg=th["accent_ink"], hover_bg=th["accent_hover"]).pack(side="left")
         _make_button(btn_row, self.t["cancel"], self._on_close,
                      bg=th["bg_elevated"], fg=th["fg"], hover_bg=th["line"]).pack(side="left", padx=(8, 0))
+
+    def _fetch_price_worker(self):
+        result = pricing_checker.fetch_effective_price()
+        # Widget-ul poate fi deja distrus (dialog inchis inainte ca
+        # fetch-ul de retea sa termine) - `winfo_exists()` evita un
+        # TclError la actualizarea unui label disparut.
+        if not self.winfo_exists():
+            return
+        self.after(0, lambda: self._apply_price(result))
+
+    def _apply_price(self, result):
+        if not self.winfo_exists():
+            return
+        price_text = _format_price(result["price"], result["currency"])
+        self._donation_label.config(text=self.t["donation_note"].format(price=price_text))
+        if result.get("promo_label"):
+            base_text = _format_price(result["base_price"], result["currency"])
+            self._promo_label.config(text=self.t["promo_line"].format(
+                label=result["promo_label"], price=price_text, base=base_text))
+            self._promo_label.pack(fill="x", before=self._donation_label)
 
     def _copy_to_clipboard(self, text):
         self.clipboard_clear()

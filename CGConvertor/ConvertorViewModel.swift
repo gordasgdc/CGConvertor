@@ -5,38 +5,58 @@ import Combine
 @MainActor
 final class ConvertorViewModel: ObservableObject {
     @Published var joburi: [VideoJob] = []
-    @Published var modConversie: ModConversie {
-        didSet { UserDefaults.standard.set(modConversie.rawValue, forKey: Self.cheieMod) }
-    }
-    @Published var codecAles: CodecOutput {
-        didSet { UserDefaults.standard.set(codecAles.rawValue, forKey: Self.cheieCodec) }
+    @Published var presets: [OutputPreset]
+    @Published var presetSelectatID: String {
+        didSet { UserDefaults.standard.set(presetSelectatID, forKey: Self.cheiePreset) }
     }
     @Published var folderDestinatie: URL? {
         didSet { UserDefaults.standard.set(folderDestinatie?.path, forKey: Self.cheieDestinatie) }
     }
     @Published var seRuleazaCoada: Bool = false
+    @Published var estePauza: Bool = false
     @Published var ffmpegInstalat: Bool = MotorFFmpeg.gasesteBinar() != nil
 
-    // Portat din varianta Python (config.py, settings persistate) — Swift-ul
-    // native reseta mereu ultimele alegeri la fiecare lansare, spre
-    // deosebire de Python care le ținea minte (mod/codec/folder). Acum
-    // ambele variante se comportă identic.
-    private static let cheieMod = "cgconvertor_last_mode"
-    private static let cheieCodec = "cgconvertor_last_codec"
+    /// Joburi simultane (Faza 1, secțiunea F) — configurabil din Setări,
+    /// implicit 1 (un singur VideoToolbox session e adesea limitarea
+    /// reală a plăcii pe encodere hardware; CPU/software beneficiază de
+    /// mai multe simultan).
+    var joburiSimultane: Int {
+        max(1, min(4, AppSettings.shared.maxParallelJobs))
+    }
+
+    private static let cheiePreset = "cgconvertor_last_preset_id"
     private static let cheieDestinatie = "cgconvertor_last_destination"
 
-    private var indexCurent: Int = 0
-    private var handleCurent: ConversieHandle?
+    var presetSelectat: OutputPreset? {
+        presets.first(where: { $0.id == presetSelectatID }) ?? presets.first
+    }
+
+    /// Handle-urile active — un job per handle, ca "Oprește" să poată
+    /// termina TOATE joburile în curs, nu doar unul (procesare paralelă).
+    private var handleuriActive: [UUID: ConversieHandle] = [:]
+    private var stopTotal = false
 
     init() {
         let defaults = UserDefaults.standard
-        modConversie = defaults.string(forKey: Self.cheieMod).flatMap(ModConversie.init(rawValue:)) ?? .rewrap
-        codecAles = defaults.string(forKey: Self.cheieCodec).flatMap(CodecOutput.init(rawValue:)) ?? .proRes422HQ
+        // Fix compilator: citirea altei proprietati @Published (`presets`)
+        // in aceeasi initializare, chiar dupa ce a fost asignata, declanseaza
+        // "used before being initialized" (analiza definite-initialization
+        // e conservatoare cu accesori de property wrapper inainte ca TOATE
+        // proprietatile clasei sa fie setate) - se ocoleste citind dintr-o
+        // variabila locala, nu din `self.presets` propriu-zis.
+        let presetariIncarcate = PresetsManager.load()
+        presets = presetariIncarcate
+        presetSelectatID = defaults.string(forKey: Self.cheiePreset) ?? presetariIncarcate.first?.id ?? ""
         folderDestinatie = defaults.string(forKey: Self.cheieDestinatie).map(URL.init(fileURLWithPath:))
     }
 
     func verificaFFmpeg() {
         ffmpegInstalat = MotorFFmpeg.gasesteBinar() != nil
+    }
+
+    func reincarcaPresets() {
+        presets = PresetsManager.load()
+        if presetSelectat == nil { presetSelectatID = presets.first?.id ?? "" }
     }
 
     func adaugaFisiere(_ urlURIs: [URL]) {
@@ -54,13 +74,18 @@ final class ConvertorViewModel: ObservableObject {
         joburi.removeAll { $0.id == job.id }
     }
 
-    /// Portat din Python (`main.py._clear_list`, care ignora apelul cat
-    /// timp `self.is_running`) — varianta Swift originala nu avea aceasta
-    /// garda, deci "Goleste lista" apasat in timpul unei conversii active
-    /// ar fi lasat procesul FFmpeg sa scrie intr-un fisier disparut din UI.
     func golesteLista() {
         guard !seRuleazaCoada else { return }
         joburi.removeAll()
+    }
+
+    /// Reordonare (Faza 1, secțiunea F) — mută un job cu `delta` poziții
+    /// (`-1` sus, `+1` jos); dezactivat cât timp coada rulează.
+    func mutaJob(_ job: VideoJob, delta: Int) {
+        guard !seRuleazaCoada, let idx = joburi.firstIndex(where: { $0.id == job.id }) else { return }
+        let newIdx = idx + delta
+        guard newIdx >= 0, newIdx < joburi.count else { return }
+        joburi.swapAt(idx, newIdx)
     }
 
     func alegeFolderDestinatie() {
@@ -74,46 +99,93 @@ final class ConvertorViewModel: ObservableObject {
         }
     }
 
-    private func urlDestinatie(pentru job: VideoJob) -> URL {
+    private func urlDestinatie(pentru job: VideoJob, preset: OutputPreset) -> URL {
         let numeBaza = job.urlSursa.deletingPathExtension().lastPathComponent
-        let extensie = modConversie == .rewrap ? "mov" : codecAles.extensieContainer
+        let extensie = MotorFFmpeg.extensieContainer(pentru: preset)
         let folder = folderDestinatie ?? job.urlSursa.deletingLastPathComponent()
-        return folder.appendingPathComponent("\(numeBaza)_convertit.\(extensie)")
+        return folder.appendingPathComponent("\(numeBaza)\(preset.fileSuffix).\(extensie)")
     }
 
     func pornesteCoada() {
-        guard !seRuleazaCoada, !joburi.isEmpty else { return }
+        guard !seRuleazaCoada, !joburi.isEmpty, let preset = presetSelectat else { return }
         guard ffmpegInstalat else { return }
         seRuleazaCoada = true
-        indexCurent = 0
-        proceseazaUrmatorul()
+        estePauza = false
+        stopTotal = false
+
+        // Procesare paralelă (Faza 1, secțiunea F): joburile deja
+        // "in asteptare" sunt împărțite pe un număr limitat de sloturi
+        // concurente — fiecare slot preia jobul următor disponibil de
+        // îndată ce termină pe al lui, respectând pauza înainte de a
+        // porni un job NOU (un job deja început termină natural).
+        var indexUrmator = 0
+        let coadaIndexuri = Array(joburi.indices)
+        let numarSloturi = min(joburiSimultane, max(1, coadaIndexuri.count))
+
+        func porneseUrmatorul() {
+            Task { @MainActor in
+                await self.asteaptaDacaPauza()
+                guard !self.stopTotal else { return }
+                guard indexUrmator < coadaIndexuri.count else { return }
+                let idx = coadaIndexuri[indexUrmator]
+                indexUrmator += 1
+                self.proceseaza(job: self.joburi[idx], preset: preset) {
+                    porneseUrmatorul()
+                }
+            }
+        }
+
+        for _ in 0..<numarSloturi {
+            porneseUrmatorul()
+        }
     }
 
-    /// Portat din Python (`Converter.stop()`/`_stop_requested`) — varianta
-    /// Swift originala nu putea opri o coada in curs de procesare deloc.
-    /// Oprește doar jobul curent; restul cozii rămâne "În așteptare" (nu
-    /// se șterge), utilizatorul poate reporni ulterior.
+    private func asteaptaDacaPauza() async {
+        while estePauza && !stopTotal {
+            try? await Task.sleep(nanoseconds: 200_000_000)
+        }
+    }
+
+    func comutaPauza() {
+        estePauza.toggle()
+    }
+
+    /// Oprește TOTAL — termină toate joburile active (spre deosebire de
+    /// pauză, care doar oprește pornirea jobului următor).
     func opresteCoada() {
-        handleCurent?.anuleaza()
-        seRuleazaCoada = false
+        stopTotal = true
+        estePauza = false
+        for handle in handleuriActive.values {
+            handle.anuleaza()
+        }
+        // Joburile inca ne-pornite (in "asteptare", niciun slot liber nu
+        // a ajuns inca la ele) nu vor mai fi preluate niciodata de
+        // `porneseUrmatorul()` odata ce `stopTotal` e true — marcate
+        // direct "Anulat", altfel ar ramane vesnic "In asteptare" si
+        // `verificaFinalizareaCozii()` n-ar inchide niciodata coada.
+        for idx in joburi.indices where joburi[idx].stare == .astept {
+            joburi[idx].stare = .anulat
+        }
+        verificaFinalizareaCozii()
     }
 
-    private func proceseazaUrmatorul() {
-        guard indexCurent < joburi.count else {
-            seRuleazaCoada = false
-            handleCurent = nil
+    private func proceseaza(job: VideoJob, preset: OutputPreset, laFinalizare: @escaping () -> Void) {
+        guard let idx = joburi.firstIndex(where: { $0.id == job.id }) else {
+            laFinalizare()
+            return
+        }
+        if stopTotal {
+            laFinalizare()
             return
         }
 
-        let job = joburi[indexCurent]
-        let destinatie = urlDestinatie(pentru: job)
-        joburi[indexCurent].urlDestinatie = destinatie
-        joburi[indexCurent].stare = .inLucru(progres: 0)
+        let destinatie = urlDestinatie(pentru: job, preset: preset)
+        joburi[idx].urlDestinatie = destinatie
+        joburi[idx].stare = .inLucru(progres: 0)
 
-        handleCurent = MotorFFmpeg.ruleazaConversie(
+        let handle = MotorFFmpeg.ruleazaConversie(
             job: job,
-            mod: modConversie,
-            codec: codecAles,
+            preset: preset,
             destinatie: destinatie,
             progresCallback: { [weak self] progres in
                 guard let self else { return }
@@ -122,22 +194,45 @@ final class ConvertorViewModel: ObservableObject {
             },
             finalizareCallback: { [weak self] rezultat in
                 guard let self else { return }
-                guard let idx = self.joburi.firstIndex(where: { $0.id == job.id }) else { return }
+                self.handleuriActive.removeValue(forKey: job.id)
+                guard let idx = self.joburi.firstIndex(where: { $0.id == job.id }) else {
+                    laFinalizare()
+                    return
+                }
                 switch rezultat {
                 case .success:
                     self.joburi[idx].stare = .finalizat
                 case .failure(let eroare):
                     if case EroareFFmpeg.anulat = eroare {
                         self.joburi[idx].stare = .anulat
-                        self.handleCurent = nil
-                        return // nu continua coada — utilizatorul a apasat Opreste
+                    } else {
+                        self.joburi[idx].stare = .eroare(mesaj: eroare.localizedDescription)
                     }
-                    self.joburi[idx].stare = .eroare(mesaj: eroare.localizedDescription)
                 }
-                self.indexCurent += 1
-                self.proceseazaUrmatorul()
+                self.verificaFinalizareaCozii()
+                laFinalizare()
             }
         )
+        handleuriActive[job.id] = handle
+    }
+
+    private func verificaFinalizareaCozii() {
+        // Coada s-a terminat cand TOATE joburile au o stare finala
+        // (finalizat/anulat/eroare) — NICIODATA cand sunt inca "in
+        // asteptare" (.astept), care nu inseamna "gata", doar "neinceput
+        // inca". Apelat dupa fiecare job finalizat (nu o singura data la
+        // capatul unei bucle secventiale, ca la varianta anterioara).
+        guard seRuleazaCoada, handleuriActive.isEmpty else { return }
+        let toateAuStareFinala = joburi.allSatisfy { job in
+            switch job.stare {
+            case .finalizat, .anulat, .eroare: return true
+            case .astept, .inLucru: return false
+            }
+        }
+        if toateAuStareFinala {
+            seRuleazaCoada = false
+            estePauza = false
+        }
     }
 }
 

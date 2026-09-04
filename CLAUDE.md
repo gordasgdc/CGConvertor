@@ -708,6 +708,38 @@ clase, cauze tehnice) unei audiențe publice necunoscute.
   `MediaFlow-Monitor` (v1.0.0/v1.0.1) — restul release-urilor mai vechi din
   ecosistem rămân de verificat incremental, nu toate dintr-o dată.
 
+**30. Zero cod "impur" sau nelalocul lui — orice implementare TREBUIE
+finalizată complet, nu doar compilată (2026-09-03).** Cerință explicită de
+la Cristi, după un incident real: un fix scris în cod dar nepropagat peste
+tot unde era nevoie (versiune, `update.json`, ambele platforme, ambele
+aplicații) a lăsat sistemul într-o stare pe jumătate — "să nu rămână nimic
+inpur și nelalocul lui, să se implementeze tot ce am actualizat și am
+creat, să nu mai avem probleme". Regulă practică, obligatorie la orice
+schimbare de cod:
+- Orice constantă/valoare copiată dintr-un alt fișier/repo (chei, ID-uri,
+  praguri, URL-uri) se verifică ACTIV cu `grep`, nu se presupune corectă
+  doar pentru că a fost copiată — un audit se oprește abia când TOATE
+  aparițiile au fost verificate, nu doar cea raportată inițial.
+- O funcționalitate nouă/modificată se declară "gata" abia după ce
+  TOATE piesele ei sunt implementate și verificate — cod, rebuild+reinstall
+  (Regula 0), versiune sincronizată peste tot unde trebuie (Regula 14),
+  paritate Mac/Windows dacă aplică (regula de mai jos), `CHANGELOG.md`
+  (Regula 25). O piesă lăsată "pentru mai târziu" se spune EXPLICIT, nu se
+  ascunde într-un răspuns care sună ca "gata".
+- Orice implementare/îmbunătățire nouă a acestei Părți 1 se scrie DIN
+  START în `CLAUDE.md`-ul TUTUROR proiectelor din `~/Developer/` (Regula
+  11) — nu doar în repo-ul unde a pornit discuția.
+
+**31. Paritate Mac/Windows imediată, în aceeași sesiune (2026-09-03).**
+Completare la Regula 30: orice schimbare de cod livrată pe Mac care are un
+echivalent Windows în ecosistem (și invers) se portează 1:1 ÎN ACEEAȘI
+SESIUNE, fără să aștepți o cerere separată de la Cristi — portul e parte
+integrantă a schimbării, nu un TODO ulterior. Dacă portul chiar nu poate
+fi făcut acum (acces la mediul Windows indisponibil, testare reală
+imposibilă), se spune EXPLICIT ce lipsește și de ce, marcat clar în
+`CHANGELOG.md` ca "TODO paritate Windows/Mac" (Regula existentă de
+documentație) — nu se lasă nemenționat.
+
 ## [PARTEA 2: SPECIFICAȚII TEHNICE PROIECT]
 
 ## REGULĂ PERMANENTĂ: Locația proiectului pe disc (2026-08-26)
@@ -1047,3 +1079,149 @@ bundle-uite de varianta Swift (referite direct în `.xcodeproj`).
   ecosistemului GDC.
 - Versiune: `MARKETING_VERSION` (Xcode) și `config.APP_VERSION` (Python)
   sincronizate la `2.0.0` (rescriere majoră UI+funcționalitate).
+
+## Faza 1 v3.0.0 (2026-09-04) — Motor extins + Presets Manager + conformitate ecosistem
+
+Cerere inițială: refactorizare la nivel EditReady/ShotPut Studio/Shutter
+Encoder (audit + plan aprobat în Plan Mode, `~/.claude/plans/
+bright-jingling-snail.md`). Scop prea mare pentru o livrare — **Faza 1**
+(aleasă explicit ca prioritate) acoperă motorul + Presets Manager +
+regulile ecosistemului GDC încă neîndeplinite de acest repo. Fazele 2-4
+(Offload/Checksum, Watch Folders + Inspecție/Metadata + rapoarte, Player
+LUT/LOG real-time) NU sunt implementate — planificate explicit, de
+livrat separat.
+
+**Decizii de scop confirmate**: Windows rămâne pe nucleul Python/FFmpeg
+existent (NU rescriere .NET/WPF); preview LOG/LUT rămâne complet
+neimplementat în această fază (Faza 4 separată, viitoare).
+
+**A. Format Registry unificat** — `format_registry.py` (Windows) +
+`FormatRegistry.swift` (Mac), aceleași id-uri pe ambele platforme.
+ProRes/DNxHD/DNxHR mutate byte-identic (regresie verificată REAL: rulat
+`ffmpeg`-ul static din acest repo pe un clip sintetic, `ffprobe` pe
+rezultat — codec/profil/pix_fmt identice cu înainte). Codecuri noi,
+verificate REAL cu binarul static din repo (nu doar sintaxă din
+documentație): **H.264** (`h264_videotoolbox` Mac / auto-GPU Windows),
+**HEVC 10-bit** (`hevc_videotoolbox -profile:v main10`, `-tag:v hvc1`
+obligatoriu altfel QuickTime/Final Cut nu recunosc HEVC în `.mp4`),
+**AV1** (`libsvtav1` — niciun Mac nu are encoder AV1 hardware, cade
+mereu pe software; pe Windows încearcă `av1_nvenc`/`av1_amf`/`av1_qsv`
+înainte), **Uncompressed** (`v210`, 4:2:2 10-bit).
+
+**B. Detecție GPU Windows** — `gpu_probe.py` (nou): pe Mac întoarce
+mereu `videotoolbox` fără să ruleze nimic (hardware garantat identic pe
+orice Mac); pe Windows rulează `ffmpeg -encoders` o singură dată,
+caută `h264_nvenc`/`h264_amf`/`h264_qsv`, alege automat + selector
+manual în Setări. **WARNING**: NVENC/AMF/QSV nu au putut fi testate
+REAL în acest mediu (fără GPU dedicat) — doar calea VideoToolbox/
+software a fost verificată cu execuție reală de `ffmpeg`; sintaxa
+NVENC/AMF/QSV e cea documentată oficial FFmpeg, de confirmat practic pe
+prima mașină Windows cu placă dedicată disponibilă.
+
+**C. Audio extins** — `AudioMode` (Passthrough/PCM16/PCM24/AAC) +
+`ChannelLayout` (Original/Stereo/5.1), parte din fiecare preset, nu mai
+legat rigid de modul Rewrap/Transcode.
+
+**D. Presets Manager** — `presets_manager.py`/`presets_dialog.py`
+(Windows), `PresetsManager.swift`/`PresetsManagerView.swift` (Mac).
+Persistat `~/Library/Application Support/CGConvertor/presets.json` /
+`%APPDATA%\CGConvertor\presets.json` — **structură de câmpuri IDENTICĂ**
+între platforme (Swift `CodingKeys` mapate explicit la snake_case, ca
+Python) special pentru Import/Export portabil între Mac și Windows.
+7 presetări implicite (`is_builtin`/`isBuiltin` — needitabile direct,
+doar duplicabile). CRUD complet + Import/Export JSON pe ambele UI-uri.
+
+**E. Conformitate ecosistem restantă, găsită la audit** (obligatorie
+indiferent de cerere, nu opțională):
+- **Regula 18 (temă System/Dark/Light)** — CGConvertor NU avea deloc
+  variantă Light pe nicio platformă (comentariu explicit în `theme.py`
+  o declara "retrasă" — invalidat acum). Windows: `theme.get(theme_pref)`
+  + `_rebuild_ui()` (teardown+rebuild complet al ferestrei — Tkinter nu
+  re-aplică retroactiv `bg=`/`font=` pe widget-uri deja create) — aplicat
+  INSTANT, verificat live (fără restart, joburi din coadă păstrate prin
+  `_restore_jobs_into_tree()`). Mac: `Shift` (enum) trecut de la
+  `static let` la `static var` computat din `AppSettings.shared.
+  themePreference` — niciun call-site (`Shift.bg` etc.) nu s-a schimbat.
+- **Regula 24 (Mărime Text)** — Windows: `theme.scaled()` + helper
+  `self._f()`/`self._fm()`, înlocuind TOATE tuplurile de font hardcodate
+  din `main.py` (verificat cu `grep`, zero rămase). Mac:
+  `.dynamicTypeSize(settings.textScale.dynamicTypeSize)` la rădăcina
+  `ContentView` (infrastructură nativă de accesibilitate, nu multiplicator
+  brut).
+- **Regula 12 (Profil/HWID sidebar + Revocare)** — CGConvertor nu avea
+  deloc sidebar; adăugat panou nou (Nume/"Anonim", Machine ID, buton
+  Setări) pe ambele platforme. Revocare: `revocation_check.py` (port
+  1:1 direct din `gdc-production-manager/backend/revocation_check.py` —
+  pur `urllib`/`threading`, portabil fără nicio adaptare structurală) +
+  `RevocationCheck.swift` (port din `gdc-plugin-manager-catalog-vendor`,
+  adaptat la `ObservableObject`/`@Published` pentru reactivitate live în
+  SwiftUI — banner-ul de licență reacționează instant, nu doar la
+  următoarea lansare).
+- **Regula 27 (Preț dinamic)** — Mac avea deja `PricingChecker.swift`
+  COMPLET cablat (verificat direct în `ActivationSheet.swift` — audit-ul
+  inițial din plan îl subestimase ca "parțial"). Windows nu avea nimic:
+  `pricing_checker.py` (port 1:1 din `gdc-production-manager`) +
+  `activation.py` actualizat (fetch de fundal, `donation_note`/
+  `promo_line` cu `{price}` dinamic, fallback pe 23 € dacă offline).
+  `pricing.json` (`gdc-plugin-manager-catalog-vendor`) avea deja o
+  intrare `cgconvertor` — nimic de adăugat acolo.
+
+**F. Coadă & UX** — Pauză/Reluare (job curent termină natural, doar
+pornirea următorului se oprește) + Stop total (termină și joburile
+active). Procesare paralelă: Windows `concurrent.futures.
+ThreadPoolExecutor`; Mac un model "pull" cu N sloturi concurente
+(`ConvertorViewModel.pornesteCoada`) — **bug real prins la verificare
+proprie**: joburile încă "în așteptare" la momentul unui Stop, dacă
+niciun slot nu ajunsese la ele, rămâneau vesnic "în așteptare" în loc să
+închidă coada — reparat prin marcare explicită `.anulat` în
+`opresteCoada()`. Reordonare (meniu contextual Mac, submeniu click-dreapta
+Windows) — dezactivată cât timp coada rulează. Notificare nativă la
+finalul întregii cozi (Mac: `osascript display notification`; Windows:
+fără dependință nouă — toast Tkinter auto-distrus, fallback fără
+`win10toast`/alte pachete neverificate).
+
+**Verificare reală efectuată** (nu presupusă):
+- Toate cele 6 presetări implicite + regresia Rewrap/ProRes rulate cu
+  execuție REALĂ de `ffmpeg` (binarul static din acest repo) pe un clip
+  sintetic (`testsrc2`+`sine`, generat cu același `ffmpeg`) — verificat
+  cu `ffprobe` că fiecare rezultat are exact codec/profil/pix_fmt/audio
+  așteptat.
+- Coadă paralelă (Windows, `max_parallel_jobs=2`) rulată REAL într-un
+  `mainloop()` Tkinter autentic (nu `update()` manual — reproduce exact
+  bug-ul istoric deja documentat "main thread is not in main loop" dacă
+  greșit) — 2 joburi simultane, ambele finalizate corect, fișiere pe disc
+  cu dimensiunea așteptată.
+- Stop mid-conversie (Windows) — proces `ffmpeg` AV1 software (lent,
+  garantat activ) terminat efectiv prin `.terminate()`, confirmat cu
+  `ps aux` (proces dispărut complet în ~3s — normal pentru un encoder
+  multi-thread greu, nu un bug).
+- Live theme+font-scale switch (Windows) — `_rebuild_ui()` verificat cu
+  o coadă activă în memorie: paleta + mărimea de font se schimbă
+  instant, joburile din listă rămân intacte.
+- Build Mac REAL: `xcodebuild ... build` → **BUILD SUCCEEDED** (după 2
+  fix-uri de compilator găsite abia la build: `import Combine` lipsă în
+  `AppSettings.swift`/`RevocationCheck.swift`; ordine de inițializare
+  într-un `init()` de clasă cu proprietăți `@Published` interdependente).
+  Aplicația lansată REAL (`open CGConvertor.app`), a rulat stabil 6
+  secunde, închisă curat prin comanda standard Quit (UI complet
+  responsive, nu blocat).
+- Lint: `pyflakes` (venv izolat, fără a atinge Python-ul de sistem) —
+  zero erori pe toate fișierele noi/modificate.
+- Import/Export presets verificat cu roundtrip real (Python: salvare pe
+  disc + reîncărcare; nu s-a putut testa cross-platform Mac→Windows
+  literal în acest mediu, dar structura JSON e identică prin design —
+  `CodingKeys` Swift ↔ câmpuri Python verificate manual, nume cu nume).
+
+**Găsit, dar explicit NEATINS (scop, nu omisiune)**: fallback-ul din
+`main.py._start_self_update` (Windows) — dacă Self-Updater-ul însuși
+eșuează, deschide `webbrowser.open(update_checker.RELEASES_PAGE_URL)`
+(pagina GitHub Releases) — încalcă Regula 20 ("clientul niciodată nu
+trebuie să vadă GitHub"), dar preexistent acestei sesiuni și în afara
+scopului Faza 1 aprobat. Semnalat separat, nu inclus tacit în acest
+commit.
+
+**Rămas explicit pentru Fazele următoare** (NU implementat acum, spus
+clar, nu ascuns): Offload/Checksum (card→destinație, MD5/SHA-1/xxHash),
+Watch Folders, inspecție/metadata profundă + thumbnail cu LUT static,
+rapoarte HTML/PDF per lot, player LUT/LOG real-time (Metal/Media
+Foundation).

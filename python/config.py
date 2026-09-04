@@ -8,7 +8,7 @@ from pathlib import Path
 # actualizare de versiune (build-windows.spec / build-mac.spec citesc tot
 # de-aici, prin --version, la fiecare tag nou) — actualizeaza aici la
 # fiecare "git tag vX.Y.Z", sincron cu MARKETING_VERSION din varianta Swift.
-APP_VERSION = "2.2.1"
+APP_VERSION = "3.0.0"
 
 def _config_dir():
     """Folder de configurare specific platformei."""
@@ -21,14 +21,25 @@ def _config_dir():
     base.mkdir(parents=True, exist_ok=True)
     return base
 
+def config_dir():
+    """Alias public al `_config_dir()` — folosit de alte module
+    (presets_manager.py) care au nevoie de acelasi folder de configurare,
+    fara sa importe o functie cu nume "privat" peste granita de modul."""
+    return _config_dir()
+
 CONFIG_PATH = _config_dir() / "settings.json"
 
 DEFAULTS = {
     "language": "ro",
     "dark_mode": True,
+    "theme_pref": "system",       # "system" / "dark" / "light" — Regula 18
+    "font_scale": "normal",       # "small" / "normal" / "large" / "xlarge" — Regula 24
+    "gpu_vendor_override": "",    # "" = automat (gpu_probe.detect()), altfel un id din gpu_probe
+    "max_parallel_jobs": 1,
     "last_destination": "",
-    "last_mode": "rewrap",
-    "last_codec": "ProRes 422 HQ",
+    "last_preset_id": "builtin_rewrap",
+    "user_name": "",
+    "user_email": "",
 }
 
 def load():

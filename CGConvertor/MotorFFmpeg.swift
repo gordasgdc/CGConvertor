@@ -143,22 +143,35 @@ final class MotorFFmpeg {
         return nil
     }
 
-    /// Construieste argumentele FFmpeg in functie de modul de conversie ales
-    static func construiesteArgumente(job: VideoJob, mod: ModConversie, codec: CodecOutput, destinatie: URL) -> [String] {
+    /// Extensia de container pentru un preset (Faza 1 v3.0.0) — "mov"
+    /// pentru Rewrap, altfel containerul definit in FormatRegistry.
+    static func extensieContainer(pentru preset: OutputPreset) -> String {
+        if preset.profileID == FormatRegistry.rewrapProfileID { return "mov" }
+        return FormatRegistry.profile(id: preset.profileID)?.container ?? "mov"
+    }
+
+    /// Construieste argumentele FFmpeg pentru un preset (Presets Manager,
+    /// Faza 1 v3.0.0) — inlocuieste vechiul cuplu `mod`/`codec`.
+    static func construiesteArgumente(job: VideoJob, preset: OutputPreset, destinatie: URL) -> [String] {
         var args: [String] = ["-y", "-i", job.urlSursa.path]
 
-        switch mod {
-        case .rewrap:
-            // Doar schimbare container, fara re-encode — foarte rapid
+        if preset.profileID == FormatRegistry.rewrapProfileID {
+            // Rewrap: doar schimbare container, fara re-encode — foarte rapid
             // -c copy pastreaza automat audio in bit depth-ul original (16/24/32 bit, PCM sau orice)
             args += ["-c", "copy"]
-        case .transcode:
-            // Re-encode complet folosind codecul ales pentru video
-            args += codec.ffmpegArgs
-            // Audio: copiat 1:1, fara re-encode — pastreaza exact bit depth-ul sursei (16/24/32-bit float etc.)
-            args += ["-c:a", "copy"]
+        } else if let profil = FormatRegistry.profile(id: preset.profileID) {
+            // Re-encode complet folosind profilul ales pentru video
+            args += profil.ffmpegArgs
+            // Audio: dupa AudioMode-ul presetului (Passthrough implicit —
+            // pastreaza exact bit depth-ul sursei; presetele de livrare
+            // web re-codeaza explicit in AAC, cu layout de canale ales).
+            args += preset.audioMode.ffmpegArgs
+            if preset.audioMode != .passthrough {
+                args += preset.channelLayout.ffmpegArgs
+            }
             // Track-ul de Timecode QuickTime e un "data stream" — trebuie copiat explicit, altfel se pierde la transcode
             args += ["-c:d", "copy"]
+            args += profil.extraMuxArgs
         }
 
         // Pastreaza timecode-ul original (track-ul QuickTime TC din container)
@@ -179,8 +192,7 @@ final class MotorFFmpeg {
     @discardableResult
     static func ruleazaConversie(
         job: VideoJob,
-        mod: ModConversie,
-        codec: CodecOutput,
+        preset: OutputPreset,
         destinatie: URL,
         progresCallback: @escaping (Double) -> Void,
         finalizareCallback: @escaping (Result<Void, Error>) -> Void
@@ -200,7 +212,7 @@ final class MotorFFmpeg {
         // Pasul 1: transcode / rewrap principal
         let proces = Process()
         proces.executableURL = URL(fileURLWithPath: ffmpegPath)
-        proces.arguments = construiesteArgumente(job: job, mod: mod, codec: codec, destinatie: destinatie)
+        proces.arguments = construiesteArgumente(job: job, preset: preset, destinatie: destinatie)
 
         let pipeEroare = Pipe()
         proces.standardError = pipeEroare

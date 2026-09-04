@@ -6,6 +6,8 @@ import re
 import threading
 
 import dependency_manager
+import format_registry
+import presets_manager
 
 def get_ffmpeg_path():
     """Returneaza calea catre ffmpeg — vezi dependency_manager.find_ffmpeg()
@@ -17,22 +19,6 @@ def get_ffmpeg_path():
 
 def get_ffprobe_path():
     return dependency_manager.find_ffprobe() or "ffprobe"
-
-# Codecuri: fiecare valoare e o LISTA de argumente, niciodata un string cu mai multe flag-uri
-# (bug-ul din varianta initiala trimitea "prores_ks -profile:v 3" ca UN singur argument catre FFmpeg)
-CODEC_ARGS = {
-    "ProRes 422":      ["-c:v", "prores_ks", "-profile:v", "2", "-pix_fmt", "yuv422p10le"],
-    "ProRes 422 HQ":   ["-c:v", "prores_ks", "-profile:v", "3", "-pix_fmt", "yuv422p10le"],
-    "ProRes 422 LT":   ["-c:v", "prores_ks", "-profile:v", "1", "-pix_fmt", "yuv422p10le"],
-    "ProRes 4444":     ["-c:v", "prores_ks", "-profile:v", "4", "-pix_fmt", "yuva444p10le"],
-    "DNxHD":           ["-c:v", "dnxhd", "-profile:v", "dnxhd", "-b:v", "36M", "-pix_fmt", "yuv422p"],
-    "DNxHR HQ":        ["-c:v", "dnxhd", "-profile:v", "dnxhr_hq", "-qscale:v", "1", "-pix_fmt", "yuv422p"],
-}
-
-CODEC_EXTENSION = {
-    "DNxHD": "mxf",
-    "DNxHR HQ": "mxf",
-}
 
 TIME_RE = re.compile(r"time=(\d+):(\d+):(\d+)\.(\d+)")
 
@@ -53,10 +39,10 @@ class Converter:
     def stop(self):
         self._stop_requested = True
 
-    def output_extension(self, mode, codec):
-        if mode == "rewrap":
+    def output_extension(self, preset: presets_manager.OutputPreset) -> str:
+        if preset.profile_id == presets_manager.REWRAP_PROFILE_ID:
             return "mov"
-        return CODEC_EXTENSION.get(codec, "mov")
+        return format_registry.container_for(preset.profile_id)
 
     def get_duration(self, input_path):
         try:
@@ -69,26 +55,33 @@ class Converter:
         except (subprocess.CalledProcessError, ValueError, FileNotFoundError):
             return 0.0
 
-    def convert(self, input_path, output_path, mode, codec, progress_callback=None):
+    def convert(self, input_path, output_path, preset: presets_manager.OutputPreset,
+                gpu_override: str = None, progress_callback=None):
         """
-        Converteste un fisier. Ruleaza SINCRON — apelantul trebuie sa-l porneasca
-        intr-un thread separat ca sa nu blocheze interfata Tkinter.
+        Converteste un fisier dupa `preset` (format_registry.py +
+        presets_manager.py — inlocuieste vechiul cuplu mode/codec).
+        `gpu_override`: id de vanzator (gpu_probe.GPU_*) ales explicit din
+        Setari, sau None pentru detectia automata (gpu_probe.detect()).
+        Ruleaza SINCRON — apelantul trebuie sa-l porneasca intr-un thread
+        separat ca sa nu blocheze interfata Tkinter.
         Returneaza {"success": bool, "error": str|None}.
         """
         self._stop_requested = False
         duration = self.get_duration(input_path)
 
         args = [self.ffmpeg_path, "-y", "-i", input_path]
-        if mode == "rewrap":
+        if preset.profile_id == presets_manager.REWRAP_PROFILE_ID:
+            # Rewrap: doar schimbare container, fara re-encode — copiaza
+            # TOATE stream-urile (video+audio+date) 1:1, exact ca inainte.
             args += ["-c", "copy"]
         else:
-            args += CODEC_ARGS.get(codec, CODEC_ARGS["ProRes 422 HQ"])
-            # FIX (aliniere cu varianta Swift, MotorFFmpeg.swift): "-c:a copy"
-            # pastreaza exact bit depth-ul original al sursei (16/24/32-bit
-            # PCM sau orice alt codec audio) — fortarea la "pcm_s16le" (cum
-            # facea acest fisier inainte) DEGRADEAZA silentios orice sursa
-            # cu audio pe mai mult de 16 biti, fara niciun avertisment.
-            args += ["-c:a", "copy"]
+            args += format_registry.video_args_for(preset.profile_id, gpu_override)
+            # FIX istoric (aliniere cu varianta Swift, MotorFFmpeg.swift):
+            # audio-ul urmeaza AudioMode-ul presetului — Passthrough
+            # ("-c:a copy") pastreaza exact bit depth-ul original al
+            # sursei; presetele de livrare web re-codeaza explicit in
+            # AAC, cu layout de canale ales (vezi presets_manager.py).
+            args += presets_manager.audio_ffmpeg_args(preset.audio_mode, preset.channel_layout)
         args += ["-map_metadata", "0", "-map", "0", "-ignore_unknown", output_path]
 
         try:
