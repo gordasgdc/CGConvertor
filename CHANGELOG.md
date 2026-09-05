@@ -2,6 +2,13 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.0 — Selectează tot / Deselectează tot (Mac + Windows, 2026-09-05)
+
+Butoane noi lângă „Golește lista"/„Generează raport" — selectează sau
+deselectează dintr-un click toate fișierele din coadă (util pentru
+comparația de metadate sau conversia parțială pe selecție, adăugate în
+v3.7.0/v3.13.2).
+
 ### v3.13.2 — 2 fix-uri reale: presetarea editată nu devenea activă + Start ignora selecția (Mac + Windows, 2026-09-05)
 
 - Editarea/duplicarea unei presetări (ex. setarea unui fps diferit) o face

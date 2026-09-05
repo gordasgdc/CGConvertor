@@ -429,6 +429,15 @@ class CGConvertorApp(BASE_CLASS):
         self.report_btn = ttk.Button(bottom_bar, command=self._generate_report,
                                       style="Ghost.TButton", cursor="hand2")
         self.report_btn.pack(side="left", padx=(6, 0))
+        # Cerute explicit de Cristi (2026-09-05, identic cu Mac) - fara
+        # ele, selectarea individuala (Ctrl/Shift+click) pentru comparatie/
+        # conversie-partiala e greoaie la o coada lunga.
+        self.select_all_btn = ttk.Button(bottom_bar, command=self._select_all_jobs,
+                                          style="Ghost.TButton", cursor="hand2")
+        self.select_all_btn.pack(side="left", padx=(6, 0))
+        self.select_none_btn = ttk.Button(bottom_bar, command=self._select_no_jobs,
+                                           style="Ghost.TButton", cursor="hand2")
+        self.select_none_btn.pack(side="left", padx=(6, 0))
         self.add_more_btn = ttk.Button(bottom_bar, command=self._choose_files,
                                         style="Ghost.TButton", cursor="hand2")
         self.add_more_btn.pack(side="right")
@@ -488,6 +497,8 @@ class CGConvertorApp(BASE_CLASS):
         self.choose_files_btn.config(text=t(lang, "choose_files"))
         self.clear_btn.config(text=t(lang, "clear_list"))
         self.report_btn.config(text=t(lang, "generate_report"))
+        self.select_all_btn.config(text=t(lang, "queue_select_all"))
+        self.select_none_btn.config(text=t(lang, "queue_select_none"))
         self.add_more_btn.config(text=t(lang, "add_files"))
         self.shortcuts_label.config(text=t(lang, "shortcuts_hint"))
         self._refresh_profile_labels()
@@ -777,6 +788,12 @@ class CGConvertorApp(BASE_CLASS):
         self.choose_files_btn.pack()
 
     # ── Coada de conversie (pauza/reluare + procesare paralela, Faza 1 F) ──
+
+    def _select_all_jobs(self):
+        self.tree.selection_set(self.tree.get_children())
+
+    def _select_no_jobs(self):
+        self.tree.selection_remove(self.tree.selection())
 
     def _on_tree_selection_changed(self, event):
         # Etichetare butonul Start ca sa fie clar CE va converti (identic

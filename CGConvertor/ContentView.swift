@@ -449,6 +449,23 @@ struct ContentView: View {
                         }
                         .buttonStyle(ShiftGhostButtonStyle())
                     }
+                    // Cerute explicit de Cristi (2026-09-05) - fara ele,
+                    // bifarea individuala a fiecarui fisier pentru
+                    // comparatie/conversie-partiala e greoaie la o coada
+                    // lunga. Vizibile doar cand au sens (nu la coada goala/
+                    // deja in starea respectiva).
+                    if !vm.joburi.isEmpty && selectedJobIDs.count < vm.joburi.count {
+                        Button(L.t("queue.selectAll")) {
+                            selectedJobIDs = Set(vm.joburi.map { $0.id })
+                        }
+                        .buttonStyle(ShiftGhostButtonStyle())
+                    }
+                    if !selectedJobIDs.isEmpty {
+                        Button(L.t("queue.selectNone")) {
+                            selectedJobIDs.removeAll()
+                        }
+                        .buttonStyle(ShiftGhostButtonStyle())
+                    }
                     Spacer()
                     Button { deschideSelectorFisiere() } label: {
                         Label(L.t("queue.addFiles"), systemImage: "plus")

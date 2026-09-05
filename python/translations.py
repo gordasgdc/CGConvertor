@@ -210,6 +210,8 @@ TRANSLATIONS = {
         "offload_error_log": "Eroare la {f}: {e}",
         "offload_ram_wait_log": "Memoria a depășit plafonul — aștept să scadă…",
 
+        "queue_select_all": "Selectează tot",
+        "queue_select_none": "Deselectează tot",
         "watch_folders_title": "Foldere urmărite",
         "watch_existing_title": "Fișiere deja existente în acest folder",
         "watch_existing_subtitle": "{n} fișiere găsite. Alege ce vrei să adaugi acum în coadă — restul rămâne ignorat (nu se adaugă automat mai târziu).",
@@ -448,6 +450,8 @@ TRANSLATIONS = {
         "offload_error_log": "Error on {f}: {e}",
         "offload_ram_wait_log": "Memory exceeded the ceiling — waiting for it to drop…",
 
+        "queue_select_all": "Select all",
+        "queue_select_none": "Select none",
         "watch_folders_title": "Watch Folders",
         "watch_existing_title": "Files already in this folder",
         "watch_existing_subtitle": "{n} files found. Choose what to add to the queue now — the rest stays ignored (won't be auto-added later).",
@@ -686,6 +690,8 @@ TRANSLATIONS = {
         "offload_error_log": "Error en {f}: {e}",
         "offload_ram_wait_log": "La memoria superó el límite — esperando a que baje…",
 
+        "queue_select_all": "Seleccionar todo",
+        "queue_select_none": "Deseleccionar todo",
         "watch_folders_title": "Carpetas vigiladas",
         "watch_existing_title": "Archivos ya presentes en esta carpeta",
         "watch_existing_subtitle": "{n} archivos encontrados. Elige qué añadir ahora a la cola — el resto queda ignorado (no se añadirá automáticamente después).",

@@ -2328,6 +2328,26 @@ selectate)” când se aplică.
 Versiune 3.13.1 → 3.13.2 (PATCH — 2 fix-uri reale izolate, Mac + Windows,
 Regula 14).
 
+## v3.14.0 (2026-09-05) — Selectează tot / Deselectează tot
+
+Cerut explicit de Cristi ("nici nu apare opțiunea de a selecta tot sau
+deselecta tot"), imediat după ce a descoperit fluxul de comparație
+metadate/conversie-parțială pe selecție (v3.7.0/v3.13.2) — bifarea
+individuală per fișier era greoaie la o coadă lungă. Butoane noi lângă
+„Golește lista"/„Generează raport" (Mac: `selectedJobIDs = Set(...)`/
+`.removeAll()`; Windows: `tree.selection_set(get_children())`/
+`selection_remove(selection())`, reutilizând selecția nativă Treeview).
+
+**Verificat**: Windows — test GUI complet, `app.mainloop()` real, cod de
+producție — 3 fișiere, "Selectează tot" → 3 selectate + eticheta Start
+arată corect "(3 selectate)"; "Deselectează tot" → 0 selectate, eticheta
+revine la normal. `xcodebuild -configuration Debug` — BUILD SUCCEEDED,
+instalat real (`/Applications`, versiune confirmată `PlistBuddy`).
+`pyflakes` — 0 erori.
+
+Versiune 3.13.2 → 3.14.0 (MINOR — funcționalitate nouă vizibilă, Mac +
+Windows, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în

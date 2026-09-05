@@ -144,6 +144,8 @@ enum L {
         "queue.empty.or": [.ro: "sau", .en: "or", .es: "o"],
         "queue.chooseFiles": [.ro: "Alege fișiere…", .en: "Choose files…", .es: "Elegir archivos…"],
         "queue.clear": [.ro: "Golește lista", .en: "Clear list", .es: "Vaciar lista"],
+        "queue.selectAll": [.ro: "Selectează tot", .en: "Select all", .es: "Seleccionar todo"],
+        "queue.selectNone": [.ro: "Deselectează tot", .en: "Select none", .es: "Deseleccionar todo"],
         "queue.addFiles": [.ro: "Adaugă fișiere…", .en: "Add files…", .es: "Añadir archivos…"],
         "queue.report": [.ro: "Generează raport", .en: "Generate report", .es: "Generar informe"],
         "queue.status.waiting": [.ro: "În așteptare", .en: "Waiting", .es: "En espera"],
