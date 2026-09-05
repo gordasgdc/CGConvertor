@@ -1873,6 +1873,58 @@ istoric sunt exclusiv text citat în acest CLAUDE.md (documentând regula
 
 Versiune 3.7.0 → 3.7.1 (PATCH — fix izolat, Regula 14).
 
+## v3.8.0 (2026-09-05) — Tabel comparativ de metadate pe Windows (paritate Mac v3.7.0)
+
+Port 1:1 al `MetadataCompare.swift`/`MetadataCompareSheet.swift` (Mac):
+`python/metadata_compare.py` (nou) — `categories_for(path)`, unifică
+`media_inspector.probe()` + `sony_metadata.read()` + `image_metadata.
+read_exif()`/`read_id3()` într-un singur set ordonat de categorii (Fișier/
+General/Video/Audio/Imagine EXIF/Audio ID3/Setări captură rtmd/Profil
+Cameră Sony XML) — identic ca ordine cu Mac. `sony_metadata.py`/
+`image_metadata.py` existau deja din sesiunea anterioară de metadata
+(neterminată atunci) — nu s-a scris cod nou pentru Sony/EXIF/ID3 în sine,
+doar motorul de unificare + UI-ul, care lipseau efectiv.
+
+`python/metadata_compare_view.py` (nou) — `MetadataCompareDialog`
+(`tk.Toplevel`), spre deosebire de Mac (grid SwiftUI construit manual):
+aici un `ttk.Treeview` cu coloane dinamice (o coloană per fișier selectat)
+— tiparul nativ Tkinter pentru tabele, mai simplu decât un grid manual pe
+acest toolkit, dar echivalent funcțional complet (evidențiere rânduri
+diferite cu tag portocaliu, ascundere rânduri identice, căutare live,
+export CSV). Analiza rulează pe un thread de fundal (`threading.Thread`),
+UI-ul se construiește abia după ce se termină (`self.after(0, ...)`,
+tiparul deja stabilit în restul aplicației).
+
+`main.py._on_tree_right_click`: `ttk.Treeview` are deja `selectmode`
+implicit "extended" (multi-select cu Ctrl/Shift+click) — bug de UX
+evitat explicit: varianta veche apela necondiționat `selection_set
+(item_id)`, care ar fi distrus orice selecție multiplă anterioară la
+primul click-dreapta. Fix: `selection_set` se aplică DOAR dacă rândul
+apăsat nu era deja parte din selecția curentă — restul meniului (deschide
+fișier/preview/reordonare) rămâne condiționat la o selecție de UN singur
+rând, noua intrare „Compară metadatele (N)” apare doar la 2+.
+
+**Verificare reală, nu presupusă** (venv izolat, `pip install -r
+requirements.txt`, fără să atingă Python-ul de sistem):
+- `metadata_compare.categories_for()` rulat direct pe un clip sintetic
+  real (`ffmpeg testsrc2`+`sine`, H.264/AAC) — categorii Fișier/General/
+  Video/Audio extrase corect; pe un MP3 sintetic cu tag-uri ID3 reale
+  (`-metadata title=...`) — categoria „Audio (tag ID3)” extrasă corect.
+- **Test GUI complet, `app.mainloop()` real** (`CGConvertorApp` din codul
+  de producție, nu o simulare): `_open_metadata_compare` apelat cu cele 2
+  fișiere sintetice de mai sus — dialogul se deschide, tabelul are toate
+  rândurile așteptate (20), export CSV verificat cu conținutul CSV citit
+  înapoi de pe disc (rânduri diferite între video/audio prezente corect,
+  câmpuri comune — ex. „Canale”, identice — prezente o singură dată).
+- Filtrele testate separat, tot cu `mainloop()` real: „Ascunde identice”
+  reduce corect numărul de rânduri (20→18, cele 2 rânduri identice —
+  „Canale”/„Frecvență eșantionare” — dispar); căutarea „codec” lasă vizibile
+  DOAR categoriile Video/Audio + rândul „Codec”, exclude „Titlu”.
+- `pyflakes` (venv izolat) pe toate fișierele noi/modificate — zero erori.
+
+Versiune 3.7.1 → 3.8.0 (MINOR — funcționalitate nouă vizibilă, paritate cu
+Mac, fără schimbare de arhitectură, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în
@@ -1883,11 +1935,8 @@ FĂCUT, vezi v3.7.0, toate mai sus.)
 
 -1. **[REZOLVAT v3.7.1, 2026-09-05]** Bug UX buton de golire Sursă în
    Offload — vezi jurnalul v3.7.1 de mai jos. Mac + Windows.
-0. **Tabel comparativ metadate pe Windows** — motorul Sony/EXIF/ID3 din
-   v3.4.0 (Sesiunea metadata) + UI Tkinter echivalent `MetadataCompareSheet.swift`
-   rămân TODO — Mac le are (v3.7.0), Windows nu încă. De adăugat la
-   următoarea atingere reală a acestui panou (Regula 31, paritate
-   Mac/Windows).
+0. **[REZOLVAT v3.8.0, 2026-09-05]** Tabel comparativ metadate pe Windows —
+   vezi jurnalul v3.8.0 de mai jos.
 1. **Playerul real-time LUT/LOG** — Cristi confirmă din nou interesul
    ("la sfârșit să pregătești să implementăm și playerul") — rămâne un
    proiect separat, mult mai mare (GPU, Metal pe Mac + echivalent

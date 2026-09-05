@@ -967,21 +967,38 @@ class CGConvertorApp(BASE_CLASS):
         item_id = self.tree.identify_row(event.y)
         if not item_id:
             return
-        self.tree.selection_set(item_id)
+        # Pastram selectia multipla existenta daca randul apasat e deja
+        # parte din ea (Ctrl/Shift+click inainte de click-dreapta) - altfel
+        # butonul "Compara metadatele (N)" de mai jos n-ar avea niciodata
+        # sens (selection_set(item_id) ar reduce mereu la un singur rand).
+        current_selection = self.tree.selection()
+        if item_id not in current_selection:
+            self.tree.selection_set(item_id)
+            current_selection = (item_id,)
         menu = tk.Menu(self, tearoff=0)
         job = self._job_for_item(item_id)
         path = self._finished_output_path(job)
-        if path:
+        if len(current_selection) < 2 and path:
             menu.add_command(label=t(self.lang, "job_open_file"), command=lambda: self._open_file(path))
             menu.add_command(label=t(self.lang, "job_show_in_explorer"), command=lambda: self._show_in_explorer(path))
             menu.add_separator()
-        if job and job.get("metadata"):
+        if len(current_selection) < 2 and job and job.get("metadata"):
             menu.add_command(label=t(self.lang, "preview_open"), command=lambda: self._open_preview(job))
             menu.add_separator()
-        if not self.is_running:
+        if len(current_selection) >= 2:
+            selected_jobs = [j for iid in current_selection for j in [self._job_for_item(iid)] if j]
+            menu.add_command(label=t(self.lang, "compare_button", n=len(selected_jobs)),
+                              command=lambda: self._open_metadata_compare(selected_jobs))
+            menu.add_separator()
+        if len(current_selection) < 2 and not self.is_running:
             menu.add_command(label=t(self.lang, "queue_move_up"), command=lambda: self._move_job(item_id, -1))
             menu.add_command(label=t(self.lang, "queue_move_down"), command=lambda: self._move_job(item_id, 1))
         menu.tk_popup(event.x_root, event.y_root)
+
+    def _open_metadata_compare(self, jobs):
+        from metadata_compare_view import MetadataCompareDialog
+        cleaned = [{"path": j["path"], "name": os.path.basename(j["path"])} for j in jobs]
+        MetadataCompareDialog(self, self, cleaned)
 
     def _open_preview(self, job):
         MediaPreviewDialog(self, self, job)

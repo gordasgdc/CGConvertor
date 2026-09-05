@@ -2,6 +2,14 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.8.0 — Tabel comparativ de metadate pe Windows (2026-09-05)
+
+Windows capătă acum tabelul comparativ de metadate (Sony Log/Gamma/EI,
+EXIF/GPS, tag-uri ID3, plus tot ce arăta deja ffprobe) — selectezi 2+
+fișiere din coadă (Ctrl/Shift+click), click-dreapta → „Compară metadatele”,
+cu evidențierea diferențelor, ascunderea rândurilor identice, căutare și
+export CSV. Mac îl avea deja din v3.7.0.
+
 ### v3.7.1 — Fix: buton de golire pentru Sursă în Offload (2026-09-05)
 
 Panoul Offload: câmpul de Sursă are acum un buton "✕" (identic vizual cu

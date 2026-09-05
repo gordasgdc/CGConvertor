@@ -8,7 +8,7 @@ from pathlib import Path
 # actualizare de versiune (build-windows.spec / build-mac.spec citesc tot
 # de-aici, prin --version, la fiecare tag nou) — actualizeaza aici la
 # fiecare "git tag vX.Y.Z", sincron cu MARKETING_VERSION din varianta Swift.
-APP_VERSION = "3.7.1"
+APP_VERSION = "3.8.0"
 
 def _config_dir():
     """Folder de configurare specific platformei."""
