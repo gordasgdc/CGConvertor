@@ -2,6 +2,13 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.7.1 — Fix: buton de golire pentru Sursă în Offload (2026-09-05)
+
+Panoul Offload: câmpul de Sursă are acum un buton "✕" (identic vizual cu
+cel deja existent la Destinații), vizibil doar când o sursă e aleasă —
+înainte, o alegere greșită nu putea fi golită decât navigând în altă
+secțiune sau repornind aplicația. Mac + Windows.
+
 ### v3.7.0 — Offload profesional: MHL, șablon nume, card, profile, istoric + comparație metadate (2026-09-05)
 
 Panoul Offload capătă un flux profesional complet, la nivelul uneltelor de

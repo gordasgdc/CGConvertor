@@ -1860,6 +1860,19 @@ setate corect la path-ul volumului. `xcodebuild -configuration Debug` —
 Versiune 3.5.0 → 3.6.0 (MINOR — funcționalitate nouă vizibilă, fără
 schimbare de arhitectură, Regula 14).
 
+## v3.7.1 (2026-09-05) — Fix: buton de golire Sursă în Offload
+
+Câmpul de Sursă din panoul Offload capătă un buton "✕" identic vizual cu
+cel deja existent la Destinații — vizibil doar când `sourcePath`/
+`self.source_path` nu e gol, resetează sursa (Mac: `sourcePath = nil`;
+Windows: `_clear_source()` → `source_path = None` + `app.offload_source_path
+= None` + refacere `source_label`/`card_info_var`). Regula 32 verificată
+la această atingere: cele 4 apariții de "Co-Authored-By: Claude" rămase în
+istoric sunt exclusiv text citat în acest CLAUDE.md (documentând regula
+însăși), nu atribuiri reale de commit — nimic de curățat.
+
+Versiune 3.7.0 → 3.7.1 (PATCH — fix izolat, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în
@@ -1868,20 +1881,8 @@ metadate (Mac) + flux profesional Offload complet (MHL, reîncercare,
 spațiu liber, șablon nume, card, producție/branding, profile, istoric) —
 FĂCUT, vezi v3.7.0, toate mai sus.)
 
--1. **Bug UX real, raportat de Cristi (2026-09-05, sesiune întreruptă
-   pentru altă sarcină)** — în panoul Offload (`OffloadView.swift`/
-   `offload_view.py`), dacă alegi greșit o Sursă sau adaugi o Destinație
-   greșită, NU există niciun buton clar de ștergere/resetare a alegerii —
-   destinațiile chiar au un "✕" per rând (funcțional), dar SURSA nu are
-   niciun buton de golire (`sourcePath`/`self.source_path` rămâne setat
-   până alegi altceva sau repornești). Cristi a observat asta trebuind să
-   navigheze în față/spate prin meniuri sau să dea refresh ca să "dispară"
-   — semn clar că lipsește un buton explicit. FIX simplu: buton "✕"/
-   "Golește" lângă câmpul de Sursă (Mac: lângă `Text(sourcePath ?? ...)`
-   în `sourceSection`; Windows: lângă `self.source_label` în `_build`),
-   vizibil doar când `sourcePath`/`source_path` nu e nil, setează-l pe nil
-   și golește `app.offload_source_path`. Prioritate: mic, izolat, rapid —
-   de făcut PRIMUL lucru la reluare, înaintea oricărui alt item din listă.
+-1. **[REZOLVAT v3.7.1, 2026-09-05]** Bug UX buton de golire Sursă în
+   Offload — vezi jurnalul v3.7.1 de mai jos. Mac + Windows.
 0. **Tabel comparativ metadate pe Windows** — motorul Sony/EXIF/ID3 din
    v3.4.0 (Sesiunea metadata) + UI Tkinter echivalent `MetadataCompareSheet.swift`
    rămân TODO — Mac le are (v3.7.0), Windows nu încă. De adăugat la

@@ -185,6 +185,21 @@ struct OffloadView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Spacer()
+                    // Bug UX real, raportat de Cristi (2026-09-05): daca
+                    // alegi gresit o Sursa, nu exista niciun buton de
+                    // golire — trebuia sa navighezi in fata/spate sau sa
+                    // repornesti aplicatia. Destinatiile au deja acest
+                    // "✕" per rand; Sursa il capata acum, identic vizual,
+                    // vizibil DOAR cand sourcePath nu e gol.
+                    if sourcePath != nil {
+                        Button {
+                            sourcePath = nil
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Shift.muted)
+                    }
                     Button(L.t("offload.source.choose")) { alegeSursa() }
                         .buttonStyle(.plain)
                         .foregroundStyle(Shift.accent)

@@ -110,6 +110,14 @@ class OffloadPanel(tk.Frame):
         self.source_label.pack(side="left", fill="x", expand=True)
         ttk.Button(row, text=self._t("offload_choose_source"), style="Ghost.TButton",
                    command=self._choose_source, cursor="hand2").pack(side="right")
+        # Bug UX real, raportat de Cristi (2026-09-05): fara buton de
+        # golire a Sursei, trebuia sa navigheze in fata/spate sau sa
+        # reporneasca aplicatia. Identic vizual cu "x"-ul destinatiilor.
+        self.source_clear_btn = tk.Label(row, text="✕", bg=th["bg_panel"], fg=th["fg_faint"],
+                                          cursor="hand2", font=self.app._fm(9))
+        self.source_clear_btn.bind("<Button-1>", lambda e: self._clear_source())
+        if self.source_path:
+            self.source_clear_btn.pack(side="right", padx=(0, 8))
         # Recunoasterea structurii de card (port DataMover) — pur informativ.
         tk.Label(src_frame, textvariable=self.card_info_var, bg=th["bg_panel"], fg=th["accent"],
                  font=self.app._fm(9), anchor="w", wraplength=420, justify="left").pack(fill="x", padx=12)
@@ -314,6 +322,7 @@ class OffloadPanel(tk.Frame):
         self.source_path = path
         self.app.offload_source_path = path
         self.source_label.config(text=path, fg=self.th["fg_dim"])
+        self._refresh_source_clear_btn()
 
     def _use_volume_as_destination(self, path):
         if path not in self.destinations:
@@ -328,6 +337,22 @@ class OffloadPanel(tk.Frame):
             self.app.offload_source_path = path
             self.source_label.config(text=path, fg=self.th["fg_dim"])
             self._update_card_info()
+            self._refresh_source_clear_btn()
+
+    def _clear_source(self):
+        """Bug UX real, raportat de Cristi (2026-09-05) — vezi butonul
+        "x" adaugat langa Sursa in _build."""
+        self.source_path = None
+        self.app.offload_source_path = None
+        self.source_label.config(text=self._t("offload_choose_source"), fg=self.th["fg_faint"])
+        self._update_card_info()
+        self._refresh_source_clear_btn()
+
+    def _refresh_source_clear_btn(self):
+        if self.source_path:
+            self.source_clear_btn.pack(side="right", padx=(0, 8))
+        else:
+            self.source_clear_btn.pack_forget()
 
     def _update_card_info(self):
         """Recunoasterea structurii de card (port DataMover) — pur
@@ -404,6 +429,7 @@ class OffloadPanel(tk.Frame):
             self.app.offload_source_path = self.source_path
             self.source_label.config(text=self.source_path, fg=self.th["fg_dim"])
             self._update_card_info()
+            self._refresh_source_clear_btn()
         self.destinations = list(profile.get("destination_paths", []))
         self.app.offload_destinations = list(self.destinations)
         self._render_destinations()
