@@ -320,6 +320,12 @@ enum L {
         "watchFolders.title": [.ro: "Foldere urmărite", .en: "Watch Folders", .es: "Carpetas vigiladas"],
         "watchFolders.empty": [.ro: "Niciun folder urmărit", .en: "No folder watched", .es: "Ninguna carpeta vigilada"],
         "watchFolders.add": [.ro: "Adaugă folder…", .en: "Add folder…", .es: "Añadir carpeta…"],
+        "watchFolders.existingSheet.title": [.ro: "Fișiere deja existente în acest folder", .en: "Files already in this folder", .es: "Archivos ya presentes en esta carpeta"],
+        "watchFolders.existingSheet.subtitle": [.ro: "%d fișiere găsite. Alege ce vrei să adaugi acum în coadă — restul rămâne ignorat (nu se adaugă automat mai târziu).", .en: "%d files found. Choose what to add to the queue now — the rest stays ignored (won't be auto-added later).", .es: "%d archivos encontrados. Elige qué añadir ahora a la cola — el resto queda ignorado (no se añadirá automáticamente después)."],
+        "watchFolders.existingSheet.selectAll": [.ro: "Selectează tot", .en: "Select all", .es: "Seleccionar todo"],
+        "watchFolders.existingSheet.selectNone": [.ro: "Deselectează tot", .en: "Select none", .es: "Deseleccionar todo"],
+        "watchFolders.existingSheet.cancel": [.ro: "Anulează", .en: "Cancel", .es: "Cancelar"],
+        "watchFolders.existingSheet.add": [.ro: "Adaugă (%d)", .en: "Add (%d)", .es: "Añadir (%d)"],
 
         // MARK: - Preview interactiv (Faza 2, versiune redusă a playerului LUT/LOG)
 

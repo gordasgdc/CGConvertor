@@ -651,6 +651,22 @@ class CGConvertorApp(BASE_CLASS):
         if folder:
             self.watch_folder_manager.add_folder(folder)
             self._render_watch_folders()
+            # Feedback direct de la Cristi (2026-09-05): fara acest pas,
+            # indicarea unui folder cu clipuri deja existente nu facea
+            # nimic (baseline ignora tot ce exista deja) - userul ar fi
+            # trebuit sa copieze/mute fisierele ca sa "para noi", exact
+            # duplicarea nedorita. Dialogul arata explicit lista, cu
+            # Selecteaza tot/Deselecteaza tot (cerute explicit).
+            existing = self.watch_folder_manager.list_existing_files(folder)
+            if existing:
+                from watch_folder_existing_dialog import WatchFolderExistingDialog
+
+                def on_decide(selected):
+                    self.watch_folder_manager.mark_baseline_known(folder, existing)
+                    if selected:
+                        self._add_files(selected)
+
+                WatchFolderExistingDialog(self, self, existing, on_decide)
 
     def _render_watch_folders(self):
         th = self.th

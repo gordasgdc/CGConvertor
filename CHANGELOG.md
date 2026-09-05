@@ -2,6 +2,15 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.13.0 — Fix real: Watch Folders ignora fișierele deja existente (Mac + Windows, 2026-09-05)
+
+Raportat direct: indicarea unui folder cu clipuri deja existente nu adăuga
+nimic în coadă (doar fișierele apărute DUPĂ pornirea urmăririi erau
+detectate) — obligând la copierea/mutarea fișierelor doar ca să "pară
+noi". Acum, la adăugarea unui folder, apare o listă cu tot ce găsește deja
+acolo, cu „Selectează tot"/„Deselectează tot" — alegi liber ce intră acum
+în coadă, fără nicio copiere.
+
 ### v3.12.0 — Player real-time cu LUT live, Windows (2026-09-05)
 
 Windows capătă acum playerul real-time cu LUT live (Mac îl avea din

@@ -65,6 +65,33 @@ final class WatchFolderManager: ObservableObject {
         folders.append(WatchedFolder(path: path))
     }
 
+    /// Listează (READ-ONLY, fără efecte secundare) fișierele deja
+    /// existente într-un folder proaspăt adăugat — apelată la adăugare,
+    /// ca userul să aleagă CE anume vrea să adauge acum în coadă
+    /// (2026-09-05, feedback direct de la Cristi: fără asta, indicarea
+    /// unui folder care deja conține clipurile lui nu făcea NIMIC —
+    /// baseline-ul ignoră deliberat tot ce exista deja, ca să nu arunce
+    /// orice folder ales în coadă. Cristi ar fi trebuit să copieze/mute
+    /// fișierele ca să "pară noi" — exact duplicarea pe care n-o vrea).
+    func listExistingFiles(forPath path: String) -> [URL] {
+        let fm = FileManager.default
+        guard let entries = try? fm.contentsOfDirectory(atPath: path) else { return [] }
+        return entries
+            .filter { watchFolderExtensions.contains(($0 as NSString).pathExtension.lowercased()) }
+            .map { URL(fileURLWithPath: (path as NSString).appendingPathComponent($0)) }
+    }
+
+    /// Marchează TOATE fișierele deja existente (indiferent ce a ales
+    /// userul să adauge acum) ca "cunoscute" — apelată o singură dată,
+    /// după ce userul a răspuns la sheet-ul de selecție (adaugă unele,
+    /// toate, sau anulează), ca scanarea periodică să nu le mai
+    /// re-detecteze ca fiind "noi".
+    func markBaselineKnown(forPath path: String, files: [URL]) {
+        guard let folder = folders.first(where: { $0.path == path }) else { return }
+        knownPaths.formUnion(files.map { $0.path })
+        baselineDone.insert(folder.id)
+    }
+
     func removeFolder(_ folder: WatchedFolder) {
         folders.removeAll { $0.id == folder.id }
         baselineDone.remove(folder.id)

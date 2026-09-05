@@ -2173,6 +2173,65 @@ verifica de pe Mac, spuse explicit, nu ascunse):
 Versiune 3.11.0 → 3.12.0 (MINOR — funcționalitate nouă vizibilă, paritate
 cu Mac deși arhitectural diferită, Regula 14).
 
+## v3.13.0 (2026-09-05) — Fix real: Watch Folders ignora fișierele deja existente
+
+**Raportat direct de Cristi**: "nu-mi place că în Watch Folder înseamnă
+că duplic încă o dată fișierele... mă obligă să le pun în acel folder
+watch". Cauza reală, confirmată în cod: `WatchFolderManager.scanAll()`/
+`_scan_all()` stabilesc un "baseline" la prima trecere pe un folder nou —
+TOATE fișierele deja existente sunt marcate "cunoscute" FĂRĂ să fie
+adăugate în coadă (decizie originală corectă: altfel orice folder ales
+ar arunca tot conținutul lui în coadă). Efect secundar neintenționat: dacă
+userul indică exact folderul unde clipurile lui deja există (cazul comun,
+nu unul artificial), Watch Folders nu face NIMIC pentru ele — userul ar
+trebui să le copieze/mute în altă parte doar ca să "pară noi", exact
+duplicarea pe care o respinge.
+
+**Fix, ambele platforme** — la adăugarea unui folder, dacă are deja
+fișiere video, apare un dialog cu lista completă + „Selectează tot"/
+„Deselectează tot" (cerute explicit de Cristi, în loc de un simplu Da/Nu)
+— userul alege liber ce intră ACUM în coadă, restul rămâne ignorat (nu
+se adaugă automat mai târziu, comportament neschimbat pentru cazul "nu
+vreau nimic din ce e deja acolo").
+
+- **`WatchFolders.swift`**: `listExistingFiles(forPath:)` (READ-ONLY, fără
+  efecte secundare) + `markBaselineKnown(forPath:files:)` (marchează
+  TOATE fișierele găsite ca știute, indiferent de selecție — separă
+  "ce afișez" de "ce am adăugat efectiv").
+- **`WatchFolderExistingFilesSheet.swift`** (nou) — listă cu checkbox-uri,
+  butoane Selectează tot/Deselectează tot, implicit toate selectate
+  (cazul comun: "da, adaugă tot").
+- **`watch_folders.py`**: `list_existing_files(path)` +
+  `mark_baseline_known(path, files)`, identic ca separare.
+- **`watch_folder_existing_dialog.py`** (nou) — `tk.Toplevel` cu
+  `Canvas`+`Scrollbar` (listă potențial lungă), aceleași două butoane.
+
+**BUG REAL GĂSIT LA TESTARE GUI, reparat înainte de commit**: butonul
+"Adaugă (N)" nu se dezactiva la 0 fișiere selectate — investigat, cauza
+era în TESTUL meu (`cget("state")` pe un `ttk.Button` întoarce un obiect
+special de tip index pe această versiune de Python/Tkinter, nu un `str`
+simplu — comparația `== "disabled"` eșua mereu, indiferent de starea
+reală). Cod de producție confirmat corect după fix-ul testului
+(`str(cget("state")) == "disabled"`) — `_select_all`/`_select_none`
+actualizează explicit eticheta/starea butonului, nu se bazează doar pe
+`trace_add` (mai robust, mai puțin "magic").
+
+**Verificare reală, nu presupusă**:
+- Mac: test standalone (`swiftc`, cod real `WatchFolders.swift`) — 2
+  fișiere existente listate corect, marcate ca știute, scanarea periodică
+  REALĂ (timer 2s, `RunLoop.main.run`) NU le readaugă, dar detectează
+  corect un al treilea fișier creat DUPĂ marcare, o singură dată.
+- Windows: `list_existing_files`/`mark_baseline_known` (cod real, nu
+  reimplementare) — identic verificat, plus test GUI complet
+  (`app.mainloop()` real): dialogul deschis cu 3 fișiere, Deselectează
+  tot → Selectează tot → deselectare individuală a unui fișier → Adaugă
+  → `on_decide` primește exact cele 2 fișiere rămase selectate.
+- `xcodebuild -configuration Debug` — BUILD SUCCEEDED, 0 erori.
+- `pyflakes` (venv izolat) — 0 erori.
+
+Versiune 3.12.0 → 3.13.0 (MINOR — fix de comportament cu impact vizibil,
+nu doar un patch izolat, Mac + Windows, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în

@@ -19,6 +19,9 @@ struct ContentView: View {
     @State private var mainMode: MainMode = .convert
     @State private var selectedJobIDs: Set<UUID> = []
     @State private var showCompare = false
+    @State private var showWatchFolderExistingSheet = false
+    @State private var pendingWatchFolderPath = ""
+    @State private var pendingWatchFolderFiles: [URL] = []
 
     enum MainMode: String, CaseIterable, Identifiable {
         case convert, offload
@@ -79,6 +82,12 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showSettingsSheet) {
             SettingsSheet(isPresented: $showSettingsSheet)
+        }
+        .sheet(isPresented: $showWatchFolderExistingSheet) {
+            WatchFolderExistingFilesSheet(files: pendingWatchFolderFiles, isPresented: $showWatchFolderExistingSheet) { selectate in
+                watchFolders.markBaselineKnown(forPath: pendingWatchFolderPath, files: pendingWatchFolderFiles)
+                if !selectate.isEmpty { vm.adaugaFisiere(selectate) }
+            }
         }
         .sheet(isPresented: $showCompare) {
             MetadataCompareSheet(jobs: vm.joburi.filter { selectedJobIDs.contains($0.id) }, isPresented: $showCompare)
@@ -299,6 +308,19 @@ struct ContentView: View {
         panel.prompt = "Adaugă"
         if panel.runModal() == .OK, let path = panel.url?.path {
             watchFolders.addFolder(path)
+            // Feedback direct de la Cristi (2026-09-05): fara acest pas,
+            // indicarea unui folder cu clipuri deja existente nu facea
+            // nimic (baseline ignora tot ce exista deja) - userul ar fi
+            // trebuit sa copieze/mute fisierele ca sa "para noi", exact
+            // duplicarea nedorita. Sheet-ul arata explicit lista, cu
+            // Selecteaza tot/Deselecteaza tot (cerute explicit) - nu doar
+            // un Da/Nu orb care ar arunca tacit un folder plin in coada.
+            let existente = watchFolders.listExistingFiles(forPath: path)
+            if !existente.isEmpty {
+                pendingWatchFolderPath = path
+                pendingWatchFolderFiles = existente
+                showWatchFolderExistingSheet = true
+            }
         }
     }
 
