@@ -76,6 +76,11 @@ class Converter:
             args += ["-c", "copy"]
         else:
             args += format_registry.video_args_for(preset.profile_id, gpu_override)
+            # Cadre/s la iesire (2026-09-05) — None pastreaza fps-ul sursei,
+            # comportamentul de dinainte. Doar la transcodare (Rewrap
+            # foloseste -c copy mai sus, fara re-encode posibil).
+            if preset.frame_rate:
+                args += ["-r", preset.frame_rate]
             # FIX istoric (aliniere cu varianta Swift, MotorFFmpeg.swift):
             # audio-ul urmeaza AudioMode-ul presetului — Passthrough
             # ("-c:a copy") pastreaza exact bit depth-ul original al

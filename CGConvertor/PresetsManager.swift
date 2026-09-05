@@ -64,6 +64,14 @@ struct OutputPreset: Identifiable, Codable, Equatable {
     var channelLayout: ChannelLayout = .original
     var fileSuffix: String = "_convertit"
     var isBuiltin: Bool = false
+    /// Cadre/s la ieșire (2026-09-05, cerut explicit de Cristi) — `nil`
+    /// (implicit) păstrează fps-ul sursei, exact comportamentul de dinainte
+    /// de această schimbare (retrocompatibil 100% — presetările deja
+    /// salvate pe disc, fără această cheie, decodează la `nil` automat,
+    /// Optional-ul Swift tratează cheia lipsă ca `nil` fără decoder custom).
+    /// Se aplică DOAR la transcodare — Rewrap (`-c copy`) nu poate resample
+    /// fps fără re-encode, nu are sens acolo.
+    var frameRate: String? = nil
 
     // Mapare explicită la snake_case — ACEEAȘI cheie JSON ca
     // `presets_manager.py` (Windows), pentru portabilitate reală
@@ -76,7 +84,15 @@ struct OutputPreset: Identifiable, Codable, Equatable {
         case channelLayout = "channel_layout"
         case fileSuffix = "file_suffix"
         case isBuiltin = "is_builtin"
+        case frameRate = "frame_rate"
     }
+}
+
+/// Valorile de cadre/s oferite în picker — cele mai comune rate din
+/// producție video (cinema/broadcast NTSC-PAL/web) — nu o listă liberă de
+/// text, ca să nu se poată introduce o valoare invalidă pentru `-r`.
+enum FrameRateOption {
+    static let allValues = ["23.976", "24", "25", "29.97", "30", "50", "59.94", "60"]
 }
 
 enum PresetsManager {

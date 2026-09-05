@@ -162,6 +162,12 @@ final class MotorFFmpeg {
         } else if let profil = FormatRegistry.profile(id: preset.profileID) {
             // Re-encode complet folosind profilul ales pentru video
             args += profil.ffmpegArgs
+            // Cadre/s la iesire (2026-09-05) — nil pastreaza fps-ul sursei,
+            // comportamentul de dinainte. Doar la transcodare (Rewrap
+            // foloseste -c copy mai sus, fara re-encode posibil).
+            if let fps = preset.frameRate, !fps.isEmpty {
+                args += ["-r", fps]
+            }
             // Audio: dupa AudioMode-ul presetului (Passthrough implicit —
             // pastreaza exact bit depth-ul sursei; presetele de livrare
             // web re-codeaza explicit in AAC, cu layout de canale ales).

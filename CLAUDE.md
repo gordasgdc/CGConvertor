@@ -1992,6 +1992,54 @@ scop separată la reluare, nu o omisiune ascunsă.
 Versiune 3.8.0 → 3.9.0 (MINOR — funcționalitate nouă vizibilă, doar Mac,
 fără schimbare de arhitectură a restului aplicației, Regula 14).
 
+## v3.10.0 (2026-09-05) — Control cadre/s la transcodare (Mac + Windows)
+
+Cerut explicit de Cristi ("control frame rate mac windows"), ambele
+platforme în aceeași sesiune (Regula 31). Motorul de conversie
+(`MotorFFmpeg.swift`/`converter.py`) nu expunea nicio opțiune de
+schimbare a fps-ului la ieșire — conversia păstra mereu fps-ul sursei.
+
+- **`OutputPreset`** (ambele platforme) capătă `frameRate`/`frame_rate:
+  String? = nil` — `nil`/`None` (implicit) păstrează comportamentul
+  vechi 100%. Retrocompatibil verificat REAL: un preset salvat pe disc
+  ÎNAINTE de această schimbare (fără cheia `frame_rate` deloc) decodează
+  corect la `nil`/`None`, fără eroare — Swift automat (Optional pe
+  Codable sintetizat), Python explicit (`from_dict` filtrează doar
+  câmpurile cunoscute, restul rămân pe valoarea implicită a
+  dataclass-ului).
+- **`FrameRateOption.allValues`/`FRAME_RATE_OPTIONS`** — listă fixă
+  ("23.976", "24", "25", "29.97", "30", "50", "59.94", "60"), NU un câmp
+  de text liber — evită o valoare invalidă pasată direct la `-r`.
+- **`MotorFFmpeg.construiesteArgumente`/`converter.py.convert`**: `-r
+  <fps>` adăugat DOAR în ramura de transcodare (Rewrap rămâne `-c copy`
+  total, fără re-encode posibil — nu are sens acolo).
+- **UI**: `PresetsManagerView.swift` (Picker nou, "Cadre/s la ieșire",
+  vizibil doar când profilul nu e Rewrap, alături de Mod audio/Canale) +
+  `presets_dialog.py` (Combobox nou, `presets_frame_rate`/
+  `presets_frame_rate_source`, aceeași poziție în formular).
+
+**Verificare reală, nu presupusă**:
+- Mac: test standalone (`swiftc`, compilat DIRECT din
+  `MotorFFmpeg.swift`/`PresetsManager.swift`/`FormatRegistry.swift`/
+  `VideoJob.swift` reale) — confirmat `-r 30` apare în argumente cu
+  `frameRate="30"`, și LIPSEȘTE complet cu `frameRate=nil` (0 regresie).
+  Apoi rulare REALĂ `ffmpeg` cu argumentele exact generate de cod, pe un
+  clip sintetic de 25fps (`ffmpeg testsrc2 -rate 25`) — `ffprobe` pe
+  rezultat confirmă `30/1` (fps chiar schimbat, nu doar sintaxă acceptată).
+- Windows: `presets_manager.OutputPreset.from_dict()` testat cu un dict
+  vechi FĂRĂ cheia `frame_rate` → `None` corect; roundtrip
+  `to_dict`/`from_dict` cu `frame_rate="30"` → păstrat corect. Apoi
+  `converter.Converter.convert()` (codul REAL de producție, nu o
+  reimplementare) rulat pe același clip sintetic de 25fps → `ffprobe` pe
+  rezultat confirmă `30/1`.
+- `xcodebuild -configuration Debug` — BUILD SUCCEEDED, 0 erori.
+- `pyflakes` (venv izolat) — 0 erori noi (3 avertismente de importuri
+  nefolosite preexistente în `converter.py`, neatinse de această
+  schimbare, verificat cu `git diff`).
+
+Versiune 3.9.0 → 3.10.0 (MINOR — funcționalitate nouă vizibilă, Mac +
+Windows, fără schimbare de arhitectură, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în
@@ -2008,12 +2056,8 @@ FĂCUT, vezi v3.7.0, toate mai sus.)
    LUT/LOG — vezi jurnalul v3.9.0 de mai jos. Windows rămâne TODO explicit,
    cerut chiar de Cristi ca "altă dată" — discuție de scop separată la
    reluare (Media Foundation sau echivalent, nu Core Image).
-2. **Control de cadre/s la transcodare** — azi motorul de conversie
-   (`MotorFFmpeg.swift`/`converter.py` + `PresetsManager`) nu expune nicio
-   opțiune de schimbare a frame rate-ului la ieșire (conversia păstrează
-   fps-ul sursei). Cristi vrea opțiune explicită de frame rate în
-   presetări/UI de conversie, ca în unelte profesionale (Resolve, Adobe
-   Media Encoder, EditReady).
+2. **[REZOLVAT v3.10.0, 2026-09-05]** Control de cadre/s la transcodare —
+   vezi jurnalul v3.10.0 de mai jos, Mac + Windows.
 3. **Explicit AMÂNAT de Cristi însuși, în aceeași propoziție** — spații
    de culoare (color space conversion), timeline, watermark: "cred că e
    prea mult" — NU se implementează fără cerere separată explicită, doar

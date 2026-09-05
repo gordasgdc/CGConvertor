@@ -93,6 +93,8 @@ enum L {
         "presets.export": [.ro: "Exportă…", .en: "Export…", .es: "Exportar…"],
         "presets.targetApp": [.ro: "Aplicație țintă", .en: "Target app", .es: "Aplicación de destino"],
         "presets.profile": [.ro: "Codec / profil", .en: "Codec / profile", .es: "Códec / perfil"],
+        "presets.frameRate": [.ro: "Cadre/s la ieșire", .en: "Output frame rate", .es: "Fotogramas/s de salida"],
+        "presets.frameRate.source": [.ro: "La fel ca sursa", .en: "Same as source", .es: "Igual que la fuente"],
         "presets.audioMode": [.ro: "Mod audio", .en: "Audio mode", .es: "Modo de audio"],
         "presets.channels": [.ro: "Canale", .en: "Channels", .es: "Canales"],
         "presets.suffix": [.ro: "Sufix nume fișier", .en: "Filename suffix", .es: "Sufijo del nombre de archivo"],

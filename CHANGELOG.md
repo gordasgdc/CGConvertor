@@ -2,6 +2,14 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.10.0 — Control cadre/s la transcodare (Mac + Windows, 2026-09-05)
+
+Presetările de conversie capătă o opțiune nouă "Cadre/s la ieșire"
+(23.976/24/25/29.97/30/50/59.94/60, sau "La fel ca sursa" — implicit,
+comportament neschimbat). Se aplică doar la Transcode (Rewrap rămâne
+"-c copy", fără re-encode posibil). Presetările deja salvate rămân
+neschimbate.
+
 ### v3.9.0 — Player real-time cu LUT live, doar Mac (2026-09-05)
 
 Fereastră nouă, separată de preview-ul static existent — redare video

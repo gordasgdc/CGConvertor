@@ -48,6 +48,9 @@ def audio_ffmpeg_args(audio_mode: str, channel_layout: str) -> List[str]:
     return args
 
 
+FRAME_RATE_OPTIONS = ["23.976", "24", "25", "29.97", "30", "50", "59.94", "60"]
+
+
 @dataclass
 class OutputPreset:
     id: str
@@ -58,6 +61,14 @@ class OutputPreset:
     channel_layout: str = CHANNEL_ORIGINAL
     file_suffix: str = "_convertit"
     is_builtin: bool = False  # seturile implicite (needitabile direct, dar duplicabile)
+    # Cadre/s la iesire (2026-09-05, cerut explicit de Cristi) — None
+    # (implicit) pastreaza fps-ul sursei, comportamentul de dinainte.
+    # Retrocompatibil: presetarile deja salvate pe disc, fara aceasta
+    # cheie, primesc None prin `from_dict` (filtreaza doar campurile
+    # cunoscute, campurile lipsa raman pe valoarea implicita a dataclass-ului).
+    # Se aplica DOAR la transcodare — Rewrap ("-c copy") nu poate resample
+    # fps fara re-encode.
+    frame_rate: str = None
 
     def to_dict(self):
         return asdict(self)

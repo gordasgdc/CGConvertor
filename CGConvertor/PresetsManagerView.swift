@@ -125,6 +125,13 @@ struct PresetsManagerSheet: View {
                 }
                 .disabled(preset.isBuiltin)
                 if presets[idx].profileID != FormatRegistry.rewrapProfileID {
+                    Picker(L.t("presets.frameRate"), selection: $presets[idx].frameRate) {
+                        Text(L.t("presets.frameRate.source")).tag(String?.none)
+                        ForEach(FrameRateOption.allValues, id: \.self) { fps in
+                            Text(fps).tag(String?.some(fps))
+                        }
+                    }
+                    .disabled(preset.isBuiltin)
                     Picker(L.t("presets.audioMode"), selection: $presets[idx].audioMode) {
                         ForEach(AudioMode.allCases) { mode in
                             Text(L.t(mode.labelKey)).tag(mode)
