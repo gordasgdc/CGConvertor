@@ -492,6 +492,7 @@ private struct RandJob: View {
     let onSterge: () -> Void
     let onMutaSus: () -> Void
     let onMutaJos: () -> Void
+    @State private var showPreview = false
 
     var body: some View {
         ShiftCard(padding: 12) {
@@ -549,6 +550,14 @@ private struct RandJob: View {
 
                 Spacer()
 
+                if job.metadataMedia != nil {
+                    Button { showPreview = true } label: {
+                        Image(systemName: "eye")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Shift.muted)
+                }
+
                 Button { onSterge() } label: {
                     Image(systemName: "trash")
                 }
@@ -560,6 +569,9 @@ private struct RandJob: View {
         .contextMenu {
             Button(L.t("queue.moveUp"), action: onMutaSus).disabled(seRuleazaCoada)
             Button(L.t("queue.moveDown"), action: onMutaJos).disabled(seRuleazaCoada)
+        }
+        .sheet(isPresented: $showPreview) {
+            MediaPreviewSheet(job: job, isPresented: $showPreview)
         }
     }
 

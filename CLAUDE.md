@@ -1472,3 +1472,57 @@ sincronizare audio — o construcție realistă de sine stătătoare, nu o
 extensie mică a ce există deja. Nu a fost improvizată o variantă parțială
 sub aceeași etichetă ca să pară "gata" — rămâne un TODO real, de discutat
 separat ca scop/prioritate înainte de a începe implementarea.
+
+## Faza 2 v3.3.0 (2026-09-05) — Preview interactiv cu LUT (versiune redusă a playerului)
+
+După nota de scop de mai sus (playerul real-time rămâne o construcție
+separată), Cristi a ales explicit varianta redusă: preview STATIC dar
+INTERACTIV — scrubbing pe o bară regenerează thumbnail-ul la momentul
+respectiv, cu un LUT `.cube` opțional aplicat live. Nu e redare video, dar
+foloseşte exact infrastructura deja construită la punctul B de mai sus
+(`MediaInspector`/`media_inspector`), fără niciun pipeline nou de
+decodare.
+
+- **Mac** (`MediaPreviewSheet.swift`, nou): sheet SwiftUI, `Slider` legat
+  de poziția în clip (0...durată, din `metadataMedia.durataSecunde`),
+  buton "Alege LUT…" (`NSOpenPanel`, filtrat la `.cube` via `UTType`).
+  Deschis dintr-un buton nou (iconiță "ochi") pe fiecare rând de job —
+  vizibil DOAR după ce metadata jobului e gata (`job.metadataMedia != nil`).
+- **Windows** (`media_preview.py`, nou): `tk.Toplevel` cu `ttk.Scale`
+  orizontal, aceeași logică — deschis dintr-un item nou "Previzualizează"
+  în meniul click-dreapta existent (`_on_tree_right_click`), vizibil doar
+  dacă `job["metadata"]` există.
+- **Extensie API, ambele platforme**: `genereazaThumbnail`/
+  `generate_thumbnail` capătă un parametru nou `laSecunda`/`at_seconds`
+  (implicit 1, exact valoarea hardcodată dinainte — 100% compatibil
+  retroactiv, verificat explicit cu un test care confirmă că apelul FĂRĂ
+  parametru produce byte-identic aceeași imagine ca `laSecunda: 1` explicit).
+- **Debounce** (ambele platforme): un drag continuu pe bara de progres NU
+  lansează un proces `ffmpeg` per pixel de mișcare — Mac anulează
+  `Task`-ul anterior (`Task.detached` + `Task.isCancelled`) la fiecare
+  schimbare; Windows anulează `after()`-ul programat anterior
+  (`after_cancel`) — regenerarea reală pornește abia la 150ms după ULTIMA
+  mișcare.
+
+### Verificare reală, nu presupusă
+
+- **Determinism/compatibilitate**: extras un cadru la 1s ȘI la 5s dintr-un
+  clip sintetic de 6s (`ffmpeg testsrc2`) — confirmat că cele două imagini
+  sunt DIFERITE (dovadă directă că parametrul de timp chiar ajunge la
+  `ffmpeg -ss`, nu e ignorat), și că apelul fără parametru explicit produce
+  byte-identic aceeași imagine ca `laSecunda: 1` (compatibilitate
+  retroactivă reală, nu presupusă).
+- **Test GUI complet, Windows (Tkinter, `app.mainloop()` real)**: fișier
+  adăugat prin codul real, meniul click-dreapta deschide efectiv
+  `MediaPreviewDialog`, mutarea sliderului la o poziție nouă
+  (`dlg.position.set(...)` + `_on_scale_change`) regenerează imaginea —
+  confirmat prin comparație DIRECTĂ de octeți a fișierului PNG rezultat
+  înainte/după (nu doar "nu a crăpat"); aplicarea unui LUT de test
+  (inversare de culoare, `.cube` 2×2×2) schimbă din nou imaginea,
+  confirmat identic prin octeți.
+- `xcodebuild` (Debug) — 0 erori, cu tot codul din Faza 2 (Offload +
+  Watch Folders + Metadata/Rapoarte + Preview) compilat împreună.
+- `pyflakes` (venv izolat) — zero erori pe toate fișierele Python noi.
+
+Versiune 3.2.0 → 3.3.0 (MINOR — funcționalitate nouă vizibilă, fără
+schimbare de arhitectură, Regula 14).

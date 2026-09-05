@@ -87,14 +87,15 @@ def resolution_text(meta):
     return None
 
 
-def generate_thumbnail(path, lut_path, output_path):
-    """Extrage un cadru static (~1s in clip) ca thumbnail, optional cu un
-    LUT .cube aplicat prin filtrul nativ `lut3d` al FFmpeg — NU un player
-    real-time. Formatul e dat de extensia din `output_path` — apelantul
-    (main.py) foloseste `.png`, NU `.jpg`: `tk.PhotoImage` nativ (fara
-    Pillow, dependinta pe care acest repo nu o are) suporta PNG dar nu
-    JPEG. Mac (`MediaInspector.swift`) foloseste .jpg — NSImage citeste
-    ambele formate nativ, nicio constrangere acolo."""
+def generate_thumbnail(path, lut_path, output_path, at_seconds=1.0):
+    """Extrage un cadru static (implicit ~1s in clip, sau `at_seconds` daca
+    specificat — folosit de preview-ul interactiv, vezi media_preview.py)
+    ca thumbnail, optional cu un LUT .cube aplicat prin filtrul nativ
+    `lut3d` al FFmpeg — NU un player real-time. Formatul e dat de extensia
+    din `output_path` — apelantul (main.py) foloseste `.png`, NU `.jpg`:
+    `tk.PhotoImage` nativ (fara Pillow, dependinta pe care acest repo nu o
+    are) suporta PNG dar nu JPEG. Mac (`MediaInspector.swift`) foloseste
+    .jpg — NSImage citeste ambele formate nativ, nicio constrangere acolo."""
     ffmpeg_path = get_ffmpeg_path()
     vf = "scale=320:-2"
     if lut_path:
@@ -105,7 +106,8 @@ def generate_thumbnail(path, lut_path, output_path):
         vf += f",lut3d=file='{escaped}'"
     try:
         result = subprocess.run(
-            [ffmpeg_path, "-y", "-ss", "1", "-i", path, "-frames:v", "1", "-vf", vf, output_path],
+            [ffmpeg_path, "-y", "-ss", f"{max(0.0, at_seconds):.3f}", "-i", path,
+             "-frames:v", "1", "-vf", vf, output_path],
             capture_output=True, check=False,
         )
         return result.returncode == 0 and os.path.isfile(output_path)

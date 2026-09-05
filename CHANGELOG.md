@@ -2,6 +2,15 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.3.0 — Faza 2: Preview interactiv cu LUT (2026-09-05)
+
+Fiecare fișier analizat (are thumbnail generat) capătă o previzualizare
+interactivă — click-dreapta pe rând → „Previzualizează". O bară de
+progres derulează prin clip, regenerând imaginea la momentul respectiv;
+un LUT `.cube` opțional se poate aplica live pe previzualizare. Nu e
+redare video propriu-zisă (rămâne un proiect separat, mult mai mare) — e
+un pas util, disponibil de pe acum, pe ambele platforme.
+
 ### v3.2.0 — Faza 2: Watch Folders + Inspecție/Metadata + Rapoarte (2026-09-05)
 
 **Watch Folders**: alege unul sau mai multe foldere de urmărit — orice

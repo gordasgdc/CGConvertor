@@ -161,6 +161,10 @@ TRANSLATIONS = {
 
         "watch_folders_title": "Foldere urmărite",
         "generate_report": "Generează raport",
+        "preview_open": "Previzualizează",
+        "preview_no_lut": "Fără LUT",
+        "preview_choose_lut": "Alege LUT…",
+        "preview_clear_lut": "Elimină",
         "add_watch_folder": "Adaugă folder…",
     },
     "en": {
@@ -324,6 +328,10 @@ TRANSLATIONS = {
 
         "watch_folders_title": "Watch Folders",
         "generate_report": "Generate report",
+        "preview_open": "Preview",
+        "preview_no_lut": "No LUT",
+        "preview_choose_lut": "Choose LUT…",
+        "preview_clear_lut": "Clear",
         "add_watch_folder": "Add folder…",
     },
     "es": {
@@ -487,6 +495,10 @@ TRANSLATIONS = {
 
         "watch_folders_title": "Carpetas vigiladas",
         "generate_report": "Generar informe",
+        "preview_open": "Vista previa",
+        "preview_no_lut": "Sin LUT",
+        "preview_choose_lut": "Elegir LUT…",
+        "preview_clear_lut": "Quitar",
         "add_watch_folder": "Añadir carpeta…",
     }
 }

@@ -91,11 +91,13 @@ enum MediaInspector {
         return meta
     }
 
-    /// Extrage un cadru static (~1s în clip, sau primul cadru dacă mai
-    /// scurt) ca thumbnail JPEG, opțional cu un LUT `.cube` aplicat prin
-    /// filtrul nativ `lut3d` al FFmpeg — NU un player real-time (acela
-    /// rămâne un TODO separat, mult mai mare, vezi CLAUDE.md).
-    static func genereazaThumbnail(url: URL, lutPath: String?, iesire: URL) -> Bool {
+    /// Extrage un cadru static (implicit ~1s în clip, sau `laSecunda` dacă
+    /// specificat — folosit de preview-ul interactiv, vezi
+    /// `MediaPreviewSheet.swift`) ca thumbnail JPEG, opțional cu un LUT
+    /// `.cube` aplicat prin filtrul nativ `lut3d` al FFmpeg — NU un player
+    /// real-time (acela rămâne un TODO separat, mult mai mare, vezi
+    /// CLAUDE.md).
+    static func genereazaThumbnail(url: URL, lutPath: String?, iesire: URL, laSecunda: Double = 1) -> Bool {
         guard let ffmpegPath = MotorFFmpeg.gasesteBinar() else { return false }
         var filtru = "scale=320:-2"
         if let lutPath, !lutPath.isEmpty {
@@ -105,7 +107,7 @@ enum MediaInspector {
         let proces = Process()
         proces.executableURL = URL(fileURLWithPath: ffmpegPath)
         proces.arguments = [
-            "-y", "-ss", "1", "-i", url.path,
+            "-y", "-ss", String(format: "%.3f", max(0, laSecunda)), "-i", url.path,
             "-frames:v", "1", "-vf", filtru,
             iesire.path
         ]

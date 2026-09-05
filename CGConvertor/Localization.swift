@@ -261,5 +261,11 @@ enum L {
         "watchFolders.title": [.ro: "Foldere urmărite", .en: "Watch Folders", .es: "Carpetas vigiladas"],
         "watchFolders.empty": [.ro: "Niciun folder urmărit", .en: "No folder watched", .es: "Ninguna carpeta vigilada"],
         "watchFolders.add": [.ro: "Adaugă folder…", .en: "Add folder…", .es: "Añadir carpeta…"],
+
+        // MARK: - Preview interactiv (Faza 2, versiune redusă a playerului LUT/LOG)
+
+        "preview.noLut": [.ro: "Fără LUT", .en: "No LUT", .es: "Sin LUT"],
+        "preview.chooseLut": [.ro: "Alege LUT…", .en: "Choose LUT…", .es: "Elegir LUT…"],
+        "preview.clearLut": [.ro: "Elimină", .en: "Clear", .es: "Quitar"],
     ]
 }

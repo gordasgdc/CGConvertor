@@ -55,6 +55,7 @@ import format_registry
 import gpu_probe
 import machine_id
 import media_inspector
+from media_preview import MediaPreviewDialog
 import offload_engine
 import presets_manager as presets_mod
 import revocation_check
@@ -951,15 +952,22 @@ class CGConvertorApp(BASE_CLASS):
             return
         self.tree.selection_set(item_id)
         menu = tk.Menu(self, tearoff=0)
-        path = self._finished_output_path(self._job_for_item(item_id))
+        job = self._job_for_item(item_id)
+        path = self._finished_output_path(job)
         if path:
             menu.add_command(label=t(self.lang, "job_open_file"), command=lambda: self._open_file(path))
             menu.add_command(label=t(self.lang, "job_show_in_explorer"), command=lambda: self._show_in_explorer(path))
+            menu.add_separator()
+        if job and job.get("metadata"):
+            menu.add_command(label=t(self.lang, "preview_open"), command=lambda: self._open_preview(job))
             menu.add_separator()
         if not self.is_running:
             menu.add_command(label=t(self.lang, "queue_move_up"), command=lambda: self._move_job(item_id, -1))
             menu.add_command(label=t(self.lang, "queue_move_down"), command=lambda: self._move_job(item_id, 1))
         menu.tk_popup(event.x_root, event.y_root)
+
+    def _open_preview(self, job):
+        MediaPreviewDialog(self, self, job)
 
     def _move_job(self, item_id, delta):
         job = self._job_for_item(item_id)
