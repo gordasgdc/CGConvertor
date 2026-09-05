@@ -1,6 +1,36 @@
 import SwiftUI
 import AVKit
+import AppKit
 import UniformTypeIdentifiers
+
+/// Wrapper AppKit direct peste `AVPlayerView` — NU `VideoPlayer` (AVKit/
+/// SwiftUI). BUG REAL GĂSIT, confirmat din 3 rapoarte de crash identice
+/// (`~/Library/Logs/DiagnosticReports/CGConvertor-*.ips`, 2026-09-05):
+/// `VideoPlayer` crapă STRICT reproductibil (SIGABRT, `swift::fatalError`
+/// în timpul rezolvării de metadata generică pentru
+/// `NSViewRepresentable._makeView`, chiar la prima afișare) pe această
+/// versiune de macOS (26.6.2) — un bug de runtime Swift/AVKit, NU o
+/// eroare în codul din acest fișier. `AVPlayerView` e exact view-ul
+/// AppKit pe care `VideoPlayer` îl încapsulează intern — îl folosim
+/// direct, ocolind complet stratul SwiftUI care crapă. Păstrează
+/// controalele native (`controlsStyle = .floating`).
+private struct AVPlayerAppKitView: NSViewRepresentable {
+    let player: AVPlayer
+
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.player = player
+        view.controlsStyle = .floating
+        view.showsFullScreenToggleButton = true
+        return view
+    }
+
+    func updateNSView(_ nsView: AVPlayerView, context: Context) {
+        if nsView.player !== player {
+            nsView.player = player
+        }
+    }
+}
 
 /// Playerul real-time LUT/LOG — versiunea COMPLETĂ (redare video reală,
 /// audio inclus, play/pause/scrub, LUT `.cube` aplicat LIVE prin Core
@@ -47,7 +77,7 @@ struct LUTPlayerSheet: View {
             ZStack {
                 Rectangle().fill(Shift.elevated)
                 if let player {
-                    VideoPlayer(player: player)
+                    AVPlayerAppKitView(player: player)
                 } else {
                     ProgressView().controlSize(.small)
                 }

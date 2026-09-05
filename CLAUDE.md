@@ -2232,6 +2232,50 @@ actualizează explicit eticheta/starea butonului, nu se bazează doar pe
 Versiune 3.12.0 → 3.13.0 (MINOR — fix de comportament cu impact vizibil,
 nu doar un patch izolat, Mac + Windows, Regula 14).
 
+## v3.13.1 (2026-09-05) — FIX CRITIC: playerul LUT (Mac) închidea toată aplicația
+
+**Raportat direct de Cristi, urgent**: "urc fișierele și când apăs pe
+play se închide direct... toată aplicația". Confirmat exact acest
+scenariu — butonul "▶" (Redă cu LUT, v3.9.0) crapă instant, de fiecare
+dată, la deschiderea sheet-ului.
+
+**Diagnostic real, nu presupus**: 3 rapoarte de crash identice găsite
+direct pe disc (`~/Library/Logs/DiagnosticReports/CGConvertor-*.ips`,
+scrise chiar în timpul testului lui Cristi) — `SIGABRT`,
+`swift::fatalError` în timpul rezolvării de metadata generică pentru
+`NSViewRepresentable._makeView`, reprodus IDENTIC în toate 3. Stack
+trace-ul arată clar că punctul de eșec e chiar în interiorul mecanismului
+`AVKit.VideoPlayer` (SwiftUI) — NU în codul din `LUTPlayerSheet.swift`
+însuși. Un test standalone al motorului AVFoundation/CoreImage (fără
+SwiftUI, `swiftc` direct) rulase deja curat mai devreme (v3.9.0) — de
+asta bug-ul a scăpat: motorul de randare e corect, doar wrapper-ul SwiftUI
+peste el crapă, pe această versiune de macOS (26.6.2).
+
+**Fix**: `AVPlayerAppKitView` (nou, `NSViewRepresentable` scris manual în
+`LUTPlayerSheet.swift`) — încapsulează direct `AVPlayerView` (AppKit),
+EXACT view-ul pe care `VideoPlayer` îl folosește intern, ocolind complet
+stratul SwiftUI care crapă. `controlsStyle = .floating` păstrează
+controalele native identice (play/pause/scrub/volum/fullscreen).
+
+**Verificare reală, nu presupusă**: harness standalone (`swiftc`, cod
+real din `LUTPlayerSheet.swift`/`LUTPlayerEngine.swift`) — `NSHostingView`
++ `NSWindow` reale, afișând EXACT `LUTPlayerSheet` cu un `VideoJob` real
+și un clip sintetic real, rulat printr-un `NSApplication.run()` autentic
+timp de 4 secunde. ÎNAINTE de fix (cu `VideoPlayer`): nu s-a mai retestat
+separat (crash-ul era deja confirmat de 3 ori pe binarul instalat) — DUPĂ
+fix (cu `AVPlayerAppKitView`): rulat curat, exit code 0, ZERO fișiere noi
+în `DiagnosticReports/` după rulare (confirmat cu `ls -lat`, niciun crash
+nou). `xcodebuild -configuration Debug` — BUILD SUCCEEDED.
+
+**Lecție de proces, notă pentru viitor**: un test standalone al unui
+MOTOR (AVFoundation/CoreImage, fără UI) nu acoperă bug-uri care trăiesc
+STRICT în stratul de integrare SwiftUI/AppKit — un `NSHostingView`+
+`NSWindow` real (ca harness-ul folosit aici pentru fix) e minimul necesar
+pentru orice View SwiftUI nou care înglobează un component AVKit/AppKit
+matur, nu doar compilare + rulare fără fereastră.
+
+Versiune 3.13.0 → 3.13.1 (PATCH — fix critic izolat, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în

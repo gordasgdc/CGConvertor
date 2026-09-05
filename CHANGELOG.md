@@ -2,6 +2,14 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.13.1 — FIX CRITIC: playerul LUT (Mac) închidea toată aplicația (2026-09-05)
+
+Raportat direct: apăsarea butonului „▶” (Redă cu LUT live) pe un fișier
+din coadă închidea instant toată aplicația, fără avertisment. Cauza:
+`VideoPlayer` (AVKit/SwiftUI) crapă pe această versiune de macOS. Fix:
+înlocuit cu `AVPlayerView` (AppKit) direct — controalele native rămân
+identice, doar stratul SwiftUI defect a fost ocolit.
+
 ### v3.13.0 — Fix real: Watch Folders ignora fișierele deja existente (Mac + Windows, 2026-09-05)
 
 Raportat direct: indicarea unui folder cu clipuri deja existente nu adăuga
