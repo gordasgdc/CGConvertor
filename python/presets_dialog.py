@@ -62,6 +62,11 @@ class PresetsDialog(tk.Toplevel):
         self.frame_rate_labels.update({fps: fps for fps in pm.FRAME_RATE_OPTIONS})
         self.frame_rate_labels_rev = {v: k for k, v in self.frame_rate_labels.items()}
 
+        self.color_space_ids = [None] + pm.COLOR_SPACE_OPTIONS
+        self.color_space_labels = {None: t(lang, "presets_color_space_unchanged")}
+        self.color_space_labels.update({cs: t(lang, f"presets_color_space_{cs}") for cs in pm.COLOR_SPACE_OPTIONS})
+        self.color_space_labels_rev = {v: k for k, v in self.color_space_labels.items()}
+
         self.audio_ids = [pm.AUDIO_PASSTHROUGH, pm.AUDIO_PCM16, pm.AUDIO_PCM24, pm.AUDIO_AAC]
         self.audio_labels = {aid: t(lang, f"audio_{aid}") for aid in self.audio_ids}
         self.audio_labels_rev = {v: k for k, v in self.audio_labels.items()}
@@ -124,12 +129,14 @@ class PresetsDialog(tk.Toplevel):
         self.audio_var = tk.StringVar()
         self.channel_var = tk.StringVar()
         self.frame_rate_var = tk.StringVar()
+        self.color_space_var = tk.StringVar()
 
         self._entry_row("presets_label", self.label_var)
         self._entry_row("presets_suffix", self.suffix_var)
         self._combo_row("presets_target_app", self.target_app_var, list(self.target_app_labels.values()))
         self._combo_row("presets_profile", self.profile_var, list(self.profile_labels.values()))
         self._combo_row("presets_frame_rate", self.frame_rate_var, list(self.frame_rate_labels.values()))
+        self._combo_row("presets_color_space", self.color_space_var, list(self.color_space_labels.values()))
         self._combo_row("presets_audio_mode", self.audio_var, list(self.audio_labels.values()))
         self._combo_row("presets_channels", self.channel_var, list(self.channel_labels.values()))
 
@@ -182,6 +189,7 @@ class PresetsDialog(tk.Toplevel):
         self.target_app_var.set(self.target_app_labels.get(preset.target_app, preset.target_app))
         self.profile_var.set(self.profile_labels.get(preset.profile_id, preset.profile_id))
         self.frame_rate_var.set(self.frame_rate_labels.get(preset.frame_rate, preset.frame_rate or ""))
+        self.color_space_var.set(self.color_space_labels.get(preset.color_space, preset.color_space or ""))
         self.audio_var.set(self.audio_labels.get(preset.audio_mode, preset.audio_mode))
         self.channel_var.set(self.channel_labels.get(preset.channel_layout, preset.channel_layout))
         self._suspend_trace = False
@@ -256,6 +264,7 @@ class PresetsDialog(tk.Toplevel):
         preset.target_app = self.target_app_labels_rev.get(self.target_app_var.get(), preset.target_app)
         preset.profile_id = self.profile_labels_rev.get(self.profile_var.get(), preset.profile_id)
         preset.frame_rate = self.frame_rate_labels_rev.get(self.frame_rate_var.get(), preset.frame_rate)
+        preset.color_space = self.color_space_labels_rev.get(self.color_space_var.get(), preset.color_space)
         preset.audio_mode = self.audio_labels_rev.get(self.audio_var.get(), preset.audio_mode)
         preset.channel_layout = self.channel_labels_rev.get(self.channel_var.get(), preset.channel_layout)
         self._refresh_list()

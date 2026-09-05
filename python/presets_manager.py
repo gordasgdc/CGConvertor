@@ -50,6 +50,28 @@ def audio_ffmpeg_args(audio_mode: str, channel_layout: str) -> List[str]:
 
 FRAME_RATE_OPTIONS = ["23.976", "24", "25", "29.97", "30", "50", "59.94", "60"]
 
+# Etichetare spatiu de culoare la iesire (2026-09-05, cerut explicit de
+# Cristi — scop confirmat inainte de start: DOAR metadata corecta in
+# container/VUI, NU o transformare reala a pixelilor gen LOG->Rec.709 sau
+# Rec.709->Rec.2020, care ar cere filtrul `colorspace` al FFmpeg cu risc
+# real de artefacte pe combinatii netestate — decizie explicita de scop).
+COLOR_SPACE_BT709 = "bt709"
+COLOR_SPACE_BT2020 = "bt2020"
+COLOR_SPACE_OPTIONS = [COLOR_SPACE_BT709, COLOR_SPACE_BT2020]
+# `-color_primaries`/`-color_trc`/`-colorspace` ca optiuni brute de iesire
+# NU functioneaza cu fiabilitate (verificat REAL: seteaza doar
+# `colorspace`, nu si `primaries`/`transfer`, pe libx264 SI pe
+# h264_videotoolbox) — filtrul `setparams` e metoda corecta, testata, de
+# a scrie toate cele 3 etichete in VUI/container.
+_COLOR_SPACE_ARGS = {
+    COLOR_SPACE_BT709: ["-vf", "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709"],
+    COLOR_SPACE_BT2020: ["-vf", "setparams=color_primaries=bt2020:color_trc=bt2020-10:colorspace=bt2020nc"],
+}
+
+
+def color_space_ffmpeg_args(color_space) -> List[str]:
+    return list(_COLOR_SPACE_ARGS.get(color_space, []))
+
 
 @dataclass
 class OutputPreset:
@@ -69,6 +91,9 @@ class OutputPreset:
     # Se aplica DOAR la transcodare — Rewrap ("-c copy") nu poate resample
     # fps fara re-encode.
     frame_rate: str = None
+    # Etichetare spatiu de culoare la iesire (2026-09-05) — None (implicit)
+    # nu forteaza niciun tag, comportamentul de dinainte.
+    color_space: str = None
 
     def to_dict(self):
         return asdict(self)

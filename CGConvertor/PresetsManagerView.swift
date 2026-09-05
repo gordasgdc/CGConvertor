@@ -132,6 +132,13 @@ struct PresetsManagerSheet: View {
                         }
                     }
                     .disabled(preset.isBuiltin)
+                    Picker(L.t("presets.colorSpace"), selection: $presets[idx].colorSpace) {
+                        Text(L.t("presets.colorSpace.unchanged")).tag(ColorSpaceOption?.none)
+                        ForEach(ColorSpaceOption.allCases) { cs in
+                            Text(L.t(cs.labelKey)).tag(ColorSpaceOption?.some(cs))
+                        }
+                    }
+                    .disabled(preset.isBuiltin)
                     Picker(L.t("presets.audioMode"), selection: $presets[idx].audioMode) {
                         ForEach(AudioMode.allCases) { mode in
                             Text(L.t(mode.labelKey)).tag(mode)

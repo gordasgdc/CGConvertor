@@ -2,6 +2,13 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.11.0 — Etichetă spațiu de culoare la transcodare (Mac + Windows, 2026-09-05)
+
+Presetările capătă o opțiune nouă „Spațiu de culoare" — Nemodificat
+(implicit)/Rec.709/Rec.2020 — scriu corect `color_primaries`/
+`color_trc`/`colorspace` în fișierul rezultat. Doar etichetare, nu
+transformă efectiv culorile (nu e o conversie LOG→Rec.709).
+
 ### v3.10.0 — Control cadre/s la transcodare (Mac + Windows, 2026-09-05)
 
 Presetările de conversie capătă o opțiune nouă "Cadre/s la ieșire"

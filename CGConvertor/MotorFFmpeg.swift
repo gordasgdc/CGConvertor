@@ -168,6 +168,12 @@ final class MotorFFmpeg {
             if let fps = preset.frameRate, !fps.isEmpty {
                 args += ["-r", fps]
             }
+            // Etichetare spatiu de culoare (2026-09-05) — doar tag-uri
+            // container/VUI, nu transformare reala a pixelilor (scop
+            // confirmat explicit inainte de implementare).
+            if let colorSpace = preset.colorSpace {
+                args += colorSpace.ffmpegArgs
+            }
             // Audio: dupa AudioMode-ul presetului (Passthrough implicit —
             // pastreaza exact bit depth-ul sursei; presetele de livrare
             // web re-codeaza explicit in AAC, cu layout de canale ales).

@@ -49,6 +49,35 @@ enum ChannelLayout: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+/// Etichetare corectă a spațiului de culoare la ieșire (2026-09-05, cerut
+/// explicit de Cristi — scop confirmat înainte de start: DOAR metadata
+/// corectă în container/VUI, NU o transformare reală a pixelilor gen
+/// LOG→Rec.709 sau Rec.709→Rec.2020, care ar cere filtrul `colorspace` al
+/// FFmpeg cu risc real de artefacte pe combinații netestate — decizie
+/// explicită de scop, nu o omisiune). `nil` (implicit) nu forțează nimic,
+/// exact comportamentul de dinainte.
+enum ColorSpaceOption: String, CaseIterable, Identifiable, Codable {
+    case bt709, bt2020
+    var id: String { rawValue }
+    var labelKey: String {
+        switch self {
+        case .bt709: return "colorSpace.bt709"
+        case .bt2020: return "colorSpace.bt2020"
+        }
+    }
+    /// `-color_primaries`/`-color_trc`/`-colorspace` ca opțiuni brute de
+    /// ieșire NU funcționează cu fiabilitate (verificat REAL: setează doar
+    /// `colorspace`, nu și `primaries`/`transfer`, pe libx264 ȘI pe
+    /// h264_videotoolbox) — filtrul `setparams` e metoda corectă, testată,
+    /// de a scrie toate cele 3 etichete în VUI/container.
+    var ffmpegArgs: [String] {
+        switch self {
+        case .bt709: return ["-vf", "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709"]
+        case .bt2020: return ["-vf", "setparams=color_primaries=bt2020:color_trc=bt2020-10:colorspace=bt2020nc"]
+        }
+    }
+}
+
 enum TargetApp: String, CaseIterable, Identifiable, Codable {
     case davinci, premiere, fcp, avid, web, custom
     var id: String { rawValue }
@@ -72,6 +101,9 @@ struct OutputPreset: Identifiable, Codable, Equatable {
     /// Se aplică DOAR la transcodare — Rewrap (`-c copy`) nu poate resample
     /// fps fără re-encode, nu are sens acolo.
     var frameRate: String? = nil
+    /// Etichetare spațiu de culoare la ieșire (2026-09-05) — `nil`
+    /// (implicit) nu forțează niciun tag, comportamentul de dinainte.
+    var colorSpace: ColorSpaceOption? = nil
 
     // Mapare explicită la snake_case — ACEEAȘI cheie JSON ca
     // `presets_manager.py` (Windows), pentru portabilitate reală
@@ -85,6 +117,7 @@ struct OutputPreset: Identifiable, Codable, Equatable {
         case fileSuffix = "file_suffix"
         case isBuiltin = "is_builtin"
         case frameRate = "frame_rate"
+        case colorSpace = "color_space"
     }
 }
 

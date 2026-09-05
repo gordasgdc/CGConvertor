@@ -2040,6 +2040,56 @@ schimbare a fps-ului la ieșire — conversia păstra mereu fps-ul sursei.
 Versiune 3.9.0 → 3.10.0 (MINOR — funcționalitate nouă vizibilă, Mac +
 Windows, fără schimbare de arhitectură, Regula 14).
 
+## v3.11.0 (2026-09-05) — Etichetă spațiu de culoare la transcodare (Mac + Windows)
+
+Item 3 din coadă, cerut din nou explicit de Cristi — scop confirmat
+ÎNAINTE de implementare (AskUserQuestion, 2 runde): doar etichetare
+corectă (metadata `color_primaries`/`color_trc`/`colorspace` în
+container), NU transformare reală a pixelilor (LOG→Rec.709 sau
+Rec.709→Rec.2020) — decizie explicită, nu simplificare ascunsă.
+
+- **`OutputPreset.colorSpace`/`color_space`** (ambele platforme) — enum
+  `ColorSpaceOption` (Swift)/string sentinel (Python): `.bt709`/`.bt2020`,
+  `nil`/`None` implicit = nemodificat, 100% retrocompatibil (ca la
+  `frameRate`, v3.10.0).
+- **BUG REAL GĂSIT LA TESTARE, ÎNAINTE de a considera implementarea
+  gata**: prima variantă folosea `-color_primaries`/`-color_trc`/
+  `-colorspace` ca opțiuni BRUTE de ieșire FFmpeg — verificat cu
+  `ffprobe` pe rezultat: DOAR `color_space` (matricea) se scria corect,
+  `color_primaries`/`color_transfer` rămâneau `unknown`, reprodus IDENTIC
+  pe `libx264` ȘI pe `h264_videotoolbox` (deci nu un bug specific unui
+  encoder). Fix găsit prin experimentare directă cu `ffmpeg`: filtrul
+  `-vf setparams=color_primaries=...:color_trc=...:colorspace=...` scrie
+  toate cele 3 etichete corect — verificat din nou, toate 3 corecte.
+- **`MotorFFmpeg.construiesteArgumente`/`converter.py`**: `-vf setparams=...`
+  adăugat DOAR la transcodare (Rewrap rămâne `-c copy`).
+- **UI**: `PresetsManagerView.swift`/`presets_dialog.py` — Picker/Combobox
+  nou "Spațiu de culoare", lângă "Cadre/s la ieșire".
+
+**Verificare reală, nu presupusă**:
+- Mac: test standalone (`swiftc`, cod real `MotorFFmpeg.swift`/
+  `PresetsManager.swift`) — confirmă `-vf setparams=...bt709` prezent cu
+  `colorSpace=.bt709`, absent complet cu `nil`. Argumentele EXACTE rulate
+  apoi cu `ffmpeg` real pe un clip sintetic — `ffprobe` confirmă
+  `color_primaries=bt709`, `color_transfer=bt709`, `color_space=bt709`
+  toate simultan corecte.
+- Windows: `converter.Converter.convert()` (cod real de producție) rulat
+  cu `color_space="bt709"` ȘI `"bt2020"` ȘI `None` pe același clip
+  sintetic — toate 3 etichete corecte pentru bt709
+  (`bt709`/`bt709`/`bt709`) și bt2020
+  (`bt2020`/`bt2020-10`/`bt2020nc`), și ZERO regresie pe cazul
+  "nemodificat" (`unknown`/`unknown`/`unknown`, identic cu înainte).
+- `xcodebuild -configuration Debug` — BUILD SUCCEEDED, 0 erori.
+- `pyflakes` (venv izolat) — 0 erori noi (aceleași 3 avertismente
+  preexistente în `converter.py`, neatinse).
+
+**Rămas explicit neatins, aceeași amânare de scop**: Watermark, Timeline
+— Cristi nu le-a cerut în această sesiune, rămân TODO reale, de reluat
+doar la cerere separată explicită pe fiecare.
+
+Versiune 3.10.0 → 3.11.0 (MINOR — funcționalitate nouă vizibilă, Mac +
+Windows, fără schimbare de arhitectură, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în
@@ -2058,11 +2108,12 @@ FĂCUT, vezi v3.7.0, toate mai sus.)
    reluare (Media Foundation sau echivalent, nu Core Image).
 2. **[REZOLVAT v3.10.0, 2026-09-05]** Control de cadre/s la transcodare —
    vezi jurnalul v3.10.0 de mai jos, Mac + Windows.
-3. **Explicit AMÂNAT de Cristi însuși, în aceeași propoziție** — spații
-   de culoare (color space conversion), timeline, watermark: "cred că e
-   prea mult" — NU se implementează fără cerere separată explicită, doar
-   se notează aici ca opțiuni cunoscute din industrie, pentru context
-   viitor.
+3. **[Parțial REZOLVAT v3.11.0, 2026-09-05]** Spații de culoare — Cristi
+   a revenit explicit ("continuăm... item 3") și a scopat-o precis (doar
+   etichetare metadata, nu transformare reală a pixelilor) — vezi jurnalul
+   v3.11.0 mai jos. Watermark și Timeline RĂMÂN neatinse, aceeași
+   amânare de scop ca înainte — de reluat DOAR la cerere separată,
+   explicită pe fiecare.
 Prioritate sugerată la reluare: metadata Sony/EXIF/ID3 (secțiunea
 anterioară, UI de tabel comparativ neînceput) sau 2 (control fps, mediu,
 atinge motorul de conversie) — oricare, la alegerea lui Cristi; 1

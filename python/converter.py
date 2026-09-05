@@ -81,6 +81,10 @@ class Converter:
             # foloseste -c copy mai sus, fara re-encode posibil).
             if preset.frame_rate:
                 args += ["-r", preset.frame_rate]
+            # Etichetare spatiu de culoare (2026-09-05) — doar tag-uri
+            # container/VUI, nu transformare reala a pixelilor.
+            if preset.color_space:
+                args += presets_manager.color_space_ffmpeg_args(preset.color_space)
             # FIX istoric (aliniere cu varianta Swift, MotorFFmpeg.swift):
             # audio-ul urmeaza AudioMode-ul presetului — Passthrough
             # ("-c:a copy") pastreaza exact bit depth-ul original al
