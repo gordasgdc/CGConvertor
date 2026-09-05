@@ -984,6 +984,11 @@ class CGConvertorApp(BASE_CLASS):
             menu.add_separator()
         if len(current_selection) < 2 and job and job.get("metadata"):
             menu.add_command(label=t(self.lang, "preview_open"), command=lambda: self._open_preview(job))
+            # Player real-time LUT/LOG (Windows, 2026-09-05) — fereastra
+            # SEPARATA, pe langa preview-ul static de mai sus (identic ca
+            # decizie de scop cu portul Mac v3.9.0 — niciunul nu il
+            # inlocuieste pe celalalt). Vezi lut_player.py.
+            menu.add_command(label=t(self.lang, "player_open"), command=lambda: self._open_lut_player(job))
             menu.add_separator()
         if len(current_selection) >= 2:
             selected_jobs = [j for iid in current_selection for j in [self._job_for_item(iid)] if j]
@@ -1002,6 +1007,10 @@ class CGConvertorApp(BASE_CLASS):
 
     def _open_preview(self, job):
         MediaPreviewDialog(self, self, job)
+
+    def _open_lut_player(self, job):
+        from lut_player import LUTPlayerWindow
+        LUTPlayerWindow(self, self, job["path"])
 
     def _move_job(self, item_id, delta):
         job = self._job_for_item(item_id)

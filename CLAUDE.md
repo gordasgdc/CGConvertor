@@ -2090,6 +2090,89 @@ doar la cerere separată explicită pe fiecare.
 Versiune 3.10.0 → 3.11.0 (MINOR — funcționalitate nouă vizibilă, Mac +
 Windows, fără schimbare de arhitectură, Regula 14).
 
+## v3.12.0 (2026-09-05) — Player real-time LUT/LOG, Windows
+
+Portul Windows al playerului v3.9.0 (Mac) — cerut explicit ("player
+Windows"). **Arhitectură fundamental DIFERITĂ**, nu un port 1:1 —
+Windows/Tkinter nu are un echivalent gratuit al AVFoundation. Decizii de
+scop confirmate ÎNAINTE de implementare (AskUserQuestion, 2 runde):
+
+1. **`mpv.exe` descărcat LA CERERE** (Regula 4), nu bundle-uit în
+   installer — rulat ca subproces, ÎNCORPORAT în fereastra Tkinter prin
+   `--wid=<hwnd>` (`Frame.winfo_id()` întoarce direct handle-ul nativ pe
+   Windows). Ales în locul VLC — mpv are filtrul `lut3d` (prin puntea
+   `lavfi` către FFmpeg) direct utilizabil live la redare, VLC ar cere un
+   modul de shader extern, mai fragil.
+2. **Controale de redare — EXCLUSIV cele native mpv (OSC)**, nu un scrub
+   bar Tkinter propriu — IPC bidirecțional cu mpv pe Windows (citire
+   poziție în timp real) e documentat oficial ca fragil FĂRĂ `pywin32`/
+   overlapped I/O (named pipe-urile Windows nu suportă simplu citire+
+   scriere concurentă prin `open()` simplu Python, spre deosebire de
+   Unix). Python trimite DOAR comenzi one-way (schimbare LUT), nu
+   citește niciodată răspunsuri — evită complet acea fragilitate.
+
+**Implementare**:
+- **`dependency_manager.py`**: `find_mpv()` + `download_and_install_mpv()`
+  (item nou, opțional, `is_optional=True` — nu blochează bulina globală).
+  Sursă: `mpv-player/mpv` (GitHub, buildul STANDALONE oficial, NU
+  libmpv — acela există doar ca `.7z` prin canale comunitare
+  shinchiro/zhongfly, ar fi cerut o dependință nouă grea doar pentru
+  dezarhivare 7z). Tag-ul "git-release" NU e marcat "Latest" pe GitHub
+  (e pre-release) — URL-ul exact al asset-ului se citește DINAMIC din
+  `assets[]` al API-ului de release-uri (regex pe nume, conține un hash
+  de commit care se schimbă la fiecare build), niciodată hardcodat —
+  identic ca principiu cu Self-Updater-ul aplicației înseși.
+- **`lut_player.py`** (nou) — `LUTPlayerWindow`, lansează `mpv.exe` cu
+  `--wid`/`--input-ipc-server`/`--osc=yes`, butoane Tkinter "Alege LUT…"/
+  "Elimină" (reutilizează cheile `preview_choose_lut`/`preview_clear_lut`/
+  `preview_no_lut`, ca la Mac). Filtrul trimis prin IPC:
+  `lavfi=[lut3d=file='<cale escapată>']` — escaparea căii
+  (`\`→`/`, `:`→`\:`) e IDENTICĂ cu cea deja testată pentru FFmpeg în
+  `media_inspector.py` (aceeași sintaxă de graf libavfilter dedesubt).
+- **`main.py`**: intrare nouă "Redă cu LUT (live)" în meniul contextual,
+  lângă "Previzualizează" — fereastră SEPARATĂ, `MediaPreviewDialog`
+  static rămâne complet neatins (aceeași decizie ca pe Mac).
+
+**BUG REAL GĂSIT LA TESTARE, reparat înainte de commit**: prima variantă
+a `download_and_install_mpv()` descărca arhiva `.zip` ȘI extrăgea
+conținutul ei în ACELAȘI folder temporar — cum arhiva oficială mpv e
+"plată" (mpv.exe direct la rădăcină, fără subfolder), bucla de copiere
+finală ("tot ce e lângă mpv.exe") copia din greșeală și `mpv.zip` însuși
+în instalarea finală, lângă binar. Verificat REAL (nu presupus): rulat
+`download_and_install_mpv()` efectiv, pe API-ul GitHub real, într-un
+folder de test — `mpv.zip` apărea vizibil în lista de fișiere instalate.
+Fix: arhiva descărcată rămâne în folderul temporar PĂRINTE, extracția
+merge într-un subfolder dedicat — retestat, confirmat curat.
+
+**Verificare reală, nu presupusă** (limitele exacte ale ce se poate
+verifica de pe Mac, spuse explicit, nu ascunse):
+- **Verificat REAL, de pe Mac**: regex-ul de potrivire a asset-ului rulat
+  LIVE pe răspunsul curent al API-ului GitHub — un singur asset se
+  potrivește (`mpv-...-x86_64-pc-windows-msvc.zip`), confirmat printre
+  10 asset-uri disponibile. Arhiva reală descărcată (28MB) — conține
+  efectiv `mpv.exe` + `vulkan-1.dll` la rădăcină, exact cum presupunea
+  codul. `download_and_install_mpv()` rulat END-TO-END, pe API-ul real,
+  cu bug-ul de mai sus găsit ȘI reparat prin testare efectivă. Sintaxa
+  filtrului (`lavfi=[lut3d=file=...]`) confirmată din documentația
+  OFICIALĂ mpv (`vf.rst`) + FFmpeg (`vf_lut3d.c`), nu din presupunere —
+  mpv NU are un filtru `lut3d` propriu, doar prin puntea `lavfi`.
+  Test GUI complet, `app.mainloop()` real (`CGConvertorApp` din codul de
+  producție): fișier adăugat prin codul real, `_open_lut_player` apelat
+  exact cum face meniul, fereastra se deschide corect, `find_mpv()`
+  întoarce `None` pe Mac (corect — feature Windows-only) și fallback-ul
+  „mpv nu e instalat” apare corect, fără crash.
+- **NEVERIFICAT, necesită Parallels-ul lui Cristi** (spus explicit, nu
+  ascuns): embed-ul `--wid` chiar randează video în fereastra Tkinter
+  (nu doar teoretic corect); comportamentul mpv sub un build PyInstorer
+  înghețat; dacă filtrul `lavfi=[lut3d=...]` chiar aplică vizibil LUT-ul
+  în timpul redării (nu doar sintactic acceptat de mpv); OSC-ul mpv
+  răspunde la mouse peste fereastra încorporată. Cristi confirmă manual,
+  o dată, la prima utilizare reală — la fel ca restul funcționalităților
+  Windows din acest repo care au necesitat testare fizică.
+
+Versiune 3.11.0 → 3.12.0 (MINOR — funcționalitate nouă vizibilă, paritate
+cu Mac deși arhitectural diferită, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în
@@ -2102,10 +2185,8 @@ FĂCUT, vezi v3.7.0, toate mai sus.)
    Offload — vezi jurnalul v3.7.1 de mai jos. Mac + Windows.
 0. **[REZOLVAT v3.8.0, 2026-09-05]** Tabel comparativ metadate pe Windows —
    vezi jurnalul v3.8.0 de mai jos.
-1. **[REZOLVAT parțial v3.9.0, 2026-09-05 — doar Mac]** Playerul real-time
-   LUT/LOG — vezi jurnalul v3.9.0 de mai jos. Windows rămâne TODO explicit,
-   cerut chiar de Cristi ca "altă dată" — discuție de scop separată la
-   reluare (Media Foundation sau echivalent, nu Core Image).
+1. **[REZOLVAT v3.9.0 (Mac) + v3.12.0 (Windows), 2026-09-05]** Playerul
+   real-time LUT/LOG — ambele platforme, vezi jurnalele respective mai jos.
 2. **[REZOLVAT v3.10.0, 2026-09-05]** Control de cadre/s la transcodare —
    vezi jurnalul v3.10.0 de mai jos, Mac + Windows.
 3. **[Parțial REZOLVAT v3.11.0, 2026-09-05]** Spații de culoare — Cristi

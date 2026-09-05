@@ -2,6 +2,15 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.12.0 — Player real-time cu LUT live, Windows (2026-09-05)
+
+Windows capătă acum playerul real-time cu LUT live (Mac îl avea din
+v3.9.0) — meniu contextual nou „Redă cu LUT (live)”, fereastră separată
+de preview-ul static existent. Folosește `mpv` (descărcat opțional, la
+cerere, din Setări → Verificare & Dependențe Sistem — nu e obligatoriu
+pentru restul aplicației). Controalele de redare (play/pause/scrub/volum)
+sunt cele native mpv, afișate direct peste video.
+
 ### v3.11.0 — Etichetă spațiu de culoare la transcodare (Mac + Windows, 2026-09-05)
 
 Presetările capătă o opțiune nouă „Spațiu de culoare" — Nemodificat

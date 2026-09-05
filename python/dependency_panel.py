@@ -105,7 +105,7 @@ class DependencyPanel(tk.Toplevel):
                      font=(theme.FONT_FAMILY, 9), bg=th["bg_panel"],
                      fg=_state_color(th, item.state)).pack(side="right")
 
-            hint_key = "deps_ffmpeg_hint" if item.id == "ffmpeg" else "deps_homebrew_hint"
+            hint_key = {"ffmpeg": "deps_ffmpeg_hint", "mpv": "deps_mpv_hint"}.get(item.id, "deps_homebrew_hint")
             tk.Label(inner, text=self.t(self.lang, hint_key), font=(theme.FONT_FAMILY, 9),
                      bg=th["bg_panel"], fg=th["fg_dim"], wraplength=400, justify="left").pack(anchor="w", pady=(4, 0))
 
@@ -116,6 +116,13 @@ class DependencyPanel(tk.Toplevel):
                 else:
                     ttk.Button(inner, text=self.t(self.lang, "deps_ffmpeg_install"),
                                command=self._install_ffmpeg).pack(anchor="w", pady=(6, 0))
+            elif item.id == "mpv" and item.state == STATE_OPTIONAL_MISSING:
+                if self.deps.is_downloading:
+                    tk.Label(inner, text=self.t(self.lang, "deps_mpv_downloading"),
+                             font=(theme.FONT_FAMILY, 9), bg=th["bg_panel"], fg=th["fg_dim"]).pack(anchor="w", pady=(6, 0))
+                else:
+                    ttk.Button(inner, text=self.t(self.lang, "deps_mpv_install"),
+                               command=self._install_mpv).pack(anchor="w", pady=(6, 0))
             elif item.id == "homebrew" and item.state == STATE_OPTIONAL_MISSING:
                 btns = tk.Frame(inner, bg=th["bg_panel"])
                 btns.pack(anchor="w", pady=(6, 0))
@@ -130,6 +137,14 @@ class DependencyPanel(tk.Toplevel):
 
     def _install_worker(self):
         self.deps.download_and_install_ffmpeg()
+        self.after(0, self._after_install)
+
+    def _install_mpv(self):
+        self._refresh_display()
+        threading.Thread(target=self._install_mpv_worker, daemon=True).start()
+
+    def _install_mpv_worker(self):
+        self.deps.download_and_install_mpv()
         self.after(0, self._after_install)
 
     def _after_install(self):
