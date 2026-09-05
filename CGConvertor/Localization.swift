@@ -322,5 +322,12 @@ enum L {
         "preview.fullscreen": [.ro: "Mărește pe tot ecranul", .en: "Enlarge to fullscreen", .es: "Ampliar a pantalla completa"],
         "preview.exitFullscreen": [.ro: "Micșorează", .en: "Exit fullscreen", .es: "Salir de pantalla completa"],
         "preview.clearLut": [.ro: "Elimină", .en: "Clear", .es: "Quitar"],
+
+        // MARK: - Player LUT real-time (Mac, 2026-09-05 — redare video reala,
+        // audio inclus, LUT .cube aplicat live prin Core Image; Windows ramane
+        // TODO separat, discutie de scop viitoare)
+
+        "player.open": [.ro: "Redă cu LUT (live)", .en: "Play with live LUT", .es: "Reproducir con LUT (en vivo)"],
+        "player.title": [.ro: "Player LUT — %@", .en: "LUT Player — %@", .es: "Reproductor LUT — %@"],
     ]
 }

@@ -2,6 +2,14 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.9.0 — Player real-time cu LUT live, doar Mac (2026-09-05)
+
+Fereastră nouă, separată de preview-ul static existent — redare video
+reală (play/pause/scrub, audio inclus), cu un LUT `.cube` aplicat LIVE pe
+fiecare cadru (Core Image, accelerat GPU), deschisă cu noul buton „▶” de
+pe fiecare rând de job. Doar Mac — Windows rămâne pentru o sesiune
+viitoare, discuție de scop separată.
+
 ### v3.8.0 — Tabel comparativ de metadate pe Windows (2026-09-05)
 
 Windows capătă acum tabelul comparativ de metadate (Sony Log/Gamma/EI,

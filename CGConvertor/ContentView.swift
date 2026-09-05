@@ -511,6 +511,7 @@ private struct RandJob: View {
     let onMutaJos: () -> Void
     let onToggleSelectie: () -> Void
     @State private var showPreview = false
+    @State private var showLUTPlayer = false
 
     var body: some View {
         ShiftCard(padding: 12) {
@@ -598,6 +599,17 @@ private struct RandJob: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(Shift.muted)
+
+                    // Player real-time LUT/LOG (Mac, 2026-09-05) — fereastra
+                    // SEPARATA, pe langa preview-ul static de mai sus, cerut
+                    // explicit de Cristi in aceasta forma (nu inlocuieste
+                    // preview-ul rapid existent). Vezi LUTPlayerSheet.swift.
+                    Button { showLUTPlayer = true } label: {
+                        Image(systemName: "play.circle")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Shift.muted)
+                    .help(L.t("player.open"))
                 }
 
                 Button { onSterge() } label: {
@@ -614,6 +626,9 @@ private struct RandJob: View {
         }
         .sheet(isPresented: $showPreview) {
             MediaPreviewSheet(job: job, isPresented: $showPreview)
+        }
+        .sheet(isPresented: $showLUTPlayer) {
+            LUTPlayerSheet(job: job, isPresented: $showLUTPlayer)
         }
     }
 

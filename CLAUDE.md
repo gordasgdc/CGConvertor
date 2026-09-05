@@ -1925,6 +1925,73 @@ requirements.txt`, fără să atingă Python-ul de sistem):
 Versiune 3.7.1 → 3.8.0 (MINOR — funcționalitate nouă vizibilă, paritate cu
 Mac, fără schimbare de arhitectură, Regula 14).
 
+## v3.9.0 (2026-09-05) — Player real-time LUT/LOG, doar Mac
+
+Cerut explicit de Cristi, scopat chiar de el în aceeași propoziție:
+"playerul real time dar pe Mac, pe Windows altă dată". Confirmat înainte
+de start (AskUserQuestion): (1) player VIDEO COMPLET cu LUT live — nu doar
+un scrubbing mai rapid al preview-ului static existent — și (2) fereastră
+SEPARATĂ, nouă, pe lângă `MediaPreviewSheet` (care rămâne neschimbat,
+neînlocuit).
+
+**Arhitectură**: `AVMutableVideoComposition(asset:applyingCIFiltersWithHandler:)`
+— API-ul standard AVFoundation pentru randare CoreImage per-cadru în timpul
+redării reale — NU un pipeline Metal scris de la zero (ar fi însemnat
+reimplementarea decodării video + sincronizării audio, cost nejustificat
+față de o unealtă deja matură din SDK). `VideoPlayer` (AVKit/SwiftUI)
+oferă transportul nativ complet (play/pause, scrub, volum, fullscreen)
+gratuit — construit doar ce lipsea efectiv:
+
+- **`CGConvertor/LUTPlayerEngine.swift`** (nou) — `CubeLUT.load(from:)`,
+  primul parser `.cube` din acest repo (până acum LUT-ul era doar o cale
+  de fișier pasată direct către `ffmpeg -vf lut3d=file=...`, niciodată
+  parsat efectiv în Swift). Respinge explicit LUT-uri 1D
+  (`LUT_1D_SIZE`) — doar 3D. `LUTPlayerCoordinator` (`ObservableObject`)
+  — ține filtrul `CIColorCube` construit din datele LUT-ului, referit (nu
+  copiat) din closure-ul AVFoundation, ca schimbarea LUT-ului în timpul
+  redării să se reflecte pe cadrul următor fără reconstrucția compoziției.
+- **`CGConvertor/LUTPlayerSheet.swift`** (nou) — sheet SwiftUI cu
+  `VideoPlayer(player:)`, buton "Alege LUT…"/"Elimină" (reutilizează
+  cheile `preview.chooseLut`/`preview.clearLut`/`preview.noLut` — semantică
+  identică cu preview-ul static, fără duplicare de traduceri).
+- **`ContentView.swift`** — buton nou "▶" (`play.circle`) pe fiecare rând
+  de job cu metadata gata, lângă butonul "ochi" existent — deschide
+  `LUTPlayerSheet` într-un `.sheet` SEPARAT, `MediaPreviewSheet` rămâne
+  complet neatins.
+- **`Localization.swift`** — chei noi `player.open`/`player.title`.
+
+**Verificare reală, nu presupusă** (fără capturi de ecran, per regula de
+economisire — verificare programatică):
+- Test standalone (`swiftc`, compilat DIRECT din `LUTPlayerEngine.swift`
+  real, nicio reimplementare pentru test): un `.cube` 2×2×2 de inversare
+  scris pe disc, încărcat prin `CubeLUT.load` (confirmat: dimensiune=2,
+  32 floats RGBA), filtrul `CIColorCube` construit din el aplicat pe o
+  imagine roșie (255,0,0) pură — rezultatul citit pixel-cu-pixel prin
+  `CGContext` confirmă cyan (0,255,255), exact inversarea așteptată.
+  Dovedește că parsarea `.cube` ȘI transformarea de culoare prin
+  CoreImage chiar funcționează, pe codul de producție.
+- `xcodebuild -configuration Debug` — **BUILD SUCCEEDED**, 0 erori (după
+  un fix real găsit la build: `import Combine` lipsă pentru
+  `ObservableObject`/`@Published` în `LUTPlayerEngine.swift`).
+- Aplicația compilată lansată REAL (`open CGConvertor.app`), confirmată
+  rulând (`pgrep`), închisă curat (`quit app` via `osascript`) — fără
+  crash la lansare cu noul cod încărcat.
+- **NEVERIFICAT interactiv**: click-ul efectiv pe butonul "▶" + redarea
+  video propriu-zisă cu LUT vizibil pe ecran — asta cere fie o captură de
+  ecran (interzisă implicit de regula de economisire, doar la cerere
+  explicită "SCREENSHOT"), fie un fișier video real cu conținut vizual
+  variat de testat manual. Cristi confirmă manual, o dată, la prima
+  utilizare reală.
+
+**Explicit NEATINS, cerut chiar de Cristi**: portul Windows (Media
+Foundation sau echivalent — Python/Tkinter nu are un pipeline de
+compoziție video real-time comparabil, ar necesita o dependință nouă
+majoră, ex. `python-vlc`/`mpv` cu shader custom) — TODO real, discuție de
+scop separată la reluare, nu o omisiune ascunsă.
+
+Versiune 3.8.0 → 3.9.0 (MINOR — funcționalitate nouă vizibilă, doar Mac,
+fără schimbare de arhitectură a restului aplicației, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în
@@ -1937,11 +2004,10 @@ FĂCUT, vezi v3.7.0, toate mai sus.)
    Offload — vezi jurnalul v3.7.1 de mai jos. Mac + Windows.
 0. **[REZOLVAT v3.8.0, 2026-09-05]** Tabel comparativ metadate pe Windows —
    vezi jurnalul v3.8.0 de mai jos.
-1. **Playerul real-time LUT/LOG** — Cristi confirmă din nou interesul
-   ("la sfârșit să pregătești să implementăm și playerul") — rămâne un
-   proiect separat, mult mai mare (GPU, Metal pe Mac + echivalent
-   Windows), dar de PREGĂTIT ca următor pas mare, nu de început fără
-   discuție dedicată de scop.
+1. **[REZOLVAT parțial v3.9.0, 2026-09-05 — doar Mac]** Playerul real-time
+   LUT/LOG — vezi jurnalul v3.9.0 de mai jos. Windows rămâne TODO explicit,
+   cerut chiar de Cristi ca "altă dată" — discuție de scop separată la
+   reluare (Media Foundation sau echivalent, nu Core Image).
 2. **Control de cadre/s la transcodare** — azi motorul de conversie
    (`MotorFFmpeg.swift`/`converter.py` + `PresetsManager`) nu expune nicio
    opțiune de schimbare a frame rate-ului la ieșire (conversia păstrează
