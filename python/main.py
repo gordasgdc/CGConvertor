@@ -54,6 +54,7 @@ import config
 import format_registry
 import gpu_probe
 import machine_id
+import media_inspector
 import offload_engine
 import presets_manager as presets_mod
 import revocation_check
@@ -67,6 +68,7 @@ from dependency_panel import DependencyPanel
 from offload_view import OffloadPanel
 from presets_dialog import PresetsDialog
 from settings_dialog import SettingsDialog
+from watch_folders import WatchFolderManager
 
 BASE_CLASS = TkinterDnD.Tk if HAS_DND else tk.Tk
 
@@ -117,6 +119,14 @@ class CGConvertorApp(BASE_CLASS):
         self.offload_source_path = None
         self.offload_destinations = []
         self.offload_verify_model = "xxhash64"
+
+        # Watch Folders (Faza 2) — motorul e independent de UI, ruleaza pe
+        # thread propriu; callback-ul marcheaza fisierele noi in coada prin
+        # `self.after(0, ...)` (Tkinter nu e thread-safe, la fel ca restul
+        # aplicatiei — self_updater foloseste acelasi tipar).
+        self.watch_folder_manager = WatchFolderManager(self.settings, config.save)
+        self.watch_folder_manager.on_new_files = lambda paths: self.after(0, lambda: self._add_files(paths))
+        self.watch_folder_manager.start()
 
         self.title(t(self.lang, "app_title"))
         self.geometry("920x620")
@@ -207,6 +217,10 @@ class CGConvertorApp(BASE_CLASS):
 
         style.configure("TCombobox", fieldbackground=th["bg_elevated"],
                          background=th["bg_elevated"], foreground=th["fg"])
+        style.configure("TCheckbutton", background=th["bg_panel"], foreground=th["fg"])
+        style.map("TCheckbutton", background=[("active", th["bg_panel"])])
+        style.configure("TRadiobutton", background=th["bg_panel"], foreground=th["fg"])
+        style.map("TRadiobutton", background=[("active", th["bg_panel"])])
         style.configure("Treeview", background=th["bg_elevated"], fieldbackground=th["bg_elevated"],
                          foreground=th["fg"], borderwidth=0)
         style.configure("Treeview.Heading", background=th["bg_panel"], foreground=th["fg_dim"])
@@ -322,6 +336,16 @@ class CGConvertorApp(BASE_CLASS):
                                              style="Ghost.TButton", cursor="hand2")
         self.choose_folder_btn.pack(fill="x", padx=14, pady=8)
 
+        # ── Watch Folders (Faza 2) ──
+        self.watch_label = tk.Label(left, bg=th["bg_panel"], fg=th["fg"],
+                                     font=self._f(11, "bold"))
+        self.watch_label.pack(anchor="w", padx=14, pady=(16, 4))
+        self.watch_list_frame = tk.Frame(left, bg=th["bg_panel"])
+        self.watch_list_frame.pack(fill="x", padx=14)
+        self.watch_add_btn = ttk.Button(left, command=self._add_watch_folder,
+                                         style="Ghost.TButton", cursor="hand2")
+        self.watch_add_btn.pack(fill="x", padx=14, pady=(4, 0))
+
         self.shortcuts_label = tk.Label(left, bg=th["bg_panel"], fg=th["fg_faint"],
                                          font=self._fm(8))
         self.shortcuts_label.pack(anchor="w", padx=14, pady=(0, 6), side="bottom")
@@ -378,12 +402,15 @@ class CGConvertorApp(BASE_CLASS):
                                             style="Ghost.TButton", cursor="hand2")
         self.choose_files_btn.pack()
 
-        self.tree = ttk.Treeview(self.drop_frame, columns=("status",), show="tree headings",
+        self.tree = ttk.Treeview(self.drop_frame, columns=("meta", "status"), show="tree headings",
                                   height=14)
         self.tree.heading("#0", text="Fisier")
+        self.tree.heading("meta", text="")
         self.tree.heading("status", text="Status")
-        self.tree.column("#0", width=420)
+        self.tree.column("#0", width=340)
+        self.tree.column("meta", width=180)
         self.tree.column("status", width=200)
+        self._thumb_images = {}  # item_id -> tk.PhotoImage, referinta obligatorie (Tkinter le colecteaza altfel)
 
         # Actiuni post-conversie + reordonare: dublu-click SAU click-dreapta
         # pe un rand -> "Deschide fisierul" / "Arata in Explorer" (daca
@@ -396,6 +423,9 @@ class CGConvertorApp(BASE_CLASS):
         self.clear_btn = ttk.Button(bottom_bar, command=self._clear_list,
                                      style="Ghost.TButton", cursor="hand2")
         self.clear_btn.pack(side="left")
+        self.report_btn = ttk.Button(bottom_bar, command=self._generate_report,
+                                      style="Ghost.TButton", cursor="hand2")
+        self.report_btn.pack(side="left", padx=(6, 0))
         self.add_more_btn = ttk.Button(bottom_bar, command=self._choose_files,
                                         style="Ghost.TButton", cursor="hand2")
         self.add_more_btn.pack(side="right")
@@ -445,12 +475,16 @@ class CGConvertorApp(BASE_CLASS):
         dest = self.settings.get("last_destination") or t(lang, "same_as_source")
         self.dest_path_label.config(text=dest)
         self.choose_folder_btn.config(text=t(lang, "choose_folder"))
+        self.watch_label.config(text=t(lang, "watch_folders_title"))
+        self.watch_add_btn.config(text=t(lang, "add_watch_folder"))
+        self._render_watch_folders()
         self.start_btn.config(text=t(lang, "start_conversion"))
         self.stop_btn.config(text=t(lang, "stop_conversion"))
         self.pause_btn.config(text=t(lang, "resume_conversion") if self.is_paused else t(lang, "pause_conversion"))
         self.drop_label.config(text=f'{t(lang, "drag_files_here")}\n{t(lang, "drag_files_hint")}')
         self.choose_files_btn.config(text=t(lang, "choose_files"))
         self.clear_btn.config(text=t(lang, "clear_list"))
+        self.report_btn.config(text=t(lang, "generate_report"))
         self.add_more_btn.config(text=t(lang, "add_files"))
         self.shortcuts_label.config(text=t(lang, "shortcuts_hint"))
         self._refresh_profile_labels()
@@ -611,6 +645,34 @@ class CGConvertorApp(BASE_CLASS):
             config.save(self.settings)
             self.dest_path_label.config(text=folder)
 
+    def _add_watch_folder(self):
+        folder = filedialog.askdirectory()
+        if folder:
+            self.watch_folder_manager.add_folder(folder)
+            self._render_watch_folders()
+
+    def _render_watch_folders(self):
+        th = self.th
+        for w in self.watch_list_frame.winfo_children():
+            w.destroy()
+        for entry in self.watch_folder_manager.folders:
+            row = tk.Frame(self.watch_list_frame, bg=th["bg_panel"])
+            row.pack(fill="x", pady=1)
+            var = tk.BooleanVar(value=entry.get("enabled", True))
+            chk = ttk.Checkbutton(row, variable=var,
+                                   command=lambda p=entry["path"]: self.watch_folder_manager.toggle_folder(p))
+            chk.pack(side="left")
+            tk.Label(row, text=os.path.basename(entry["path"]), bg=th["bg_panel"], fg=th["fg_dim"],
+                     font=self._fm(9), anchor="w").pack(side="left", fill="x", expand=True)
+            remove_lbl = tk.Label(row, text="✕", bg=th["bg_panel"], fg=th["fg_faint"], cursor="hand2",
+                                   font=self._fm(9))
+            remove_lbl.pack(side="right")
+            remove_lbl.bind("<Button-1>", lambda e, p=entry["path"]: self._remove_watch_folder(p))
+
+    def _remove_watch_folder(self, path):
+        self.watch_folder_manager.remove_folder(path)
+        self._render_watch_folders()
+
     def _choose_files(self):
         paths = filedialog.askopenfilenames(
             filetypes=[("Video", "*.mov *.mp4 *.mxf *.mkv *.avi *.m4v")])
@@ -623,22 +685,71 @@ class CGConvertorApp(BASE_CLASS):
     def _add_files(self, paths):
         for p in paths:
             if os.path.isfile(p) and not any(j["path"] == p for j in self.jobs):
-                job = {"path": p, "status": t(self.lang, "status_waiting"), "progress": 0.0}
+                job = {"path": p, "status": t(self.lang, "status_waiting"), "progress": 0.0,
+                       "metadata": None, "thumbnail_path": None}
                 self.jobs.append(job)
                 item_id = self.tree.insert("", "end", text=os.path.basename(p),
-                                            values=(job["status"],))
+                                            values=("", job["status"]))
                 job["item_id"] = item_id
+                self._analyze_file_async(job)
         if self.jobs:
             self.drop_label.pack_forget()
             self.choose_files_btn.pack_forget()
             self.tree.pack(fill="both", expand=True, padx=10, pady=10)
         self._update_deps_badge()
 
+    def _analyze_file_async(self, job):
+        """Inspectie/Metadata profunda + thumbnail (Faza 2) — porneste
+        automat la adaugare, ruleaza pe thread de fundal (ffprobe/ffmpeg pot
+        dura cateva sute de ms), actualizeaza UI-ul doar prin
+        `self.after(0, ...)` (Tkinter nu e thread-safe, la fel ca restul
+        aplicatiei)."""
+        def run():
+            meta = media_inspector.probe(job["path"])
+            thumb_path = os.path.join(media_inspector.thumbnails_folder(), f"{id(job)}.png")
+            ok = media_inspector.generate_thumbnail(job["path"], None, thumb_path)
+            self.after(0, lambda: self._apply_analysis_result(job, meta, thumb_path if ok else None))
+        threading.Thread(target=run, daemon=True).start()
+
+    def _apply_analysis_result(self, job, meta, thumb_path):
+        job["metadata"] = meta
+        job["thumbnail_path"] = thumb_path
+        if not self.tree.exists(job["item_id"]):
+            return  # jobul a fost sters intre timp (Golește lista)
+        parts = []
+        if meta:
+            res = media_inspector.resolution_text(meta)
+            if res:
+                parts.append(res)
+            if meta.get("video_codec"):
+                parts.append(meta["video_codec"].upper())
+            if meta.get("frame_rate"):
+                parts.append(f"{meta['frame_rate']} fps")
+            if meta.get("duration"):
+                parts.append(f"{meta['duration']:.1f}s")
+        self.tree.set(job["item_id"], "meta", " · ".join(parts))
+        if thumb_path:
+            try:
+                photo = tk.PhotoImage(file=thumb_path)
+                self._thumb_images[job["item_id"]] = photo
+                self.tree.item(job["item_id"], image=photo)
+            except tk.TclError:
+                pass
+
+    def _generate_report(self):
+        statuses_text = {id(j): j["status"] for j in self.jobs}
+        report_path = media_inspector.generate_html_report(self.jobs, statuses_text)
+        if sys.platform == "darwin":
+            subprocess.run(["open", report_path])
+        elif sys.platform == "win32":
+            os.startfile(report_path)  # noqa: S606 — deschidere fisier local, generat de noi
+
     def _clear_list(self):
         if self.is_running:
             return
         self.jobs.clear()
         self.tree.delete(*self.tree.get_children())
+        self._thumb_images.clear()
         self.tree.pack_forget()
         self._update_deps_badge()
         self.drop_label.pack(pady=(40, 6))

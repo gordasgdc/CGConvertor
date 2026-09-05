@@ -158,6 +158,10 @@ TRANSLATIONS = {
         "offload_mismatch_log": "NEPOTRIVIRE la verificare: {f}",
         "offload_error_log": "Eroare la {f}: {e}",
         "offload_ram_wait_log": "Memoria a depășit plafonul — aștept să scadă…",
+
+        "watch_folders_title": "Foldere urmărite",
+        "generate_report": "Generează raport",
+        "add_watch_folder": "Adaugă folder…",
     },
     "en": {
         "app_title": "CG Convertor",
@@ -317,6 +321,10 @@ TRANSLATIONS = {
         "offload_mismatch_log": "Verification MISMATCH: {f}",
         "offload_error_log": "Error on {f}: {e}",
         "offload_ram_wait_log": "Memory exceeded the ceiling — waiting for it to drop…",
+
+        "watch_folders_title": "Watch Folders",
+        "generate_report": "Generate report",
+        "add_watch_folder": "Add folder…",
     },
     "es": {
         "app_title": "CG Convertor",
@@ -476,6 +484,10 @@ TRANSLATIONS = {
         "offload_mismatch_log": "DISCREPANCIA de verificación: {f}",
         "offload_error_log": "Error en {f}: {e}",
         "offload_ram_wait_log": "La memoria superó el límite — esperando a que baje…",
+
+        "watch_folders_title": "Carpetas vigiladas",
+        "generate_report": "Generar informe",
+        "add_watch_folder": "Añadir carpeta…",
     }
 }
 

@@ -7,6 +7,7 @@ struct ContentView: View {
     @ObservedObject private var deps = DependencyManager.shared
     @ObservedObject private var revocation = RevocationCheck.shared
     @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var watchFolders = WatchFolderManager.shared
     @State private var seAfiseazaDropTarget = false
     @State private var showActivation = false
     @State private var showUpdateAlert = false
@@ -51,6 +52,8 @@ struct ContentView: View {
         .onAppear {
             vm.verificaFFmpeg()
             deps.refreshAll()
+            watchFolders.onNewFiles = { urls in vm.adaugaFisiere(urls) }
+            watchFolders.start()
             UpdateChecker.checkSilentlyOnLaunch { newVersion, pkgURL in
                 updateAlertVersion = newVersion
                 updateAlertPkgURL = pkgURL
@@ -220,6 +223,8 @@ struct ContentView: View {
                         }
                     }
 
+                    watchFoldersCard
+
                     Text(L.t("shortcuts.hint"))
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(Shift.faint)
@@ -238,6 +243,57 @@ struct ContentView: View {
             // pe scroll — Regula 24, evită bug-ul de suprapunere la resize).
             Divider().overlay(Shift.border)
             profilSidebar
+        }
+    }
+
+    private var watchFoldersCard: some View {
+        ShiftCard {
+            VStack(alignment: .leading, spacing: 8) {
+                ShiftSectionLabel(text: L.t("watchFolders.title"))
+                if watchFolders.folders.isEmpty {
+                    Text(L.t("watchFolders.empty"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(Shift.faint)
+                } else {
+                    ForEach(watchFolders.folders) { folder in
+                        HStack(spacing: 6) {
+                            Toggle("", isOn: Binding(
+                                get: { folder.enabled },
+                                set: { _ in watchFolders.toggle(folder) }
+                            ))
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                            Text((folder.path as NSString).lastPathComponent)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(Shift.muted)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer()
+                            Button {
+                                watchFolders.removeFolder(folder)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Shift.faint)
+                        }
+                    }
+                }
+                Button(L.t("watchFolders.add")) { alegeWatchFolder() }
+                    .buttonStyle(ShiftGhostButtonStyle())
+            }
+        }
+    }
+
+    private func alegeWatchFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Adaugă"
+        if panel.runModal() == .OK, let path = panel.url?.path {
+            watchFolders.addFolder(path)
         }
     }
 
@@ -344,6 +400,10 @@ struct ContentView: View {
                         .buttonStyle(ShiftGhostButtonStyle())
                         .disabled(vm.seRuleazaCoada)
                         .keyboardShortcut("k", modifiers: [.command])
+                    Button(L.t("queue.report")) {
+                        if let url = vm.genereazaRaportHTML() { NSWorkspace.shared.open(url) }
+                    }
+                    .buttonStyle(ShiftGhostButtonStyle())
                     Spacer()
                     Button { deschideSelectorFisiere() } label: {
                         Label(L.t("queue.addFiles"), systemImage: "plus")
@@ -436,15 +496,19 @@ private struct RandJob: View {
     var body: some View {
         ShiftCard(padding: 12) {
             HStack(spacing: 12) {
-                Image(systemName: "film")
-                    .foregroundStyle(Shift.muted)
-                    .frame(width: 18)
+                thumbnailJob
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(job.numeFisier)
                         .font(.system(size: 12.5))
                         .lineLimit(1)
                         .truncationMode(.middle)
+
+                    if let metaText = metadataText {
+                        Text(metaText)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(Shift.faint)
+                    }
 
                     switch job.stare {
                     case .astept:
@@ -497,6 +561,35 @@ private struct RandJob: View {
             Button(L.t("queue.moveUp"), action: onMutaSus).disabled(seRuleazaCoada)
             Button(L.t("queue.moveDown"), action: onMutaJos).disabled(seRuleazaCoada)
         }
+    }
+
+    // Inspecție/Metadata (Faza 2) — thumbnail extras cu ffmpeg, populat
+    // asincron de `ConvertorViewModel.analizeazaFisier`; icoana generică
+    // rămâne fallback-ul cât timp analiza nu s-a terminat încă (sau a eșuat).
+    @ViewBuilder
+    private var thumbnailJob: some View {
+        if let cale = job.caleThumbnail, let nsImage = NSImage(contentsOfFile: cale) {
+            Image(nsImage: nsImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 48, height: 32)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+        } else {
+            Image(systemName: "film")
+                .foregroundStyle(Shift.muted)
+                .frame(width: 48, height: 32)
+        }
+    }
+
+    private var metadataText: String? {
+        guard let m = job.metadataMedia else { return nil }
+        let parts = [
+            m.rezolutieText,
+            m.codecVideo?.uppercased(),
+            m.frameRate.map { "\($0) fps" },
+            m.durataSecunde.map { String(format: "%.1fs", $0) }
+        ].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
 

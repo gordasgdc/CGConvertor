@@ -1360,3 +1360,115 @@ Versiune 3.0.0 → 3.1.0 (MINOR — funcționalitate nouă vizibilă, fără
 schimbare de arhitectură, Regula 14), sincronizată Xcode
 (`MARKETING_VERSION`/`CURRENT_PROJECT_VERSION`) + `config.py`
 (`APP_VERSION`).
+
+## Faza 2 v3.2.0 (2026-09-05) — Watch Folders + Inspecție/Metadata + Rapoarte
+
+Continuare directă a Fazei 2, cerut explicit "toate, pe rând" (Watch
+Folders → Inspecție/Metadata+rapoarte → Player LUT/LOG real-time — acesta
+din urmă tratat separat, vezi nota de scop de la finalul acestei secțiuni).
+
+### A. Watch Folders
+
+Decizie de arhitectură deliberată: **scanare periodică (polling, interval
+2s)**, NU FSEvents (Mac)/`ReadDirectoryChangesW` (Windows). Motiv explicit:
+comportament IDENTIC pe ambele platforme, verificat cu ACELEAȘI teste, fără
+nicio dependință nouă (Python nu are un echivalent simplu al FSEvents fără
+un pachet extern ca `watchdog`) — un interval de 2s e suficient pentru un
+scenariu de offload/dropbox de fișiere video, nu un caz care cere evenimente
+de sistem de mare frecvență.
+
+- **Mac** (`WatchFolders.swift`, nou): `WatchFolderManager` (`ObservableObject`,
+  singleton), `Timer` la 2s, `scanAll()`. **Windows** (`watch_folders.py`,
+  nou): `WatchFolderManager`, thread de fundal cu `Event.wait(2.0)` —
+  aceeași logică, portată 1:1.
+- **Detecție de "fișier stabil"** (nu doar "fișier nou"): un fișier e
+  adăugat în coadă abia după ce mărimea lui rămâne NESCHIMBATĂ între două
+  scanări consecutive — altfel un fișier încă în curs de copiere (de pe
+  card, de la un export) ar intra în coadă la jumătate scris. Verificat
+  REAL cu un test care scrie un fișier în 2 etape (simulează o copiere lentă)
+  și confirmă că NU e raportat până nu se oprește din creștere.
+- **Baseline la prima scanare a unui folder**: fișierele deja existente în
+  folder în momentul în care începe urmărirea NU sunt adăugate automat
+  (altfel orice folder ales ca "watch" ar arunca tot ce conține deja în
+  coadă) — doar fișierele apărute DUPĂ acel moment.
+- UI: secțiune nouă "Foldere urmărite" în panoul de setări (Mac: card nou
+  în `panouSetari`; Windows: secțiune nouă în panoul stâng, `main.py`) —
+  adaugă/șterge/activează-dezactivează per folder.
+
+### B. Inspecție/Metadata profundă + thumbnail cu LUT static
+
+- **Mac** (`MediaInspector.swift`, nou) / **Windows** (`media_inspector.py`,
+  nou): rulează `ffprobe`/`ffmpeg` — ACELEAȘI binare deja folosite pentru
+  conversie (`MotorFFmpeg.gasesteBinar()`/`converter.get_ffmpeg_path()`),
+  fără nicio dependință nouă. Metadata extrasă: rezoluție, codec video/
+  audio, framerate (derivat din `r_frame_rate`, o fracție — NU luat brut),
+  durată, bitrate, `pix_fmt`, spațiu de culoare, canale/sample rate audio.
+- **Thumbnail cu LUT static** (NU real-time — vezi nota de scop mai jos):
+  un cadru extras la ~1s în clip, cu un LUT `.cube` opțional aplicat prin
+  filtrul NATIV `lut3d` al FFmpeg (niciun parser de LUT scris de mână —
+  FFmpeg știe deja să citească formatul `.cube`).
+- **Diferență deliberată de format între platforme, cu motiv real**:
+  Mac scrie thumbnail-uri `.jpg` (NSImage citește orice format nativ);
+  Windows scrie `.png` — `tk.PhotoImage` (Tkinter, fără nicio dependință
+  nouă ca Pillow) suportă PNG dar NU JPEG. Nu e o inconsecvență
+  accidentală, e o constrângere reală de platformă, documentată explicit
+  în cod (`media_inspector.py`, docstring `generate_thumbnail`).
+- Analiza pornește AUTOMAT, asincron, imediat ce un fișier intră în coadă
+  (`ConvertorViewModel.adaugaFisiere` → `Task.detached`; `main.py._add_files`
+  → thread de fundal) — NU blochează UI-ul niciodată. Rezultatul apare ca
+  thumbnail + o linie de metadata direct pe rândul jobului.
+
+### C. Rapoarte HTML per lot
+
+Un singur fișier HTML auto-conținut (thumbnail-urile embedate ca data URI
+base64 — tipar deja stabilit în ecosistem, `DataMover`) cu toate joburile
+din coada curentă: thumbnail, nume fișier, metadata, status. Buton
+"Generează raport" — deschide automat fișierul (implicit browserul).
+
+**NEIMPLEMENTAT deliberat, TODO explicit**: varianta PDF a raportului. Ar
+necesita o dependință nouă de layout PDF pe Windows (`reportlab` există
+deja în repo, dar DOAR ca unealtă de build pentru ghidul PDF de instalare,
+NEBUNDLE-uită ca dependință runtime în executabilul PyInstaller) și cod
+CoreGraphics suplimentar pe Mac — amânat, nu ascuns. HTML-ul acoperă deja
+nevoia de bază (vizualizare + partajare per lot).
+
+### Verificare reală, nu presupusă (ambele platforme, separat)
+
+- **Watch Folders**: test standalone (Swift: `swiftc` direct pe
+  `WatchFolders.swift`; Python: `watch_folders.py` importat direct) —
+  simulează un fișier "în creștere" (scris în 2 etape) și confirmă că NU
+  e raportat până nu se stabilizează; confirmă baseline-ul ignoră
+  fișierele preexistente; confirmă un fișier nou apărut dintr-o dată e
+  raportat o singură dată, niciodată duplicat. Apoi un test GUI complet
+  (`app.mainloop()` real pe Python, `RunLoop.main` real pe Swift) prin
+  codul REAL de producție (`_add_files`/`adaugaFisiere`), nu o simulare.
+- **Inspecție/Metadata**: test standalone pe un clip sintetic REAL
+  (`ffmpeg testsrc2` + `sine`, 640×360, h264/aac) — metadata extrasă
+  verificată exact (rezoluție, codec, framerate, durată, canale audio) pe
+  AMBELE platforme, cu rezultate identice. Thumbnail generat și verificat
+  pe disc; **LUT confirmat că chiar se aplică** (nu doar acceptat sintactic)
+  — un LUT de test care inversează culorile (`.cube`, 2×2×2) produce un
+  thumbnail cu conținut de octeți DIFERIT față de varianta fără LUT,
+  comparat direct byte-cu-byte.
+- **Integrare completă, GUI real (Windows/Tkinter)**: `app.mainloop()`
+  autentic, fișier adăugat prin codul real al butonului, analiza rulează
+  pe threadul de fundal, rezultatul apare corect în coloana "meta" a
+  `Treeview`-ului ȘI ca imagine pe rând (`tree.item(..., image=...)`),
+  apoi raportul HTML generat real conține thumbnail-ul (data URI) și
+  numele fișierului.
+- Build Mac (`xcodebuild`, Debug) — 0 erori, după toate schimbările de mai
+  sus (Watch Folders + Metadata) compilate împreună.
+- `pyflakes` (venv izolat) pe toate fișierele Python noi/modificate — zero
+  erori.
+
+### NOTĂ DE SCOP — Player LUT/LOG real-time (Metal/Media Foundation)
+
+Rămâne EXPLICIT neimplementat în acest pas — nu confundat cu thumbnail-ul
+static de mai sus (acela e o poză, nu un player). Un player real-time cu
+LUT/LOG aplicat live la scrubbing e o categorie de lucru diferită: pipeline
+propriu de decodare+randare video pe GPU (Metal pe Mac, un echivalent
+Direct3D/Media Foundation pe Windows), UI de scrubbing cadru-cu-cadru,
+sincronizare audio — o construcție realistă de sine stătătoare, nu o
+extensie mică a ce există deja. Nu a fost improvizată o variantă parțială
+sub aceeași etichetă ca să pară "gata" — rămâne un TODO real, de discutat
+separat ca scop/prioritate înainte de a începe implementarea.

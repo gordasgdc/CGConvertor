@@ -139,6 +139,7 @@ enum L {
         "queue.chooseFiles": [.ro: "Alege fișiere…", .en: "Choose files…", .es: "Elegir archivos…"],
         "queue.clear": [.ro: "Golește lista", .en: "Clear list", .es: "Vaciar lista"],
         "queue.addFiles": [.ro: "Adaugă fișiere…", .en: "Add files…", .es: "Añadir archivos…"],
+        "queue.report": [.ro: "Generează raport", .en: "Generate report", .es: "Generar informe"],
         "queue.status.waiting": [.ro: "În așteptare", .en: "Waiting", .es: "En espera"],
         "queue.status.done": [.ro: "Finalizat", .en: "Done", .es: "Completado"],
         "queue.status.canceled": [.ro: "Anulat", .en: "Canceled", .es: "Cancelado"],
@@ -254,5 +255,11 @@ enum L {
         "offload.log.error": [.ro: "Eroare la %@: %@", .en: "Error on %@: %@", .es: "Error en %@: %@"],
         "offload.log.permError": [.ro: "Permisiune refuzată la %@: %@ — verifică Full Disk Access în Preferințe Sistem.", .en: "Permission denied on %@: %@ — check Full Disk Access in System Settings.", .es: "Permiso denegado en %@: %@ — revisa Acceso completo al disco en Preferencias del Sistema."],
         "offload.log.ramWait": [.ro: "Memoria a depășit plafonul — aștept să scadă…", .en: "Memory exceeded the ceiling — waiting for it to drop…", .es: "La memoria superó el límite — esperando a que baje…"],
+
+        // MARK: - Watch Folders (Faza 2)
+
+        "watchFolders.title": [.ro: "Foldere urmărite", .en: "Watch Folders", .es: "Carpetas vigiladas"],
+        "watchFolders.empty": [.ro: "Niciun folder urmărit", .en: "No folder watched", .es: "Ninguna carpeta vigilada"],
+        "watchFolders.add": [.ro: "Adaugă folder…", .en: "Add folder…", .es: "Añadir carpeta…"],
     ]
 }

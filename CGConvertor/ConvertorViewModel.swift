@@ -62,7 +62,93 @@ final class ConvertorViewModel: ObservableObject {
     func adaugaFisiere(_ urlURIs: [URL]) {
         for url in urlURIs {
             guard !joburi.contains(where: { $0.urlSursa == url }) else { continue }
-            joburi.append(VideoJob(urlSursa: url))
+            let job = VideoJob(urlSursa: url)
+            joburi.append(job)
+            analizeazaFisier(job.id, url: url)
+        }
+    }
+
+    /// Inspecție/Metadata profundă + thumbnail (Faza 2) — pornită automat
+    /// la adăugare, rulează pe fundal (`Task.detached`), NU pe MainActor
+    /// (ffprobe/ffmpeg pot dura câteva sute de ms pe fișiere mari) — starea
+    /// jobului se actualizează abia la final, pe MainActor.
+    private func analizeazaFisier(_ jobID: UUID, url: URL) {
+        Task.detached(priority: .utility) {
+            let meta = MediaInspector.probe(url: url)
+            let thumbURL = MediaInspector.folderThumbnailuri().appendingPathComponent(jobID.uuidString + ".jpg")
+            let thumbOK = MediaInspector.genereazaThumbnail(url: url, lutPath: nil, iesire: thumbURL)
+            await MainActor.run { [weak self] in
+                guard let self, let idx = self.joburi.firstIndex(where: { $0.id == jobID }) else { return }
+                self.joburi[idx].metadataMedia = meta
+                if thumbOK { self.joburi[idx].caleThumbnail = thumbURL.path }
+            }
+        }
+    }
+
+    /// Raport HTML per lot (Faza 2) — un singur fișier auto-conținut
+    /// (thumbnail-uri ca data URI base64, ca la precedentul din `DataMover`)
+    /// cu toate joburile din coada curentă: thumbnail, metadata, status.
+    /// NEIMPLEMENTAT deliberat: varianta PDF — vezi CLAUDE.md pentru motiv
+    /// (ar necesita o dependință nouă de layout PDF, neverificată încă).
+    func genereazaRaportHTML() -> URL? {
+        var randuri = ""
+        for job in joburi {
+            let thumbTag: String
+            if let cale = job.caleThumbnail, let data = FileManager.default.contents(atPath: cale) {
+                let base64 = data.base64EncodedString()
+                thumbTag = "<img src=\"data:image/jpeg;base64,\(base64)\" width=\"160\">"
+            } else {
+                thumbTag = "<span class=\"muted\">—</span>"
+            }
+            let m = job.metadataMedia
+            let metaText = [
+                m?.rezolutieText,
+                m?.codecVideo?.uppercased(),
+                m?.frameRate.map { "\($0) fps" },
+                m?.durataSecunde.map { String(format: "%.1fs", $0) },
+                m?.codecAudio?.uppercased()
+            ].compactMap { $0 }.joined(separator: " · ")
+            let statusText: String
+            switch job.stare {
+            case .astept: statusText = "Așteaptă"
+            case .inLucru(let p): statusText = String(format: "În lucru (%.0f%%)", p * 100)
+            case .finalizat: statusText = "Finalizat"
+            case .anulat: statusText = "Anulat"
+            case .eroare(let mesaj): statusText = "Eroare: \(mesaj)"
+            }
+            randuri += """
+            <tr>
+              <td>\(thumbTag)</td>
+              <td>\(job.numeFisier)</td>
+              <td>\(metaText.isEmpty ? "—" : metaText)</td>
+              <td>\(statusText)</td>
+            </tr>
+            """
+        }
+
+        let html = """
+        <!DOCTYPE html><html><head><meta charset="utf-8">
+        <title>Raport CG Convertor</title>
+        <style>
+        body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#14161A;color:#EDEFF2;padding:24px}
+        h1{color:#E8963C}
+        table{border-collapse:collapse;width:100%}
+        td,th{border-bottom:1px solid #2B2F36;padding:10px;text-align:left;vertical-align:middle}
+        .muted{color:#5C6169}
+        </style></head><body>
+        <h1>Raport conversie — CG Convertor</h1>
+        <p>\(joburi.count) fișiere · generat \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short))</p>
+        <table><tr><th>Thumbnail</th><th>Fișier</th><th>Metadata</th><th>Status</th></tr>
+        \(randuri)
+        </table></body></html>
+        """
+
+        let iesire = FileManager.default.temporaryDirectory.appendingPathComponent("CGConvertor_Raport_\(Int(Date().timeIntervalSince1970)).html")
+        do {
+            try html.write(to: iesire, atomically: true, encoding: .utf8)
+            return iesire
+        } catch {
+            return nil
         }
     }
 

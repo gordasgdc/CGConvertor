@@ -2,6 +2,21 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.2.0 — Faza 2: Watch Folders + Inspecție/Metadata + Rapoarte (2026-09-05)
+
+**Watch Folders**: alege unul sau mai multe foldere de urmărit — orice
+fișier video nou apărut acolo (ex. copiat de pe un card) intră automat în
+coadă, fără să-l adaugi manual. Fiecare folder poate fi activat/dezactivat
+sau șters din listă.
+
+**Inspecție/Metadata + thumbnail**: fiecare fișier adăugat în coadă e
+analizat automat (rezoluție, codec, framerate, durată, audio) — apare ca
+thumbnail + rezumat direct lângă fiecare rând. Buton nou „Generează
+raport" produce un raport HTML (cu toate thumbnail-urile și metadata
+lotului curent), deschis automat.
+
+Disponibil identic pe Mac și Windows.
+
 ### v3.1.0 — Faza 2: Offload/Checksum (2026-09-05)
 
 **Mod nou, „Offload"** (comutator lângă titlu, alături de „Convertor") —

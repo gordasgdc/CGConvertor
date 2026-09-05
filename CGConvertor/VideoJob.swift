@@ -21,6 +21,12 @@ struct VideoJob: Identifiable, Equatable {
     var urlDestinatie: URL?
     var stare: StareJob = .astept
 
+    // Inspecție/Metadata (Faza 2) — completate asincron, în fundal, imediat
+    // după adăugarea fișierului în coadă (vezi ConvertorViewModel.adaugaFisiere
+    // și MediaInspector.swift). `nil` până se termină analiza (sau dacă a eșuat).
+    var metadataMedia: MediaMetadata?
+    var caleThumbnail: String?
+
     var numeFisier: String {
         urlSursa.lastPathComponent
     }
