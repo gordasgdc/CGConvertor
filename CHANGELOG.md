@@ -2,9 +2,7 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
-## [Unreleased]
-
-### v3.0.0 — Faza 1: Motor extins + Presets Manager + conformitate ecosistem (2026-09-04)
+### v3.0.0 — Faza 1: Motor extins + Presets Manager + conformitate ecosistem (2026-09-05)
 
 Schimbare majoră de arhitectură — modelul fix "Mod (Rewrap/Transcode) +
 6 codecuri hardcodate" e înlocuit de un **Presets Manager** complet, iar
@@ -42,6 +40,11 @@ hardware, pe ambele platforme (Mac + Windows).
   ambele platforme.
 - Modurile existente (Rewrap, ProRes, DNxHR) rămân neschimbate ca
   rezultat — verificat direct, nu presupus.
+- **Fix Windows (ARM64)**: aplicația nu pornea deloc pe unele sisteme
+  (biblioteca de drag-and-drop native nu se încărca) — acum cade automat
+  pe modul fără drag-and-drop, în loc să crape.
+- **Fix Windows**: ferestrele de Presetări/Setări puteau rămâne complet
+  goale după acest fallback — reparat.
 
 ### v2.2.1 — Preț dinamic din Furnizor (2026-08-31)
 - Suma de donație din ecranul de Activare + mesajul WhatsApp se citește
