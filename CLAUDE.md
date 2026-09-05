@@ -2276,6 +2276,58 @@ matur, nu doar compilare + rulare fără fereastră.
 
 Versiune 3.13.0 → 3.13.1 (PATCH — fix critic izolat, Regula 14).
 
+## v3.13.2 (2026-09-05) — 2 fix-uri reale: presetarea editată nu devenea activă + Start ignora selecția
+
+**Raportat direct de Cristi, doi bug-uri consecutive**: "am dat modificare
+fps și a exportat tot în fps-ul original" → "dacă nu duplic nu pot seta
+fps-ul" → "și dacă selectez doar una el transcodează tot, nu doar
+selecția".
+
+**Bug 1 — presetarea editată nu devenea activă.** Diagnostic REAL, nu
+presupus: `presets.json`-ul de pe disc AL LUI CRISTI conținea deja un
+preset custom (`custom_3BF78D3A`, "ProRes 422 HQ (copie)") cu
+`frame_rate: "25"` salvat CORECT — persistența funcționa perfect. Un test
+standalone separat, cu argumentele exacte generate din acel preset real,
+rulat prin `ffmpeg` real, a produs corect 25fps dintr-o sursă de 24fps —
+motorul de conversie funcționa perfect și el. Bug-ul real era în altă
+parte: `reincarcaPresets()`/`_on_presets_changed()` reîncarcă lista de
+presetări după ce Presets Manager se închide, dar NICIODATĂ nu actualiza
+`presetSelectatID`/`selected_preset_id` — presetarea ACTIVĂ (cea folosită
+efectiv la Start) rămânea cea VECHE, needitată, chiar dacă userul tocmai
+editase o copie a ei. Fix (ambele platforme): `PresetsManagerSheet`/
+`PresetsDialog` transmit acum și ID-ul presetării pe care userul o vedea
+deschisă la închidere — aceea devine automat activă.
+
+**Bug 2 — Start ignora selecția.** `pornesteCoada()`/`_run_queue()`
+procesau necondiționat TOATĂ coada (`Array(joburi.indices)`/`self.jobs`),
+fără niciun concept de "doar cele selectate" — checkbox-urile de pe
+fiecare rând (adăugate pentru comparația de metadate, v3.7.0) nu aveau
+nicio legătură cu Start. Fix: reutilizate ca scop dublu — Mac (checkbox
+existent `esteSelectat`) / Windows (selecția nativă `Treeview`,
+Ctrl/Shift+click) — dacă 1+ fișiere sunt selectate la apăsarea Start, se
+procesează DOAR acelea; fără nicio selecție, comportamentul rămâne
+neschimbat (toată coada). Eticheta butonului Start arată explicit „(N
+selectate)” când se aplică.
+
+**Verificare reală, nu presupusă** (ambele bug-uri, ambele platforme):
+- Mac: harness standalone (`swiftc`, `ConvertorViewModel` REAL instanțiat,
+  nu o reimplementare) — 3 fișiere reale în coadă, `doarSelectate` cu un
+  singur ID → confirmat DOAR acel fișier procesat (fișier rezultat pe
+  disc), celelalte 2 neatinse; apoi retestat cu set gol → toate 3
+  procesate (zero regresie pe comportamentul vechi).
+- Windows: test GUI complet, `app.mainloop()` real, cod de producție —
+  selecție Treeview pe un singur job → confirmat DOAR acela apare în
+  folderul de ieșire, eticheta butonului arată corect „(1 selectate)”;
+  test separat pentru bug 1 — `_on_presets_changed(presets, id)` chemat
+  exact ca la închiderea dialogului → `selected_preset_id` ȘI combobox-ul
+  vizibil confirmate actualizate la presetarea corectă.
+- `xcodebuild -configuration Debug` — BUILD SUCCEEDED. `pyflakes` (venv
+  izolat) — 0 erori. Instalat real în `/Applications`, versiune
+  INSTALATĂ verificată cu `PlistBuddy` (Regula 0).
+
+Versiune 3.13.1 → 3.13.2 (PATCH — 2 fix-uri reale izolate, Mac + Windows,
+Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în

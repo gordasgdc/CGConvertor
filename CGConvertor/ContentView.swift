@@ -75,9 +75,16 @@ struct ContentView: View {
             DependencyPanel(deps: deps, isPresented: $showDependencyPanel)
         }
         .sheet(isPresented: $showPresetsManager) {
-            PresetsManagerSheet(presets: vm.presets, isPresented: $showPresetsManager) { updated in
+            PresetsManagerSheet(presets: vm.presets, isPresented: $showPresetsManager) { updated, lastSelectedID in
                 PresetsManager.save(updated)
                 vm.reincarcaPresets()
+                // Fix bug real (2026-09-05): presetarea pe care userul
+                // tocmai a editat-o/dus-o (ex. a setat fps pe o copie)
+                // devine automat cea activa pentru conversie - altfel
+                // Start foloseste in continuare presetarea veche, needitata.
+                if let lastSelectedID, updated.contains(where: { $0.id == lastSelectedID }) {
+                    vm.presetSelectatID = lastSelectedID
+                }
             }
         }
         .sheet(isPresented: $showSettingsSheet) {
@@ -382,9 +389,9 @@ struct ContentView: View {
                 Button {
                     guard !revocation.isRevoked else { return }
                     guard license.isUnlocked else { showActivation = true; return }
-                    vm.pornesteCoada()
+                    vm.pornesteCoada(doarSelectate: selectedJobIDs)
                 } label: {
-                    Label(L.t("action.start"), systemImage: "play.fill")
+                    Label(selectedJobIDs.isEmpty ? L.t("action.start") : String(format: L.t("action.startSelected"), selectedJobIDs.count), systemImage: "play.fill")
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 4)
                 }

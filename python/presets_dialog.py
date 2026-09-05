@@ -297,5 +297,13 @@ class PresetsDialog(tk.Toplevel):
 
     def _on_close(self):
         pm.save(self.presets)
-        self.on_change(self.presets)
+        # Fix bug real (2026-09-05, identic cu Mac): presetarea pe care
+        # userul tocmai a editat-o/dus-o (ex. a setat fps pe o copie)
+        # devine automat activa - altfel Start foloseste in continuare
+        # presetarea veche, needitata (self.selected_preset_id neschimbat
+        # de _on_presets_changed, care doar inlocuia lista).
+        last_selected_id = None
+        if self.selected_index is not None and self.selected_index < len(self.presets):
+            last_selected_id = self.presets[self.selected_index].id
+        self.on_change(self.presets, last_selected_id)
         self.destroy()

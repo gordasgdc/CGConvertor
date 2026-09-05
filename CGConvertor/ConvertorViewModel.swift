@@ -193,7 +193,14 @@ final class ConvertorViewModel: ObservableObject {
         return folder.appendingPathComponent("\(numeBaza)\(preset.fileSuffix).\(extensie)")
     }
 
-    func pornesteCoada() {
+    /// `doarSelectate` (2026-09-05, fix bug real raportat de Cristi: "dacă
+    /// selectez doar una el transcodeaza tot, nu doar selecția") —
+    /// reutilizează checkmark-urile deja existente pe fiecare rând
+    /// (`selectedJobIDs` din `ContentView`, introduse pentru comparația de
+    /// metadate) ca scop dublu: dacă userul a bifat 1+ fișiere, Start
+    /// procesează DOAR pe acelea; dacă nu e bifat nimic, comportamentul
+    /// rămâne neschimbat — toată coada, exact ca înainte.
+    func pornesteCoada(doarSelectate: Set<UUID>? = nil) {
         guard !seRuleazaCoada, !joburi.isEmpty, let preset = presetSelectat else { return }
         guard ffmpegInstalat else { return }
         seRuleazaCoada = true
@@ -206,7 +213,12 @@ final class ConvertorViewModel: ObservableObject {
         // îndată ce termină pe al lui, respectând pauza înainte de a
         // porni un job NOU (un job deja început termină natural).
         var indexUrmator = 0
-        let coadaIndexuri = Array(joburi.indices)
+        let coadaIndexuri: [Int]
+        if let doarSelectate, !doarSelectate.isEmpty {
+            coadaIndexuri = joburi.indices.filter { doarSelectate.contains(joburi[$0].id) }
+        } else {
+            coadaIndexuri = Array(joburi.indices)
+        }
         let numarSloturi = min(joburiSimultane, max(1, coadaIndexuri.count))
 
         func porneseUrmatorul() {

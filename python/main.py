@@ -110,6 +110,7 @@ class CGConvertorApp(BASE_CLASS):
         self._stop_all = False
         self._active_converters = []
         self._active_converters_lock = threading.Lock()
+        self._queue_only_paths = None  # None = toata coada; set = doar fisierele selectate la Start
 
         # Offload/Checksum (Faza 2) — starea motorului supravietuieste
         # `_rebuild_ui()` (schimbare tema/marime font), exact ca `self.jobs`
@@ -418,6 +419,7 @@ class CGConvertorApp(BASE_CLASS):
         # finalizat) si "Muta sus"/"Muta jos" (daca coada nu ruleaza).
         self.tree.bind("<Double-Button-1>", self._on_tree_double_click)
         self.tree.bind("<Button-3>", self._on_tree_right_click)
+        self.tree.bind("<<TreeviewSelect>>", self._on_tree_selection_changed)
 
         bottom_bar = tk.Frame(right, bg=th["bg"])
         bottom_bar.pack(fill="x", pady=(8, 0))
@@ -527,8 +529,10 @@ class CGConvertorApp(BASE_CLASS):
     def _open_presets_dialog(self):
         PresetsDialog(self, self.presets, self.lang, t, on_change=self._on_presets_changed)
 
-    def _on_presets_changed(self, presets):
+    def _on_presets_changed(self, presets, last_selected_id=None):
         self.presets = presets
+        if last_selected_id and self._preset_by_id(last_selected_id):
+            self.selected_preset_id = last_selected_id
         self._reload_preset_menu()
 
     def _refresh_gpu_detection(self):
@@ -774,6 +778,18 @@ class CGConvertorApp(BASE_CLASS):
 
     # ── Coada de conversie (pauza/reluare + procesare paralela, Faza 1 F) ──
 
+    def _on_tree_selection_changed(self, event):
+        # Etichetare butonul Start ca sa fie clar CE va converti (identic
+        # cu Mac) - selectia nativa Treeview (Ctrl/Shift+click) e acum
+        # dublu-scop: comparatie de metadate SAU scop de conversie.
+        if self.is_running:
+            return
+        count = len(self.tree.selection())
+        if count:
+            self.start_btn.config(text=t(self.lang, "start_conversion_selected", n=count))
+        else:
+            self.start_btn.config(text=t(self.lang, "start_conversion"))
+
     def _start_queue(self):
         if self.is_running or not self.jobs:
             if not self.jobs:
@@ -789,6 +805,15 @@ class CGConvertorApp(BASE_CLASS):
         self.is_running = True
         self.is_paused = False
         self._stop_all = False
+        # Fix bug real (2026-09-05, identic cu Mac): "daca selectez doar
+        # una el transcodeaza tot, nu doar selectia" - reutilizeaza
+        # selectia nativa a Treeview-ului (Ctrl/Shift+click, deja folosita
+        # pentru comparatia de metadate) ca scop dublu. Capturat AICI, pe
+        # thread-ul principal (self.tree.selection() nu e thread-safe de
+        # apelat direct din thread-ul de fundal al cozii).
+        selected_iids = self.tree.selection()
+        selected_paths = {self._job_for_item(iid)["path"] for iid in selected_iids if self._job_for_item(iid)}
+        self._queue_only_paths = selected_paths or None
         self.start_btn.pack_forget()
         self.stop_btn.pack(fill="x", padx=14, pady=(4, 8), side="bottom")
         self.pause_btn.config(text=t(self.lang, "pause_conversion"))
@@ -855,8 +880,12 @@ class CGConvertorApp(BASE_CLASS):
             else:
                 self._update_status(job, t(self.lang, "error") + ": " + (result["error"] or ""))
 
+        jobs_de_procesat = self.jobs
+        if self._queue_only_paths:
+            jobs_de_procesat = [j for j in self.jobs if j["path"] in self._queue_only_paths]
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [executor.submit(process_one, job) for job in self.jobs]
+            futures = [executor.submit(process_one, job) for job in jobs_de_procesat]
             concurrent.futures.wait(futures)
 
         was_stopped = self._stop_all
@@ -868,6 +897,7 @@ class CGConvertorApp(BASE_CLASS):
         self.stop_btn.pack_forget()
         self.pause_btn.pack_forget()
         self.start_btn.pack(fill="x", padx=14, pady=(24, 8), side="bottom")
+        self._on_tree_selection_changed(None)
         if not was_stopped:
             self._notify_queue_done()
 

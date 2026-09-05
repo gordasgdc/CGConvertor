@@ -2,6 +2,16 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.13.2 — 2 fix-uri reale: presetarea editată nu devenea activă + Start ignora selecția (Mac + Windows, 2026-09-05)
+
+- Editarea/duplicarea unei presetări (ex. setarea unui fps diferit) o face
+  acum automat activă pentru conversie — până acum, presetarea folosită
+  la Start rămânea cea veche, needitată, deși utilizatorul tocmai o
+  modificase.
+- Selectarea unui fișier (sau mai multe) din coadă înainte de Start
+  procesează acum DOAR fișierele selectate — până acum, Start convertea
+  întotdeauna toată coada, indiferent de selecție.
+
 ### v3.13.1 — FIX CRITIC: playerul LUT (Mac) închidea toată aplicația (2026-09-05)
 
 Raportat direct: apăsarea butonului „▶” (Redă cu LUT live) pe un fișier

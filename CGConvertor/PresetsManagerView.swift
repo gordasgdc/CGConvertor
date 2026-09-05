@@ -8,14 +8,24 @@ import UniformTypeIdentifiers
 struct PresetsManagerSheet: View {
     @State private var presets: [OutputPreset]
     @Binding var isPresented: Bool
-    let onSave: ([OutputPreset]) -> Void
+    /// Al doilea parametru (2026-09-05, fix bug real raportat de Cristi:
+    /// "dacă nu duplic nu pot seta fps... a exportat tot în fps-ul
+    /// original") — presetarea pe care userul o vedea deschisă în acest
+    /// panou când a închis fereastra. FĂRĂ asta, editarea/duplicarea unei
+    /// presetări (ex. seta fps pe o copie) NU o făcea automat activă
+    /// pentru conversie — presetarea folosită la Start rămânea cea VECHE,
+    /// needitată, `presetSelectatID` din `ConvertorViewModel` nefiind
+    /// niciodată actualizat de `reincarcaPresets()` (care doar recitește
+    /// lista, nu schimbă selecția activă). Fix: presetarea pe care tocmai
+    /// ai editat-o/dus-o devine automat cea activă la închidere.
+    let onSave: ([OutputPreset], String?) -> Void
 
     @State private var selectedID: String?
     @State private var showImporter = false
     @State private var showExporter = false
     @State private var exportDocument: PresetsJSONDocument?
 
-    init(presets: [OutputPreset], isPresented: Binding<Bool>, onSave: @escaping ([OutputPreset]) -> Void) {
+    init(presets: [OutputPreset], isPresented: Binding<Bool>, onSave: @escaping ([OutputPreset], String?) -> Void) {
         _presets = State(initialValue: presets)
         _isPresented = isPresented
         self.onSave = onSave
@@ -185,7 +195,7 @@ struct PresetsManagerSheet: View {
     }
 
     private func close() {
-        onSave(presets)
+        onSave(presets, selectedID)
         isPresented = false
     }
 }

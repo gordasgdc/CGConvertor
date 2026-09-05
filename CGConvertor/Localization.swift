@@ -153,6 +153,7 @@ enum L {
         "queue.integrityMismatch": [.ro: "durata sursă %.1fs vs. rezultat %.1fs — posibilă trunchiere", .en: "source duration %.1fs vs. output %.1fs — possible truncation", .es: "duración origen %.1fs vs. salida %.1fs — posible truncamiento"],
 
         "action.start": [.ro: "Pornește conversia", .en: "Start conversion", .es: "Iniciar conversión"],
+        "action.startSelected": [.ro: "Pornește conversia (%d selectate)", .en: "Start conversion (%d selected)", .es: "Iniciar conversión (%d seleccionados)"],
         "action.stop": [.ro: "Oprește", .en: "Stop", .es: "Detener"],
         "action.processing": [.ro: "Se procesează…", .en: "Processing…", .es: "Procesando…"],
 
@@ -274,7 +275,7 @@ enum L {
         "history.openSource": [.ro: "Deschide sursa", .en: "Open source", .es: "Abrir origen"],
         "history.openDestination": [.ro: "Deschide destinația", .en: "Open destination", .es: "Abrir destino"],
         "history.close": [.ro: "Închide", .en: "Close", .es: "Cerrar"],
-        "compare.select": [.ro: "Selectează pentru comparație", .en: "Select for comparison", .es: "Seleccionar para comparar"],
+        "compare.select": [.ro: "Selectează pentru comparație sau pentru a converti doar acest fișier", .en: "Select for comparison, or to convert only this file", .es: "Seleccionar para comparar, o para convertir solo este archivo"],
         "compare.button": [.ro: "Compară (%d)", .en: "Compare (%d)", .es: "Comparar (%d)"],
         "compare.title": [.ro: "Comparație metadate", .en: "Metadata comparison", .es: "Comparación de metadatos"],
         "compare.loading": [.ro: "Se analizează…", .en: "Analyzing…", .es: "Analizando…"],
