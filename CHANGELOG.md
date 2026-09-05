@@ -2,6 +2,15 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.4.0 — Verificare integritate post-conversie (2026-09-05)
+
+Fiecare fișier convertit cu succes e verificat automat: durata fișierului
+rezultat e comparată cu durata sursei. Dacă diferă semnificativ (posibilă
+trunchiere/corupere silențioasă, nedetectată doar din codul de ieșire al
+motorului de conversie), rândul rămâne marcat ca finalizat dar cu un
+avertisment vizibil (⚠) și ambele durate afișate, în loc de bifa verde
+obișnuită. Disponibil identic pe Mac și Windows.
+
 ### v3.3.0 — Faza 2: Preview interactiv cu LUT (2026-09-05)
 
 Fiecare fișier analizat (are thumbnail generat) capătă o previzualizare

@@ -143,6 +143,8 @@ enum L {
         "queue.status.waiting": [.ro: "În așteptare", .en: "Waiting", .es: "En espera"],
         "queue.status.done": [.ro: "Finalizat", .en: "Done", .es: "Completado"],
         "queue.status.canceled": [.ro: "Anulat", .en: "Canceled", .es: "Cancelado"],
+        "queue.status.integrityWarning": [.ro: "Finalizat — verificare durată eșuată", .en: "Done — duration check failed", .es: "Completado — verificación de duración fallida"],
+        "queue.integrityMismatch": [.ro: "durata sursă %.1fs vs. rezultat %.1fs — posibilă trunchiere", .en: "source duration %.1fs vs. output %.1fs — possible truncation", .es: "duración origen %.1fs vs. salida %.1fs — posible truncamiento"],
 
         "action.start": [.ro: "Pornește conversia", .en: "Start conversion", .es: "Iniciar conversión"],
         "action.stop": [.ro: "Oprește", .en: "Stop", .es: "Detener"],

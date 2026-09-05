@@ -113,6 +113,7 @@ final class ConvertorViewModel: ObservableObject {
             case .astept: statusText = "Așteaptă"
             case .inLucru(let p): statusText = String(format: "În lucru (%.0f%%)", p * 100)
             case .finalizat: statusText = "Finalizat"
+            case .finalizatCuAvertisment(let mesaj): statusText = "Finalizat — ⚠ \(mesaj)"
             case .anulat: statusText = "Anulat"
             case .eroare(let mesaj): statusText = "Eroare: \(mesaj)"
             }
@@ -287,7 +288,7 @@ final class ConvertorViewModel: ObservableObject {
                 }
                 switch rezultat {
                 case .success:
-                    self.joburi[idx].stare = .finalizat
+                    self.joburi[idx].stare = self.verificaIntegritate(sursa: job.urlSursa, destinatie: destinatie)
                 case .failure(let eroare):
                     if case EroareFFmpeg.anulat = eroare {
                         self.joburi[idx].stare = .anulat
@@ -302,6 +303,28 @@ final class ConvertorViewModel: ObservableObject {
         handleuriActive[job.id] = handle
     }
 
+    /// Verificare de siguranță post-conversie (2026-09-05, cerută explicit
+    /// de Cristi — cod ieșire 0 la ffmpeg NU garantează un fișier complet;
+    /// o trunchiere/corupere silențioasă tot ar apărea ca "succes" fără
+    /// asta). Compară durata sursă vs. destinație via ffprobe (`durataClip`,
+    /// deja folosit pentru bara de progres) — o toleranță de 1s absoarbe
+    /// rotunjirile normale de containere/framerate, nu maschează o
+    /// trunchiere reală (de obicei diferențe de zeci de secunde sau mai
+    /// mult). Dacă ffprobe nu poate citi durata (fișier neobișnuit/fără
+    /// track video clar), NU raportăm eroare — am verifica ceva ce nu
+    /// putem măsura, deci rămâne "finalizat" simplu (fail-open, ca restul
+    /// verificărilor opționale din aplicație).
+    private func verificaIntegritate(sursa: URL, destinatie: URL) -> StareJob {
+        guard let durataSursa = MotorFFmpeg.durataClip(url: sursa),
+              let durataDestinatie = MotorFFmpeg.durataClip(url: destinatie) else {
+            return .finalizat
+        }
+        let diferenta = abs(durataSursa - durataDestinatie)
+        guard diferenta > 1.0 else { return .finalizat }
+        let mesaj = String(format: L.t("queue.integrityMismatch"), durataSursa, durataDestinatie)
+        return .finalizatCuAvertisment(mesaj: mesaj)
+    }
+
     private func verificaFinalizareaCozii() {
         // Coada s-a terminat cand TOATE joburile au o stare finala
         // (finalizat/anulat/eroare) — NICIODATA cand sunt inca "in
@@ -311,7 +334,7 @@ final class ConvertorViewModel: ObservableObject {
         guard seRuleazaCoada, handleuriActive.isEmpty else { return }
         let toateAuStareFinala = joburi.allSatisfy { job in
             switch job.stare {
-            case .finalizat, .anulat, .eroare: return true
+            case .finalizat, .finalizatCuAvertisment, .anulat, .eroare: return true
             case .astept, .inLucru: return false
             }
         }

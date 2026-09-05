@@ -4,6 +4,11 @@ enum StareJob: Equatable {
     case astept
     case inLucru(progres: Double)
     case finalizat
+    /// FFmpeg a raportat succes (cod ieșire 0), dar durata fișierului
+    /// rezultat NU corespunde cu durata sursei (peste toleranța admisă) —
+    /// semn posibil de trunchiere/corupere silențioasă. Vezi
+    /// `ConvertorViewModel.verificaIntegritate(...)`.
+    case finalizatCuAvertisment(mesaj: String)
     case anulat
     case eroare(mesaj: String)
 }

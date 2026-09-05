@@ -536,6 +536,19 @@ private struct RandJob: View {
                                     .foregroundStyle(Shift.accent)
                             }
                         }
+                    case .finalizatCuAvertisment(let mesaj):
+                        HStack(spacing: 10) {
+                            Label(L.t("queue.status.integrityWarning"), systemImage: "exclamationmark.triangle.fill")
+                                .font(.system(size: 10.5))
+                                .foregroundStyle(.orange)
+                            if let destinatie = job.urlDestinatie {
+                                Button(L.t("job.showInFinder")) { NSWorkspace.shared.activateFileViewerSelecting([destinatie]) }
+                                    .buttonStyle(.plain)
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .foregroundStyle(Shift.accent)
+                            }
+                        }
+                        .help(mesaj)
                     case .anulat:
                         Label(L.t("queue.status.canceled"), systemImage: "xmark.circle")
                             .font(.system(size: 10.5))

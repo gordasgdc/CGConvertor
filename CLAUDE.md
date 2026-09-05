@@ -1526,3 +1526,129 @@ decodare.
 
 Versiune 3.2.0 → 3.3.0 (MINOR — funcționalitate nouă vizibilă, fără
 schimbare de arhitectură, Regula 14).
+
+## v3.4.0 (2026-09-05) — Verificare integritate post-conversie
+
+**Motiv**: feedback direct de la Cristi, pe marginea discuției despre
+Presets Manager ("clientul trebuie să-și creeze/duplice/aleagă el o
+opțiune — asta arată profesional pentru o casă de producție?"). Verificare
+directă în cod (nu presupunere): modelul de Presets (creezi/duplici/alegi)
+e de fapt standardul industriei (Resolve, Adobe Media Encoder, Compressor
+lucrează identic), deci NU era gap-ul real. Gap-ul real, găsit prin citirea
+directă a `converter.py`/`ConvertorViewModel.swift`: un job era marcat
+"succes" DOAR pe baza codului de ieșire al ffmpeg (0 = succes) — fără nicio
+verificare că fișierul rezultat corespunde cu sursa. O trunchiere/corupere
+silențioasă (disc plin în timpul scrierii, crash intermediar recuperat
+greșit de ffmpeg etc.) ar fi trecut drept "✓ Finalizat".
+
+**Fix**: după fiecare conversie reușită, se compară durata sursă vs.
+destinație (ffprobe, deja folosit pentru bara de progres — `durataClip`
+Mac / `get_duration` Windows, zero cost nou de implementare). Toleranță
+1.0s (absoarbe rotunjirile normale de container/framerate, nu maschează o
+trunchiere reală — de obicei diferențe de ordinul secundelor/minutelor).
+Dacă durata nu poate fi citită pe oricare parte (fișier neobișnuit),
+verificarea e SĂRITĂ, nu raportată ca eroare — fail-open, consecvent cu
+toate verificările opționale din aplicație (Regula: nu inventăm o eroare
+pentru ceva ce nu putem măsura).
+
+- Stare nouă `StareJob.finalizatCuAvertisment(mesaj:)` (Mac) — job rămâne
+  vizibil ca finalizat (fișierul exista, nu-l ascundem), dar cu iconiță
+  ⚠ portocalie + mesaj cu ambele durate, în loc de bifa verde obișnuită.
+  Windows: text de status extins cu aceeași informație (`integrity_warning`
+  + `integrity_mismatch`, RO/EN/ES).
+- `CGConvertor/ConvertorViewModel.swift`: `verificaIntegritate(sursa:destinatie:)`,
+  apelat la `.success` din callback-ul de finalizare al `MotorFFmpeg`.
+- `python/main.py`: `_integrity_status_text(conv, src, out)`, apelat la
+  `result["success"]`.
+
+**Verificare reală, nu presupusă**: generat un clip sintetic de 6s
+(`ffmpeg testsrc2`) + o copie trunchiată la 2s (`-t 2 -c copy`) — confirmat
+că `get_duration()` (Python) citește corect 6.0s vs. 2.08s pe cele două
+fișiere, și că funcția de verificare produce mesajul de avertisment corect
+formatat, în RO și EN, DOAR pentru perechea trunchiată (nu și pentru
+perechea identică). `xcodebuild -configuration Debug` — 0 erori, cu toate
+switch-urile exhaustive pe `StareJob` (inclusiv `verificaFinalizareaCozii`
+și rândul din `ContentView.swift`) actualizate pentru noul caz.
+`python3 -m py_compile` — 0 erori pe toate fișierele Python atinse.
+
+Versiune 3.3.0 → 3.4.0 (MINOR — funcționalitate nouă vizibilă/de
+siguranță, fără schimbare de arhitectură, Regula 14).
+
+## ⏳ ÎN LUCRU (2026-09-05) — Metadata "adâncă" v3.5.0, NETERMINAT
+
+**Motiv**: feedback direct de la Cristi — Inspecția/Metadata din v3.2.0
+(ffprobe + 1 thumbnail) e "superficială, de hobby" comparativ cu
+`~/Developer/GDC_Metadata_View_Premium` (mediainfo.js + exifr + parser
+ISO-BMFF scris de mână pentru XML Sony sidecar/embedat + pistă rtmd
+per-cadru + tabel comparativ multi-fișier + export PDF/CSV/JSON).
+**Decizie confirmată de Cristi**: reimplementare NATIVĂ (nu WebView).
+
+**Decizie de arhitectură luată în timpul lucrului** (nu doar ce a ales
+Cristi din cele 2 variante propuse): NU se adaugă un binar CLI `mediainfo`
+ca dependință nouă (spre deosebire de ffmpeg, MediaArea nu are un URL de
+download static garantat stabil, la fel ca `osxexperts.net` pentru
+ffmpeg — risc de a introduce un `DependencyManager` fragil). În loc:
+ffprobe existent rămâne sursa pentru câmpurile tehnice de bază (deja
+funcțional, zero risc nou), iar partea cu adevărat distinctivă —
+profilul Sony Log/Gamma/EI + ISO/expunere/diafragmă/WB per-cadru din
+pista `rtmd` + XML sidecar — se portează NATIV, fără nicio dependință
+nouă (nici bibliotecă, nici binar extern).
+
+**Făcut și verificat cu date reale (nu presupus)**:
+- `CGConvertor/SonyMetadata.swift` (nou) — parser generic de cutii
+  ISO-BMFF (`walkIsoBoxes`, recursiv, citește direct cu `FileHandle`,
+  nu mai are nevoie de segmentare `File.slice()` ca în JS — citim direct
+  de pe disc), extrage XML Sony embedat din boxul `meta`, localizează
+  pista `rtmd` (`hdlr`→`stsz`→`stco`/`co64`) și decodează primul eșantion
+  KLV binar (`SONY_RTMD_FIELDS` — ISO, timp expunere, diafragmă din
+  valoarea logaritmică f-stop, balans de alb, mod expunere, fps captură),
+  plus parser XML Sony (sidecar sau embedat) via `XMLParser` nativ
+  (`Device`, `CreationDate`, `VideoFrame`, `VideoLayout`, `Item`
+  generic → `SONY_ITEM_LABELS`). Port 1:1 al logicii din `index.html`
+  (`~/Developer/GDC_Metadata_View_Premium`), NU al sintaxei JS.
+- `python/sony_metadata.py` (nou) — port identic, `struct`+
+  `xml.etree.ElementTree`, zero dependințe noi.
+- **Verificat cu date reale**: XML sidecar Sony sintetic (Device/
+  VideoFrame/VideoLayout/Item) → toate câmpurile extrase corect
+  (`Model cameră=ILME-FX6`, `Curbă Gamma (Log)=S-Log3`,
+  `Exposure Index (EI)=800`). Decodor rtmd KLV sintetic (ISO=800 tag
+  `0x810B`, diafragmă f/2.8 calculat prin formula logaritmică Sony
+  reală) → decodat corect, byte-cu-byte, pe Python. Fișier MP4 normal
+  (fără Sony, generat cu `ffmpeg testsrc2`) → rezultat gol, fără nicio
+  eroare (fail-open, ca în JS). `swiftc -typecheck SonyMetadata.swift`
+  — 0 erori.
+- **NEFĂCUT ÎNCĂ, verificat doar pe Python** (Swift are typecheck OK dar
+  NU are un test de integrare cu un fișier MP4 real cu XML embedat —
+  nu am avut un fișier Sony real la îndemână; testul de mai sus a fost
+  doar pe fișiere sintetice/non-Sony pentru walker-ul ISO-BMFF).
+
+**Rămâne de făcut** (în ordine, la reluare):
+1. Test Swift al `SonyMetadataReader.read(from:)` pe un fișier real
+   (compilat, nu doar typecheck).
+2. EXIF/GPS nativ: Mac — `ImageIO`/`CGImageSourceCopyPropertiesAtIndex`
+   (zero dependințe noi); Windows — pachetul `exifread` (pip, pur Python,
+   suportă GPS) — de adăugat în `requirements.txt`.
+3. Tag-uri ID3v2 (MP3) — port direct al parserului binar din
+   `index.html` (linia ~1096, simplu, fără dependință).
+4. Rescriere `MediaInspector.swift`/`media_inspector.py`: `probe()`
+   extins cu mai multe câmpuri ffprobe (format_name, profile, HDR
+   dedus din color_transfer: `smpte2084`→HDR10, `arib-std-b67`→HLG) +
+   apel la `SonyMetadataReader`/`sony_metadata` + EXIF + ID3, unificate
+   într-un singur dicționar de categorii (ca în `index.html`).
+5. UI nou: tabel comparativ multi-fișier (selectezi 2+ fișiere din
+   coadă → comparație side-by-side, evidențiere diferențe, ascundere
+   rânduri identice, căutare) — ambele platforme. Cel mai mare bloc de
+   lucru rămas, neînceput.
+6. Export CSV/JSON al comparației (PDF rămâne deliberat neimplementat,
+   ca și în v3.2.0 — vezi motivul acolo).
+7. Integrare `VolumeInfo.swift` (deja existent în DataMover) în panoul
+   Offload — listă discuri cu capacitate/tip în loc de path text simplu
+   (cerută separat de Cristi în aceeași conversație, neînceput).
+8. Versiune 3.4.0 → 3.5.0 (MINOR), CHANGELOG, build+notarize+release
+   pe ambele platforme, testare GUI completă (`app.mainloop()` real).
+
+**Context important**: Cristi a semnalat explicit că sesiunea a rămas
+fără credite în timpul acestui lucru — de asta e documentat aici cu tot
+detaliul, ca sesiunea următoare să continue direct de la pasul 1 de mai
+sus, fără să re-exploreze `GDC_Metadata_View_Premium` sau să repete
+deciziile de arhitectură deja luate.

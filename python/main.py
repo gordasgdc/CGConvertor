@@ -833,7 +833,7 @@ class CGConvertorApp(BASE_CLASS):
                         self._active_converters.remove(conv)
 
             if result["success"]:
-                self._update_status(job, t(self.lang, "conversion_complete"))
+                self._update_status(job, self._integrity_status_text(conv, src, out_path))
             elif "Anulat" in (result["error"] or ""):
                 self._update_status(job, t(self.lang, "status_canceled"))
             else:
@@ -892,6 +892,23 @@ class CGConvertorApp(BASE_CLASS):
         y = self.winfo_rooty() + self.winfo_height() - 90
         toast.geometry(f"280x70+{max(0, x)}+{max(0, y)}")
         toast.after(4000, toast.destroy)
+
+    def _integrity_status_text(self, conv, src_path, out_path):
+        """Verificare de siguranta post-conversie (2026-09-05, cerere
+        explicita) - cod de iesire 0 la ffmpeg NU garanteaza un fisier
+        complet. Compara durata sursa vs. destinatie (ffprobe) - toleranta
+        de 1s absoarbe rotunjirile normale, nu maschează o trunchiere reala.
+        get_duration() intoarce 0.0 la eroare - daca ORICARE dintre cele
+        doua e 0.0, nu putem verifica nimic real, deci ramane succes simplu
+        (fail-open, ca restul verificarilor optionale din aplicatie)."""
+        src_duration = conv.get_duration(src_path)
+        out_duration = conv.get_duration(out_path)
+        if src_duration <= 0.0 or out_duration <= 0.0:
+            return t(self.lang, "conversion_complete")
+        if abs(src_duration - out_duration) <= 1.0:
+            return t(self.lang, "conversion_complete")
+        detail = t(self.lang, "integrity_mismatch").format(src=src_duration, dst=out_duration)
+        return f'{t(self.lang, "integrity_warning")} ({detail})'
 
     def _update_status(self, job, text):
         self.after(0, lambda: self.tree.set(job["item_id"], "status", text))
