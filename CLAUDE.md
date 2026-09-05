@@ -1687,6 +1687,106 @@ Debug` — 0 erori.
 Versiune 3.4.0 → 3.5.0 (MINOR — funcționalitate nouă vizibilă, fără
 schimbare de arhitectură, Regula 14).
 
+## v3.7.0 (2026-09-05) — Offload: drag&drop discuri + tabel comparativ metadate + flux profesional complet (port masiv DataMover)
+
+**Motiv**: Cristi, în aceeași conversație, cerând explicit să nu se
+fragmenteze munca ("nu ma duce pe bucati... vreau sa fie integrata
+complexitatea lucrurilor odata"): (1) drag&drop real pentru discurile
+detectate în Offload (butonul "Sursă" era confuz, ținte mici/apropiate),
+(2) tabel comparativ multi-fișier pentru metadate, (3) auditul complet
+DataMover → CGConvertor pentru tot ce lipsea ca să fie "profesională,
+folosită în industrie".
+
+### A. Drag&drop pentru discurile din Offload
+`OffloadView.swift`: chip-urile de disc au acum `.onDrag` (dragul unui
+disc peste Sursă/Destinații le setează, la fel ca un folder tras din
+Finder — ambele folosesc UTType `.fileURL`, aceeași convenție ca drop-ul
+de fișiere din coada Convertorului). Butoanele "Sursă"/"Destinație" au
+fost mărite și separate pe rânduri (nu mai lipite, sursa confuziei
+raportate). Windows: fără echivalent nativ direct (drag-ul de discuri
+Tkinter nu are un pattern la fel de simplu) — rămâne pe butoanele clare
+existente, deja funcționale.
+
+### B. Tabel comparativ metadate (`MetadataCompare.swift`, nou, Mac)
+Motorul din sesiunea anterioară (Sony XML/rtmd, EXIF, ID3 — vezi secțiunea
+mai sus) e acum UNIFICAT într-un singur set de categorii ordonate +
+integrat într-un tabel comparativ multi-fișier real:
+`MetadataCompareSheet.swift` — selectezi 2+ fișiere din coadă (checkmark
+nou per rând, `RandJob`), buton "Compară (N)" deschide un tabel (rânduri =
+parametru, coloane = fișiere), cu evidențiere diferențe, ascundere rânduri
+identice, căutare, export CSV. Rulează la cerere (nu la fiecare adăugare
+de fișier). **Doar Mac** — echivalentul Windows (Sony/EXIF/ID3 engine +
+tabel Tkinter) rămâne TODO explicit, nemenționat ca gata.
+
+### C. Flux profesional complet Offload (port DataMover, Etapa 2026-09-03)
+Port masiv, AMBELE platforme, verificat cu date reale la fiecare piesă:
+
+1. **MHL (Media Hash List) v1.1** — `MHLWriter.swift`/`mhl_writer.py`.
+   Scris lângă datele copiate, căi relative, doar pentru fișiere
+   OK/verificate. Doar md5/sha1/xxhash64 sunt în schema MHL — la SHA-256
+   transferul rămâne complet, doar MHL-ul nu se scrie.
+2. **Reîncercare automată** a fișierelor eșuate/nepotrivite — O SINGURĂ
+   dată, la finalul transferului. Refactorizat `processOne`/`process_one`
+   (Outcome enum, fără mutare directă de contoare) — verificat explicit că
+   NU dublează numărătoarea la un fișier care eșuează definitiv.
+3. **Verificare spațiu liber** înainte de primul octet copiat —
+   `offloadHasEnoughSpace`/`has_enough_space` (marjă 1%, minim 100MB);
+   sub prag, transferul NU pornește, cu opțiune explicită de a forța.
+4. **Șablon de nume folder** — `NamingTemplate.swift`/`naming_template.py`,
+   tokeni `{data} {ora} {proiect} {card} {camera} {operator}`, previzualizare
+   live în UI. Implicit reproduce exact numele vechi.
+5. **Recunoaștere structură card** — `CameraCardDetector.swift`/
+   `camera_card_detector.py` (RED/ARRI/Sony XDCAM+XAVC/Panasonic
+   AVCHD+P2/Blackmagic/Canon/DCIM generic), avertisment fișiere de 0
+   octeți, și avertisment separat dacă sursa aleasă e un SUBFOLDER al unui
+   card (pierdere de metadate).
+6. **Producție/branding** — `ProductionMeta.swift`/`production_meta.py`
+   (Proiect/Client/Card/Cameră/Operator/Note/Logo) → alimentează ȘI
+   numele folderului, ȘI raportul HTML brandat (logo ca data URI, plafonat
+   3MB) care înlocuiește/completează CSV-ul.
+7. **Profile de transfer** — `TransferProfile.swift`/`transfer_profile.py`
+   (căi + verificare + buffer/RAM + șablon + producție, numite, salvate în
+   Application Support).
+8. **Istoric persistat** — `HistoryStore.swift`/`history_store.py` +
+   `HistoryView.swift`/`history_view.py` (dialog cu deschidere directă
+   Finder/Explorer per sursă/destinație).
+
+**Explicit NEPORTAT, deliberat, documentat (nu ascuns)**:
+- **CloudSyncService (rclone)** — `CloudSyncService.swift` copiat în repo
+  (Mac), dar NECONECTAT la OffloadEngine/OffloadView. Motiv: cere un cont
+  rclone real pentru testare end-to-end, imposibil de verificat automat
+  aici — rămâne pentru o cerere separată, cu un cont de test disponibil.
+- **Ejectare automată + notificare sistem, coadă de carduri, pornire
+  automată la introducere card** — flux DataMover complet (auto-start
+  neasistat), nepotrivit ca implicit pentru CGConvertor (un convertor, nu
+  un ofloader dedicat) fără o decizie explicită de scop.
+- **Windows: tabelul comparativ de metadate** (partea B de mai sus) —
+  motorul Sony/EXIF/ID3 din sesiunea anterioară + UI Tkinter rămân TODO.
+
+**Verificare reală, nu presupusă** — Mac: test standalone (`swiftc`,
+stub minim `MotorFFmpeg`) rulat pe fișiere sintetice reale — copiere
+completă + MHL valid (`<hashlist version="1.1">`, element `<xxhash64be>`)
++ raport HTML conținând corect Proiect/Client; test separat de
+recunoaștere card (structură Sony XAVC reală creată pe disc, fișier de 0
+octeți detectat, subfolder recunoscut ca fiind în interiorul cardului);
+test separat de verificare spațiu (1 PB respins, 1 KB acceptat, pe
+discul real); test separat de reîncercare (fișier lipsă → 1 eroare
+finală, NU 2, fără dublă numărare). Python — aceleași teste, rulate
+identic (venv izolat, `xxhash`+`exifread`), plus un test GUI COMPLET cu
+`app.mainloop()` real (`CGConvertorApp`+`OffloadPanel` din codul de
+producție): previzualizare nume folder reflectă câmpurile de producție
+introduse, profil salvat+reîncărcat prin UI, transfer real pornit prin
+`_start()` produce MHL+HTML pe disc; `HistoryDialog` (tot cu
+`app.mainloop()`) randează corect intrarea înregistrată. Fișierele de
+test scrise din greșeală în Application Support real (istoric/profile)
+au fost șterse după verificare, nu lăsate ca date false pentru Cristi.
+`xcodebuild -configuration Debug` — 0 erori. `python3 -m py_compile` pe
+toate fișierele noi — 0 erori.
+
+Versiune 3.6.0 → 3.7.0 (MINOR — funcționalitate profesională nouă,
+masivă, dar fără schimbare de arhitectură a aplicației de bază, Regula
+14).
+
 ## v3.6.0 (2026-09-05) — Discuri detectate în Offload (port din DataMover)
 
 **Motiv**: cerută explicit de Cristi, de două ori, ca să nu se piardă —
@@ -1729,8 +1829,16 @@ schimbare de arhitectură, Regula 14).
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în
-Offload — FĂCUT, vezi v3.6.0, ambele mai sus.)
+Offload — FĂCUT, vezi v3.6.0. Drag&drop discuri + tabel comparativ
+metadate (Mac) + flux profesional Offload complet (MHL, reîncercare,
+spațiu liber, șablon nume, card, producție/branding, profile, istoric) —
+FĂCUT, vezi v3.7.0, toate mai sus.)
 
+0. **Tabel comparativ metadate pe Windows** — motorul Sony/EXIF/ID3 din
+   v3.4.0 (Sesiunea metadata) + UI Tkinter echivalent `MetadataCompareSheet.swift`
+   rămân TODO — Mac le are (v3.7.0), Windows nu încă. De adăugat la
+   următoarea atingere reală a acestui panou (Regula 31, paritate
+   Mac/Windows).
 1. **Playerul real-time LUT/LOG** — Cristi confirmă din nou interesul
    ("la sfârșit să pregătești să implementăm și playerul") — rămâne un
    proiect separat, mult mai mare (GPU, Metal pe Mac + echivalent

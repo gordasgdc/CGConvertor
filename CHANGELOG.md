@@ -2,6 +2,22 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.7.0 — Offload profesional: MHL, șablon nume, card, profile, istoric + comparație metadate (2026-09-05)
+
+Panoul Offload capătă un flux profesional complet, la nivelul uneltelor de
+platou consacrate: fișier **MHL** (Media Hash List) alături de raportul
+CSV — citit de Silverstack/YoYotta/ShotPut Pro/Resolve —, **reîncercare
+automată** a fișierelor eșuate, **verificare de spațiu liber** înainte de
+transfer, **șablon configurabil** pentru numele folderului, **recunoașterea
+automată a tipului de card** (RED/ARRI/Sony/Panasonic/Canon/Blackmagic),
+câmpuri de **producție** (Proiect/Client/Cameră/Operator/Logo) cu **raport
+HTML brandat**, **profile de transfer** salvate și **istoric** persistat.
+Discurile detectate se pot acum și trage direct (drag&drop) peste
+Sursă/Destinații. Disponibil pe ambele platforme.
+
+Pe Mac, fișierele din coadă pot fi selectate și comparate într-un tabel
+de metadate side-by-side, cu evidențierea diferențelor și export CSV.
+
 ### v3.6.0 — Discuri detectate în Offload (2026-09-05)
 
 Panoul Offload arată acum discurile/cardurile montate ca listă reală

@@ -17,6 +17,8 @@ struct ContentView: View {
     @State private var showPresetsManager = false
     @State private var showSettingsSheet = false
     @State private var mainMode: MainMode = .convert
+    @State private var selectedJobIDs: Set<UUID> = []
+    @State private var showCompare = false
 
     enum MainMode: String, CaseIterable, Identifiable {
         case convert, offload
@@ -77,6 +79,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showSettingsSheet) {
             SettingsSheet(isPresented: $showSettingsSheet)
+        }
+        .sheet(isPresented: $showCompare) {
+            MetadataCompareSheet(jobs: vm.joburi.filter { selectedJobIDs.contains($0.id) }, isPresented: $showCompare)
         }
         .alert(L.t("update.available.title"), isPresented: $showUpdateAlert) {
             Button(L.t("update.download")) {
@@ -387,9 +392,14 @@ struct ContentView: View {
                     LazyVStack(spacing: 8) {
                         ForEach(vm.joburi) { job in
                             RandJob(job: job, seRuleazaCoada: vm.seRuleazaCoada,
+                                    esteSelectat: selectedJobIDs.contains(job.id),
                                     onSterge: { vm.stergeJob(job) },
                                     onMutaSus: { vm.mutaJob(job, delta: -1) },
-                                    onMutaJos: { vm.mutaJob(job, delta: 1) })
+                                    onMutaJos: { vm.mutaJob(job, delta: 1) },
+                                    onToggleSelectie: {
+                                        if selectedJobIDs.contains(job.id) { selectedJobIDs.remove(job.id) }
+                                        else { selectedJobIDs.insert(job.id) }
+                                    })
                         }
                     }
                     .padding(14)
@@ -404,6 +414,12 @@ struct ContentView: View {
                         if let url = vm.genereazaRaportHTML() { NSWorkspace.shared.open(url) }
                     }
                     .buttonStyle(ShiftGhostButtonStyle())
+                    if selectedJobIDs.count >= 2 {
+                        Button(String(format: L.t("compare.button"), selectedJobIDs.count)) {
+                            showCompare = true
+                        }
+                        .buttonStyle(ShiftGhostButtonStyle())
+                    }
                     Spacer()
                     Button { deschideSelectorFisiere() } label: {
                         Label(L.t("queue.addFiles"), systemImage: "plus")
@@ -489,14 +505,27 @@ struct ShiftGhostButtonStyle: ButtonStyle {
 private struct RandJob: View {
     let job: VideoJob
     let seRuleazaCoada: Bool
+    let esteSelectat: Bool
     let onSterge: () -> Void
     let onMutaSus: () -> Void
     let onMutaJos: () -> Void
+    let onToggleSelectie: () -> Void
     @State private var showPreview = false
 
     var body: some View {
         ShiftCard(padding: 12) {
             HStack(spacing: 12) {
+                // Selecție pentru comparația de metadate (2026-09-05) — un
+                // simplu checkmark, nu o coloană nouă în layout, ca să nu
+                // strice designul rândului pentru cazul comun (nimeni nu
+                // compară nimic).
+                Button { onToggleSelectie() } label: {
+                    Image(systemName: esteSelectat ? "checkmark.circle.fill" : "circle")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(esteSelectat ? Shift.accent : Shift.faint)
+                .help(L.t("compare.select"))
+
                 thumbnailJob
 
                 VStack(alignment: .leading, spacing: 4) {
