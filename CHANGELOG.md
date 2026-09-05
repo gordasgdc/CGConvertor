@@ -2,6 +2,13 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.5.0 — Preview LUT: fullscreen + rezoluție mare (2026-09-05)
+
+Previzualizarea interactivă cu LUT poate fi acum mărită pe tot ecranul
+(sau redimensionată liber pe Windows), și regenerează cadrul la rezoluție
+mult mai mare (1920px lățime) când e mărită — nu doar întinde aceeași
+imagine mică. Disponibil identic pe Mac și Windows.
+
 ### v3.4.0 — Verificare integritate post-conversie (2026-09-05)
 
 Fiecare fișier convertit cu succes e verificat automat: durata fișierului

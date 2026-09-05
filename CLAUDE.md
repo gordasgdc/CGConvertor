@@ -1652,3 +1652,73 @@ fără credite în timpul acestui lucru — de asta e documentat aici cu tot
 detaliul, ca sesiunea următoare să continue direct de la pasul 1 de mai
 sus, fără să re-exploreze `GDC_Metadata_View_Premium` sau să repete
 deciziile de arhitectură deja luate.
+
+## v3.5.0 (2026-09-05) — Preview LUT: fullscreen + rezoluție mare
+
+**Motiv**: cerere directă a lui Cristi — previzualizarea LUT era o
+fereastră fixă mică (480×270), afișând mereu thumbnail-ul de 320px lățime
+generat pentru coadă. La mărire nu ar fi avut cum să arate bine (aceeași
+imagine mică, doar întinsă).
+
+- Mac (`MediaPreviewSheet.swift`): buton nou de mărire/micșorare în
+  header (iconițe `arrow.up.left.and.arrow.down.right`/inversă) — panoul
+  de imagine se extinde la 90% din ecranul curent (`NSScreen.main`),
+  păstrând 16:9. `MediaInspector.genereazaThumbnail(...)` capătă parametru
+  nou `laLatime: Int = 320` (implicit neschimbat, 100% compatibil
+  retroactiv) — fullscreen cere explicit 1920px, nu doar mărește CSS
+  aceeași imagine mică.
+- Windows (`media_preview.py`): fereastra devine liber redimensionabilă
+  (`resizable(True, True)`, elimină restricția fixă anterioară) + buton
+  de fullscreen real (`attributes('-fullscreen', ...)`, cu degradare
+  fără crash pe platforme care nu-l suportă) + tasta Escape iese din
+  fullscreen. `media_inspector.generate_thumbnail(...)` capătă parametru
+  `width=320` (identic ca rol cu `laLatime` din Swift).
+
+**Verificare reală, nu presupusă**: `ffprobe` pe cadre extrase manual la
+`scale=320:-2` vs. `scale=1920:-2` din același clip sintetic — confirmat
+320×180 vs. 1920×1080 (nu doar citit codul, măsurat efectiv). Test GUI
+complet pe Windows (`app.mainloop()` real, `CGConvertorApp` +
+`MediaPreviewDialog` din codul de producție, nu o simulare): deschis
+dialogul, verificat thumbnail compact generat, apelat
+`_toggle_fullscreen()`, verificat cu `ffprobe` pe fișierul PNG rezultat
+că lățimea reală a devenit 1920 — confirmat. `xcodebuild -configuration
+Debug` — 0 erori.
+
+Versiune 3.4.0 → 3.5.0 (MINOR — funcționalitate nouă vizibilă, fără
+schimbare de arhitectură, Regula 14).
+
+## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
+
+(Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0 mai sus.)
+
+1. **Playerul real-time LUT/LOG** — Cristi confirmă din nou interesul
+   ("la sfârșit să pregătești să implementăm și playerul") — rămâne un
+   proiect separat, mult mai mare (GPU, Metal pe Mac + echivalent
+   Windows), dar de PREGĂTIT ca următor pas mare, nu de început fără
+   discuție dedicată de scop.
+2. **Control de cadre/s la transcodare** — azi motorul de conversie
+   (`MotorFFmpeg.swift`/`converter.py` + `PresetsManager`) nu expune nicio
+   opțiune de schimbare a frame rate-ului la ieșire (conversia păstrează
+   fps-ul sursei). Cristi vrea opțiune explicită de frame rate în
+   presetări/UI de conversie, ca în unelte profesionale (Resolve, Adobe
+   Media Encoder, EditReady).
+3. **Explicit AMÂNAT de Cristi însuși, în aceeași propoziție** — spații
+   de culoare (color space conversion), timeline, watermark: "cred că e
+   prea mult" — NU se implementează fără cerere separată explicită, doar
+   se notează aici ca opțiuni cunoscute din industrie, pentru context
+   viitor.
+4. **Integrare `VolumeInfo.swift` din DataMover în panoul Offload**
+   (`OffloadView.swift`/`offload_view.py`) — cerută explicit de Cristi
+   într-o discuție separată (nu doar presupusă de mine): listă de discuri
+   cu capacitate/tip/spațiu liber, nu doar un câmp de path text simplu,
+   ca sursă/destinație în Offload. `VolumeInfo.swift` există deja, gata
+   scris, în `~/Developer/DataMover/mac-native/Sources/DataMoverMac/` —
+   de PRELUAT și portat (Mac direct, Windows echivalent nou, WMI/psutil
+   pentru listă de discuri). Cristi a repetat cererea asta explicit ca să
+   nu se piardă — tratată cu prioritate, nu opțional.
+
+Prioritate sugerată la reluare: 4 (integrare DataMover, cerută explicit
+de două ori) înaintea oricărui alt lucru neterminat de mai sus (inclusiv
+metadata Sony/EXIF/ID3, secțiunea anterioară), apoi 2 (mediu, atinge
+motorul de conversie); 1 (playerul real-time) rămâne discuție de scop
+separată.

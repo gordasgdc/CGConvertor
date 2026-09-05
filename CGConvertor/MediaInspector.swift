@@ -96,10 +96,12 @@ enum MediaInspector {
     /// `MediaPreviewSheet.swift`) ca thumbnail JPEG, opțional cu un LUT
     /// `.cube` aplicat prin filtrul nativ `lut3d` al FFmpeg — NU un player
     /// real-time (acela rămâne un TODO separat, mult mai mare, vezi
-    /// CLAUDE.md).
-    static func genereazaThumbnail(url: URL, lutPath: String?, iesire: URL, laSecunda: Double = 1) -> Bool {
+    /// CLAUDE.md). `laLatime` (nou, 2026-09-05): 320 implicit pentru
+    /// thumbnail-urile din coadă (rapid, mic) — previzualizarea fullscreen
+    /// cere o lățime mult mai mare, ca imaginea să nu fie pixelată la zoom.
+    static func genereazaThumbnail(url: URL, lutPath: String?, iesire: URL, laSecunda: Double = 1, laLatime: Int = 320) -> Bool {
         guard let ffmpegPath = MotorFFmpeg.gasesteBinar() else { return false }
-        var filtru = "scale=320:-2"
+        var filtru = "scale=\(laLatime):-2"
         if let lutPath, !lutPath.isEmpty {
             let caleEscapata = lutPath.replacingOccurrences(of: "'", with: "\\'")
             filtru += ",lut3d=file='\(caleEscapata)'"

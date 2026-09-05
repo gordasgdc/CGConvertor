@@ -8,6 +8,12 @@ import UniformTypeIdentifiers
 /// un thumbnail STATIC la momentul respectiv, cu un LUT `.cube` opțional
 /// aplicat — nu e redare video, dar e util imediat, fără nicio construcție
 /// nouă de decodare/randare.
+///
+/// Fullscreen (2026-09-05, cerere explicită): butonul de mărire extinde
+/// panoul de imagine la dimensiunea ecranului curent, ȘI regenerează
+/// cadrul la o lățime mult mai mare (`laLatime`) — un thumbnail de 320px
+/// întins pe tot ecranul ar fi vizibil pixelat, deci nu e doar o mărire
+/// CSS/SwiftUI a aceleiași imagini mici.
 struct MediaPreviewSheet: View {
     let job: VideoJob
     @Binding var isPresented: Bool
@@ -17,10 +23,17 @@ struct MediaPreviewSheet: View {
     @State private var previewImage: NSImage?
     @State private var seIncarca = false
     @State private var extractionTask: Task<Void, Never>?
+    @State private var esteFullscreen = false
 
     private var durata: Double {
         max(job.metadataMedia?.durataSecunde ?? 10, 1)
     }
+
+    /// 320px pentru panoul compact (rapid, suficient la 480x270); 1920px
+    /// (Full HD) pentru fullscreen — suficient pentru orice ecran actual,
+    /// fără sa generăm inutil la rezoluția nativă a sursei (poate fi 4K/6K,
+    /// mult mai lent de extras pentru un simplu preview static).
+    private var latimeExtractie: Int { esteFullscreen ? 1920 : 320 }
 
     var body: some View {
         VStack(spacing: 14) {
@@ -28,6 +41,15 @@ struct MediaPreviewSheet: View {
                 Text(job.numeFisier)
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
+                Button {
+                    esteFullscreen.toggle()
+                    programeazaExtractie()
+                } label: {
+                    Image(systemName: esteFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Shift.muted)
+                .help(L.t(esteFullscreen ? "preview.exitFullscreen" : "preview.fullscreen"))
                 Button { isPresented = false } label: {
                     Image(systemName: "xmark.circle.fill")
                 }
@@ -35,19 +57,26 @@ struct MediaPreviewSheet: View {
                 .foregroundStyle(Shift.faint)
             }
 
-            ZStack {
-                Rectangle().fill(Shift.elevated)
-                if let previewImage {
-                    Image(nsImage: previewImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
+            GeometryReader { geo in
+                ZStack {
+                    Rectangle().fill(Shift.elevated)
+                    if let previewImage {
+                        Image(nsImage: previewImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    }
+                    if seIncarca {
+                        ProgressView().controlSize(.small)
+                    }
                 }
-                if seIncarca {
-                    ProgressView().controlSize(.small)
-                }
+                .frame(width: geo.size.width, height: geo.size.height)
             }
-            .frame(width: 480, height: 270)
+            .frame(
+                width: esteFullscreen ? fullscreenSize.width : 480,
+                height: esteFullscreen ? fullscreenSize.height : 270
+            )
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            .animation(.easeInOut(duration: 0.18), value: esteFullscreen)
 
             VStack(alignment: .leading, spacing: 6) {
                 Slider(value: $pozitieSecunde, in: 0...durata, onEditingChanged: { editing in
@@ -77,12 +106,22 @@ struct MediaPreviewSheet: View {
             }
         }
         .padding(20)
-        .frame(width: 520)
+        .frame(width: esteFullscreen ? fullscreenSize.width + 40 : 520)
         .background(Shift.bg)
         .onAppear {
             pozitieSecunde = min(1, durata)
             programeazaExtractie()
         }
+    }
+
+    /// Dimensiunea panoului video în modul fullscreen — 90% din ecranul
+    /// curent (nu 100%, ca sheet-ul să rămână vizibil ca fereastră, cu
+    /// bara de titlu/controalele accesibile în jur), păstrând proporția
+    /// 16:9 a zonei de preview.
+    private var fullscreenSize: CGSize {
+        let ecran = NSScreen.main?.frame.size ?? CGSize(width: 1440, height: 900)
+        let latime = ecran.width * 0.9
+        return CGSize(width: latime, height: latime * 9 / 16)
     }
 
     /// Debounce simplu: anulează extracția anterioară dacă userul continuă
@@ -92,12 +131,13 @@ struct MediaPreviewSheet: View {
         extractionTask?.cancel()
         let secunda = pozitieSecunde
         let lut = lutPath
+        let latime = latimeExtractie
         seIncarca = true
         extractionTask = Task.detached(priority: .userInitiated) {
             try? await Task.sleep(nanoseconds: 150_000_000)
             if Task.isCancelled { return }
             let iesire = MediaInspector.folderThumbnailuri().appendingPathComponent("preview_\(job.id.uuidString).jpg")
-            let ok = MediaInspector.genereazaThumbnail(url: job.urlSursa, lutPath: lut, iesire: iesire, laSecunda: secunda)
+            let ok = MediaInspector.genereazaThumbnail(url: job.urlSursa, lutPath: lut, iesire: iesire, laSecunda: secunda, laLatime: latime)
             if Task.isCancelled { return }
             await MainActor.run {
                 if ok, let img = NSImage(contentsOfFile: iesire.path) {

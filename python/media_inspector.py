@@ -87,7 +87,7 @@ def resolution_text(meta):
     return None
 
 
-def generate_thumbnail(path, lut_path, output_path, at_seconds=1.0):
+def generate_thumbnail(path, lut_path, output_path, at_seconds=1.0, width=320):
     """Extrage un cadru static (implicit ~1s in clip, sau `at_seconds` daca
     specificat — folosit de preview-ul interactiv, vezi media_preview.py)
     ca thumbnail, optional cu un LUT .cube aplicat prin filtrul nativ
@@ -95,9 +95,11 @@ def generate_thumbnail(path, lut_path, output_path, at_seconds=1.0):
     din `output_path` — apelantul (main.py) foloseste `.png`, NU `.jpg`:
     `tk.PhotoImage` nativ (fara Pillow, dependinta pe care acest repo nu o
     are) suporta PNG dar nu JPEG. Mac (`MediaInspector.swift`) foloseste
-    .jpg — NSImage citeste ambele formate nativ, nicio constrangere acolo."""
+    .jpg — NSImage citeste ambele formate nativ, nicio constrangere acolo.
+    `width` (nou, 2026-09-05): 320 implicit pentru coada (rapid, mic);
+    preview-ul fullscreen cere o latime mult mai mare (vezi media_preview.py)."""
     ffmpeg_path = get_ffmpeg_path()
-    vf = "scale=320:-2"
+    vf = f"scale={width}:-2"
     if lut_path:
         # ffmpeg cere backslash-escape pentru ':' din calea Windows
         # (C\:/...) in interiorul unui lant de filtre — vezi documentatia

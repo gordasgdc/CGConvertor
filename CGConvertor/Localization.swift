@@ -268,6 +268,8 @@ enum L {
 
         "preview.noLut": [.ro: "Fără LUT", .en: "No LUT", .es: "Sin LUT"],
         "preview.chooseLut": [.ro: "Alege LUT…", .en: "Choose LUT…", .es: "Elegir LUT…"],
+        "preview.fullscreen": [.ro: "Mărește pe tot ecranul", .en: "Enlarge to fullscreen", .es: "Ampliar a pantalla completa"],
+        "preview.exitFullscreen": [.ro: "Micșorează", .en: "Exit fullscreen", .es: "Salir de pantalla completa"],
         "preview.clearLut": [.ro: "Elimină", .en: "Clear", .es: "Quitar"],
     ]
 }
