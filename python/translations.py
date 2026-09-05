@@ -134,6 +134,9 @@ TRANSLATIONS = {
 
         "mode_convert": "Convertor",
         "mode_offload": "Offload",
+        "offload_volumes_title": "Discuri detectate",
+        "offload_no_volumes": "Niciun disc extern montat.",
+        "offload_use_as_source": "Sursă",
         "offload_source": "Sursă (card)",
         "offload_choose_source": "Alege sursa…",
         "offload_destinations": "Destinații",
@@ -305,6 +308,9 @@ TRANSLATIONS = {
 
         "mode_convert": "Converter",
         "mode_offload": "Offload",
+        "offload_volumes_title": "Detected disks",
+        "offload_no_volumes": "No external disk mounted.",
+        "offload_use_as_source": "Source",
         "offload_source": "Source (card)",
         "offload_choose_source": "Choose source…",
         "offload_destinations": "Destinations",
@@ -476,6 +482,9 @@ TRANSLATIONS = {
 
         "mode_convert": "Convertidor",
         "mode_offload": "Offload",
+        "offload_volumes_title": "Discos detectados",
+        "offload_no_volumes": "Ningún disco externo montado.",
+        "offload_use_as_source": "Origen",
         "offload_source": "Origen (tarjeta)",
         "offload_choose_source": "Elegir origen…",
         "offload_destinations": "Destinos",

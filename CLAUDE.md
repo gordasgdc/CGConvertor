@@ -1687,9 +1687,49 @@ Debug` — 0 erori.
 Versiune 3.4.0 → 3.5.0 (MINOR — funcționalitate nouă vizibilă, fără
 schimbare de arhitectură, Regula 14).
 
+## v3.6.0 (2026-09-05) — Discuri detectate în Offload (port din DataMover)
+
+**Motiv**: cerută explicit de Cristi, de două ori, ca să nu se piardă —
+panoul Offload arăta sursa/destinațiile doar ca un câmp de path text
+simplu, în loc de o listă reală de discuri/carduri montate, cu spațiu
+liber, ca în DataMover.
+
+- Mac: `CGConvertor/VolumeInfo.swift` (nou) — copiat verbatim din
+  `~/Developer/DataMover/mac-native/Sources/DataMoverMac/VolumeInfo.swift`
+  (`/Volumes`, iconiță nativă Finder per volum, spațiu liber via
+  `FileManager.attributesOfFileSystem`). `OffloadView.swift` capătă o
+  secțiune nouă "Discuri detectate" (chips orizontale, cu buton
+  "Reîmprospătează" — montările se pot schimba cât timp panoul e
+  deschis) — click pe "Sursă" setează `sourcePath`, "+" adaugă la
+  `destinations`. Dialogurile `NSOpenPanel` existente rămân neschimbate,
+  pentru orice folder care nu e rădăcina unui volum montat.
+- Windows: `python/volume_info.py` (nou) — port al
+  `list_mounted_volumes()` din `~/Developer/DataMover/core/offload_engine.py`
+  (litere de drive, exclus `C:\` — de obicei discul de sistem), extins cu
+  etichetă reală de volum (`GetVolumeInformationW`, fallback pe litera de
+  drive dacă lipsește) și spațiu liber (`shutil.disk_usage`, zero
+  dependință nouă). `offload_view.py` capătă aceeași secțiune de chips
+  (Tkinter).
+
+**Verificare reală, nu presupusă**: `python3 volume_info.list_volumes()`
+rulat direct pe Mac-ul lui Cristi (ramura `Darwin` a codului, care e cea
+comună cu portul viitor pe alte funcții) — a detectat corect toate cele
+7 volume montate real (`BackUp`, `DavinciResolve`, `GDC`, `SonyFX5`,
+etc.) cu spațiu liber corect formatat. Test GUI complet Windows
+(`app.mainloop()` real, `OffloadPanel` din codul de producție): construit
+panoul, verificat că au apărut 7 chips reale, simulat click pe butonul
+"Sursă" al primului chip (`.invoke()`, nu doar apel direct de funcție) —
+confirmat că `panel.source_path` ȘI `app.offload_source_path` au fost
+setate corect la path-ul volumului. `xcodebuild -configuration Debug` —
+0 erori. `python3 -m py_compile` — 0 erori.
+
+Versiune 3.5.0 → 3.6.0 (MINOR — funcționalitate nouă vizibilă, fără
+schimbare de arhitectură, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
-(Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0 mai sus.)
+(Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în
+Offload — FĂCUT, vezi v3.6.0, ambele mai sus.)
 
 1. **Playerul real-time LUT/LOG** — Cristi confirmă din nou interesul
    ("la sfârșit să pregătești să implementăm și playerul") — rămâne un
@@ -1707,18 +1747,7 @@ schimbare de arhitectură, Regula 14).
    prea mult" — NU se implementează fără cerere separată explicită, doar
    se notează aici ca opțiuni cunoscute din industrie, pentru context
    viitor.
-4. **Integrare `VolumeInfo.swift` din DataMover în panoul Offload**
-   (`OffloadView.swift`/`offload_view.py`) — cerută explicit de Cristi
-   într-o discuție separată (nu doar presupusă de mine): listă de discuri
-   cu capacitate/tip/spațiu liber, nu doar un câmp de path text simplu,
-   ca sursă/destinație în Offload. `VolumeInfo.swift` există deja, gata
-   scris, în `~/Developer/DataMover/mac-native/Sources/DataMoverMac/` —
-   de PRELUAT și portat (Mac direct, Windows echivalent nou, WMI/psutil
-   pentru listă de discuri). Cristi a repetat cererea asta explicit ca să
-   nu se piardă — tratată cu prioritate, nu opțional.
-
-Prioritate sugerată la reluare: 4 (integrare DataMover, cerută explicit
-de două ori) înaintea oricărui alt lucru neterminat de mai sus (inclusiv
-metadata Sony/EXIF/ID3, secțiunea anterioară), apoi 2 (mediu, atinge
-motorul de conversie); 1 (playerul real-time) rămâne discuție de scop
-separată.
+Prioritate sugerată la reluare: metadata Sony/EXIF/ID3 (secțiunea
+anterioară, UI de tabel comparativ neînceput) sau 2 (control fps, mediu,
+atinge motorul de conversie) — oricare, la alegerea lui Cristi; 1
+(playerul real-time) rămâne discuție de scop separată.

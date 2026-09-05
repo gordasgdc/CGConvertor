@@ -12,10 +12,12 @@ struct OffloadView: View {
     @State private var verificationModel: VerificationModel = .xxhash64
     @State private var chunkSizeMB = IOSettings.chunkSizeMB
     @State private var ramLimitMB = IOSettings.ramLimitMB
+    @State private var voluri: [VolumeInfo] = []
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                volumesSection
                 sourceSection
                 destinationsSection
                 verificationSection
@@ -27,6 +29,61 @@ struct OffloadView: View {
             .padding(18)
         }
         .background(Shift.bg)
+        .onAppear { voluri = VolumeInfo.detectAll() }
+    }
+
+    /// Discuri/carduri montate, detectate automat (2026-09-05, cerere
+    /// explicită, repetată — vezi CLAUDE.md): mult mai profesional decât
+    /// un simplu câmp de path text, exact cum arată DataMover. Click pe
+    /// un disc îl setează ca sursă; butonul "+" mic îl adaugă la lista de
+    /// destinații — restul aplicației (`NSOpenPanel` din `alegeSursa`/
+    /// `adaugaDestinatie`) rămâne disponibil neschimbat, pentru orice
+    /// folder care nu e rădăcina unui volum montat.
+    private var volumesSection: some View {
+        ShiftCard {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    ShiftSectionLabel(text: L.t("offload.volumes.title"))
+                    Spacer()
+                    Button {
+                        voluri = VolumeInfo.detectAll()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Shift.muted)
+                    .help(L.t("offload.volumes.refresh"))
+                }
+                if voluri.isEmpty {
+                    Text(L.t("offload.volumes.empty")).font(.system(size: 12)).foregroundStyle(Shift.faint)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(voluri) { vol in
+                                VStack(spacing: 4) {
+                                    Image(nsImage: vol.icon).resizable().frame(width: 32, height: 32)
+                                    Text(vol.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
+                                    Text(formatBytes(vol.freeBytes)).font(.system(size: 9.5, design: .monospaced)).foregroundStyle(Shift.faint)
+                                    HStack(spacing: 6) {
+                                        Button(L.t("offload.volumes.useAsSource")) { sourcePath = vol.path }
+                                            .buttonStyle(.plain).font(.system(size: 9.5)).foregroundStyle(Shift.accent)
+                                        Button("+") {
+                                            if !destinations.contains(vol.path) { destinations.append(vol.path) }
+                                        }
+                                        .buttonStyle(.plain).font(.system(size: 11, weight: .bold)).foregroundStyle(Shift.accent)
+                                        .help(L.t("offload.volumes.useAsDestination"))
+                                    }
+                                }
+                                .padding(8)
+                                .frame(width: 110)
+                                .background(sourcePath == vol.path ? Shift.accent.opacity(0.12) : Shift.elevated)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private var sourceSection: some View {

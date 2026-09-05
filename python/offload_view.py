@@ -13,6 +13,7 @@ import tkinter as tk
 from tkinter import filedialog, ttk
 
 import io_settings
+import volume_info
 from offload_engine import VERIFICATION_MODELS
 
 
@@ -56,6 +57,22 @@ class OffloadPanel(tk.Frame):
         style = ttk.Style(self)
         style.configure("Offload.TRadiobutton", background=th["bg_panel"], foreground=th["fg"], font=self.app._f(10))
         style.map("Offload.TRadiobutton", background=[("active", th["bg_panel"])])
+
+        # ── Discuri detectate (2026-09-05, cerere explicita, repetata —
+        # vezi CLAUDE.md): listeaza discurile/cardurile montate, cu spatiu
+        # liber, in loc sa lase userul sa scrie/aleaga doar dintr-un dialog
+        # de folder gol — la fel ca panoul echivalent din DataMover. ──
+        vol_frame = tk.Frame(self, bg=th["bg_panel"])
+        vol_frame.pack(fill="x", **pad)
+        vol_head = tk.Frame(vol_frame, bg=th["bg_panel"])
+        vol_head.pack(fill="x", padx=12, pady=(10, 2))
+        tk.Label(vol_head, text=self._t("offload_volumes_title"), bg=th["bg_panel"], fg=th["fg"],
+                 font=self.app._f(11, "bold")).pack(side="left")
+        ttk.Button(vol_head, text="↻", width=3, style="Ghost.TButton",
+                   command=self._refresh_volumes, cursor="hand2").pack(side="right")
+        self.volumes_row = tk.Frame(vol_frame, bg=th["bg_panel"])
+        self.volumes_row.pack(fill="x", padx=12, pady=(0, 10))
+        self._refresh_volumes()
 
         # ── Sursa ──
         src_frame = tk.Frame(self, bg=th["bg_panel"])
@@ -181,6 +198,40 @@ class OffloadPanel(tk.Frame):
             tk.Label(row, text="✕", bg=self.th["bg_panel"], fg=self.th["fg_faint"], cursor="hand2",
                      font=self.app._fm(9)).pack(side="right")
             row.winfo_children()[-1].bind("<Button-1>", lambda e, d=dest: self._remove_destination(d))
+
+    def _refresh_volumes(self):
+        for w in self.volumes_row.winfo_children():
+            w.destroy()
+        volumes = volume_info.list_volumes()
+        if not volumes:
+            tk.Label(self.volumes_row, text=self._t("offload_no_volumes"),
+                     bg=self.th["bg_panel"], fg=self.th["fg_faint"], font=self.app._fm(9)).pack(anchor="w")
+            return
+        for vol in volumes:
+            chip = tk.Frame(self.volumes_row, bg=self.th["bg_elevated"],
+                             highlightbackground=self.th["line"], highlightthickness=1)
+            chip.pack(side="left", padx=(0, 8), pady=2)
+            tk.Label(chip, text=vol["name"], bg=self.th["bg_elevated"], fg=self.th["fg"],
+                     font=self.app._f(9, "bold")).pack(anchor="w", padx=8, pady=(6, 0))
+            tk.Label(chip, text=volume_info.format_bytes(vol["free_bytes"]), bg=self.th["bg_elevated"],
+                     fg=self.th["fg_faint"], font=self.app._fm(8)).pack(anchor="w", padx=8)
+            btn_row = tk.Frame(chip, bg=self.th["bg_elevated"])
+            btn_row.pack(anchor="w", padx=6, pady=(2, 6))
+            ttk.Button(btn_row, text=self._t("offload_use_as_source"), style="Ghost.TButton", cursor="hand2",
+                       command=lambda p=vol["path"]: self._use_volume_as_source(p)).pack(side="left")
+            ttk.Button(btn_row, text="+", width=2, style="Ghost.TButton", cursor="hand2",
+                       command=lambda p=vol["path"]: self._use_volume_as_destination(p)).pack(side="left", padx=(4, 0))
+
+    def _use_volume_as_source(self, path):
+        self.source_path = path
+        self.app.offload_source_path = path
+        self.source_label.config(text=path, fg=self.th["fg_dim"])
+
+    def _use_volume_as_destination(self, path):
+        if path not in self.destinations:
+            self.destinations.append(path)
+            self.app.offload_destinations = list(self.destinations)
+            self._render_destinations()
 
     def _choose_source(self):
         path = filedialog.askdirectory()

@@ -229,6 +229,11 @@ enum L {
 
         "mainMode.convert": [.ro: "Convertor", .en: "Converter", .es: "Convertidor"],
         "mainMode.offload": [.ro: "Offload", .en: "Offload", .es: "Offload"],
+        "offload.volumes.title": [.ro: "Discuri detectate", .en: "Detected disks", .es: "Discos detectados"],
+        "offload.volumes.refresh": [.ro: "Reîmprospătează", .en: "Refresh", .es: "Actualizar"],
+        "offload.volumes.empty": [.ro: "Niciun disc extern montat.", .en: "No external disk mounted.", .es: "Ningún disco externo montado."],
+        "offload.volumes.useAsSource": [.ro: "Sursă", .en: "Source", .es: "Origen"],
+        "offload.volumes.useAsDestination": [.ro: "Adaugă ca destinație", .en: "Add as destination", .es: "Añadir como destino"],
         "offload.source": [.ro: "Sursă (card)", .en: "Source (card)", .es: "Origen (tarjeta)"],
         "offload.source.choose": [.ro: "Alege sursa…", .en: "Choose source…", .es: "Elegir origen…"],
         "offload.destinations": [.ro: "Destinații", .en: "Destinations", .es: "Destinos"],

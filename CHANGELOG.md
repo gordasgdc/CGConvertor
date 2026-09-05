@@ -2,6 +2,13 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.6.0 — Discuri detectate în Offload (2026-09-05)
+
+Panoul Offload arată acum discurile/cardurile montate ca listă reală
+(nume, spațiu liber), nu doar un câmp de path text — click direct pentru
+a folosi un disc ca sursă sau a-l adăuga ca destinație, la fel ca în
+DataMover. Disponibil identic pe Mac și Windows.
+
 ### v3.5.0 — Preview LUT: fullscreen + rezoluție mare (2026-09-05)
 
 Previzualizarea interactivă cu LUT poate fi acum mărită pe tot ecranul
