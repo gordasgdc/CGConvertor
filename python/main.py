@@ -54,6 +54,7 @@ import config
 import format_registry
 import gpu_probe
 import machine_id
+import offload_engine
 import presets_manager as presets_mod
 import revocation_check
 import self_updater
@@ -63,6 +64,7 @@ from translations import t
 from converter import Converter
 from dependency_manager import DependencyManager
 from dependency_panel import DependencyPanel
+from offload_view import OffloadPanel
 from presets_dialog import PresetsDialog
 from settings_dialog import SettingsDialog
 
@@ -105,6 +107,16 @@ class CGConvertorApp(BASE_CLASS):
         self._stop_all = False
         self._active_converters = []
         self._active_converters_lock = threading.Lock()
+
+        # Offload/Checksum (Faza 2) — starea motorului supravietuieste
+        # `_rebuild_ui()` (schimbare tema/marime font), exact ca `self.jobs`
+        # pentru coada de conversie; panoul (OffloadPanel) e reconstruit la
+        # fiecare rebuild, dar se leaga de acelasi `OffloadRunner`.
+        self.main_mode = "convert"
+        self.offload_runner = offload_engine.OffloadRunner(self.settings)
+        self.offload_source_path = None
+        self.offload_destinations = []
+        self.offload_verify_model = "xxhash64"
 
         self.title(t(self.lang, "app_title"))
         self.geometry("920x620")
@@ -240,6 +252,17 @@ class CGConvertorApp(BASE_CLASS):
                                         bg=th["bg"], fg=th["fg_dim"])
         self.subtitle_label.pack(anchor="w")
 
+        # ── Comutator mod: Convertor / Offload (Faza 2) ──
+        mode_row = tk.Frame(header, bg=th["bg"])
+        mode_row.pack(anchor="w", pady=(8, 0))
+        self.mode_buttons = {}
+        for mode in ("convert", "offload"):
+            btn = ttk.Button(mode_row, command=lambda m=mode: self._set_main_mode(m),
+                              style="LangActive.TButton" if mode == self.main_mode else "Lang.TButton",
+                              cursor="hand2")
+            btn.pack(side="left", padx=(0, 4))
+            self.mode_buttons[mode] = btn
+
         # ── Banner proba/licenta/revocare ──
         self.trial_frame = tk.Frame(self, bg=th["bg_elevated"])
         self.trial_label = tk.Label(self.trial_frame, font=self._f(10),
@@ -251,7 +274,9 @@ class CGConvertorApp(BASE_CLASS):
         self.trial_activate_btn.bind("<Button-1>", lambda e: self._open_activation())
 
         body = tk.Frame(self, bg=th["bg"])
-        body.pack(fill="both", expand=True, padx=20, pady=10)
+        self.body_frame = body
+        if self.main_mode == "convert":
+            body.pack(fill="both", expand=True, padx=20, pady=10)
 
         # ── Panou stanga: setari ──
         left = tk.Frame(body, bg=th["bg_panel"], width=260)
@@ -385,11 +410,33 @@ class CGConvertorApp(BASE_CLASS):
         self.bind(f"<{modifier}-k>", lambda e: self._clear_list())
         self.bind(f"<{modifier}-Return>", lambda e: self._start_queue())
 
+        # ── Panoul Offload (Faza 2) — construit intotdeauna, vizibil doar
+        # in modul "offload" (`self.main_mode`). Motorul (`offload_runner`)
+        # traieste separat pe `self`, supravietuieste `_rebuild_ui()`.
+        self.offload_panel = OffloadPanel(self, self)
+        if self.main_mode == "offload":
+            self.offload_panel.pack(fill="both", expand=True, padx=20, pady=10)
+
+    def _set_main_mode(self, mode):
+        if mode == self.main_mode:
+            return
+        self.main_mode = mode
+        if mode == "convert":
+            self.offload_panel.pack_forget()
+            self.body_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        else:
+            self.body_frame.pack_forget()
+            self.offload_panel.pack(fill="both", expand=True, padx=20, pady=10)
+        for m, btn in self.mode_buttons.items():
+            btn.configure(style="LangActive.TButton" if m == mode else "Lang.TButton")
+
     def _refresh_texts(self):
         lang = self.lang
         self.title(t(lang, "app_title"))
         self.title_label.config(text=t(lang, "app_title"))
         self.subtitle_label.config(text=t(lang, "app_subtitle"))
+        for m, btn in self.mode_buttons.items():
+            btn.config(text=t(lang, f"mode_{m}"))
         self.preset_label.config(text=t(lang, "output_preset"))
         self._reload_preset_menu()
         self.edit_presets_btn.config(text=t(lang, "edit_presets"))

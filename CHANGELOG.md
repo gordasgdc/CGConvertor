@@ -2,6 +2,17 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.1.0 — Faza 2: Offload/Checksum (2026-09-05)
+
+**Mod nou, „Offload"** (comutator lângă titlu, alături de „Convertor") —
+copiere sursă (card media) → una sau mai multe destinații, cu verificare
+integrală a fiecărui fișier după copiere: xxHash64 (implicit, rapid),
+MD5, SHA-1, SHA-256, sau doar comparație de mărime. Un raport CSV
+(fișier/mărime/verificare sursă/destinație/status) se scrie automat în
+fiecare folder destinație. Pauză/Reluare și Anulare, plus aceleași setări
+de buffer/plafon de memorie ca restul aplicației. Disponibil identic pe
+Mac și Windows.
+
 ### v3.0.0 — Faza 1: Motor extins + Presets Manager + conformitate ecosistem (2026-09-05)
 
 Schimbare majoră de arhitectură — modelul fix "Mod (Rewrap/Transcode) +

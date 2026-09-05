@@ -15,6 +15,13 @@ struct ContentView: View {
     @State private var showDependencyPanel = false
     @State private var showPresetsManager = false
     @State private var showSettingsSheet = false
+    @State private var mainMode: MainMode = .convert
+
+    enum MainMode: String, CaseIterable, Identifiable {
+        case convert, offload
+        var id: String { rawValue }
+        var label: String { self == .convert ? L.t("mainMode.convert") : L.t("mainMode.offload") }
+    }
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
@@ -27,11 +34,15 @@ struct ContentView: View {
                 trialBanner
             }
 
-            HStack(spacing: 0) {
-                panouSetari
-                    .frame(width: 300)
-                Divider().overlay(Shift.border)
-                panouListaJoburi
+            if mainMode == .convert {
+                HStack(spacing: 0) {
+                    panouSetari
+                        .frame(width: 300)
+                    Divider().overlay(Shift.border)
+                    panouListaJoburi
+                }
+            } else {
+                OffloadView()
             }
         }
         .background(Shift.bg)
@@ -97,6 +108,14 @@ struct ContentView: View {
                     .foregroundStyle(Shift.muted)
             }
             Spacer()
+            Picker("", selection: $mainMode) {
+                ForEach(MainMode.allCases) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 180)
             if vm.seRuleazaCoada {
                 ProgressView().controlSize(.small).tint(Shift.accent)
             }

@@ -1269,7 +1269,94 @@ scopului Faza 1 aprobat. Semnalat separat, nu inclus tacit în acest
 commit.
 
 **Rămas explicit pentru Fazele următoare** (NU implementat acum, spus
-clar, nu ascuns): Offload/Checksum (card→destinație, MD5/SHA-1/xxHash),
-Watch Folders, inspecție/metadata profundă + thumbnail cu LUT static,
-rapoarte HTML/PDF per lot, player LUT/LOG real-time (Metal/Media
-Foundation).
+clar, nu ascuns): Watch Folders, inspecție/metadata profundă + thumbnail
+cu LUT static, rapoarte HTML/PDF per lot, player LUT/LOG real-time (Metal/
+Media Foundation). Offload/Checksum a fost implementat în Faza 2, vezi
+jurnalul de mai jos.
+
+## Faza 2 v3.1.0 (2026-09-05) — Offload/Checksum
+
+Cerință din planul original, aleasă explicit de Cristi ca următorul pas
+după Faza 1. Sursă de tipar: `DataMover` (aplicația soră din ecosistemul
+GDC, unde acest flux a fost dezvoltat inițial și rafinat de-a lungul a
+multe etape — vezi `DataMover/CLAUDE.md`) — Regula 30 ("nu inventa un
+tipar nou"), NU scris de la zero.
+
+**Decizie de scop, explicită**: portat DOAR nucleul — copiere sursă→
+destinație(i), verificare (xxHash64/MD5/SHA-1/SHA-256/doar-mărime),
+buffer/backpressure (Regula 21), raport CSV incremental, Pauză/Anulare.
+NU s-au portat: MHL (Media Hash List), sincronizare Cloud (rclone),
+detecție structură de card de cameră, șabloane de denumire a folderelor,
+coadă automată de carduri/pornire la conectare, ejectare automată,
+rapoarte PDF/HTML brandate, profile de transfer, istoric. Acelea sunt un
+flux profesional de post-producție complet, dincolo de cererea explicită
+a acestui plan ("Offload/Checksum: card→destinație, MD5/SHA-1/xxHash") —
+dacă se cere vreodată mai mult, tiparul complet există deja, testat, în
+`DataMover`.
+
+**Mac** (`OffloadEngine.swift`, `IOSettings.swift`, `OffloadView.swift`,
+`XXHash64.swift` — ultimul copiat NESCHIMBAT din `DataMover`, deja validat
+byte-for-byte față de `python-xxhash`): mod nou „Offload" (comutator
+segmentat în antet, lângă „Convertor"), `OffloadRunner` (`ObservableObject`)
+orchestrează câte un `OffloadDestinationJob` per destinație, în paralel,
+pe `DispatchQueue.global`. `autoreleasepool` per iterație în
+copiere/hashing (Regula 21).
+
+**Windows** (`offload_engine.py`, `io_settings.py`, `offload_view.py`,
+plus chei noi în `translations.py`) — port 1:1 al aceleiași arhitecturi:
+`OffloadRunner`/`DestinationJob` (threaduri, nu procese), UI Tkinter
+(`OffloadPanel`) construit din nou la fiecare `_rebuild_ui()` (Regula
+18/24), dar legat de ACELAȘI `OffloadRunner` persistent pe `self` — starea
+motorului supraviețuiește schimbărilor de temă/mărime font, exact ca
+`self.jobs` pentru coada de conversie. xxHash64: pachetul `xxhash` (nou în
+`requirements.txt`) — NU o reimplementare proprie ca pe Mac (CryptoKit nu
+are xxHash, `hashlib` din stdlib Python nici atât, dar există deja un
+pachet matur, standard, pentru asta).
+
+**Bug real prins ÎNAINTE de commit, printr-un test real** (nu presupunere):
+prima variantă a testului GUI headless folosea `app.update()` într-o buclă
+manuală, nu `app.mainloop()` real — a picat exact pe bug-ul deja documentat
+în acest fișier ("main thread is not in main loop"), pentru că
+`self.after(...)` apelat dintr-un thread de fundal (`OffloadRunner`)
+necesită interpretorul Tcl efectiv "în mainloop", nu doar un ciclu de
+`update()`. Corectat testul (nu codul — codul de producție era deja
+corect, folosește exact tiparul `self.after(0, ...)` deja stabilit și
+funcțional în restul aplicației pentru `self_updater`), rulat din nou cu
+un `mainloop()` real, orchestrat prin `app.after(...)` înlănțuit — a
+trecut curat.
+
+**Verificat real, nu presupus**:
+- Test standalone Swift (`swiftc`, în afara proiectului Xcode): copiere +
+  verificare pe fișiere sintetice reale — conținut byte-identic confirmat,
+  corupere deliberată a unui fișier destinație detectată corect ca
+  NEPOTRIVIRE, determinism xxHash64 confirmat la mărimi de bucată diferite
+  (7 octeți vs 1 MB), CSV inspectat direct, mod "doar mărime" verificat
+  separat, MD5 verificat încrucișat cu `hashlib` Python direct.
+- Test standalone Python (aceleași verificări, cod real din
+  `offload_engine.py`, nu o reimplementare pentru test) — toate identice.
+- **Verificare încrucișată Mac↔Windows, cea mai importantă**: același
+  conținut de fișier, hash-uit cu implementarea Swift (`XXHash64.swift`)
+  ȘI cu pachetul `xxhash` Python — digest **identic** (`3f6c1a7be3cf01b4`)
+  pe ambele. Fără această verificare, un raport generat pe Mac și unul
+  generat pe Windows ar fi putut folosi tacit convenții diferite de
+  reprezentare a hash-ului, nedescoperit până la un audit manual.
+- Test GUI real, Mac: aplicația construită complet (`CGConvertorApp`),
+  comutată în modul Offload prin codul REAL al butonului (`_set_main_mode`),
+  sursă+destinație setate, `Start` apăsat prin codul REAL al butonului
+  (`panel._start()`), rulat printr-un `app.mainloop()` autentic — 2/2
+  fișiere copiate corect, CSV generat și confirmat pe disc. Schimbare de
+  temă (Light) CÂT TIMP era activ modul Offload — panoul rămâne corect
+  vizibil după `_rebuild_ui()`, fără crash.
+- Build Mac real: `xcodebuild` — **BUILD SUCCEEDED** (0 erori), aplicația
+  instalată în `/Applications`, lansată real, rulat stabil, închisă curat.
+- `pyflakes` (venv izolat) pe toate fișierele Python noi/modificate — zero
+  erori.
+- **NU verificat**: rulare reală pe Windows (Parallels) — verificat doar
+  logica (teste standalone + GUI headless, ambele reale, pe acest Mac);
+  comportamentul vizual/layout Tkinter pe Windows real rămâne de confirmat
+  de Cristi, ca la fiecare fază anterioară.
+
+Versiune 3.0.0 → 3.1.0 (MINOR — funcționalitate nouă vizibilă, fără
+schimbare de arhitectură, Regula 14), sincronizată Xcode
+(`MARKETING_VERSION`/`CURRENT_PROJECT_VERSION`) + `config.py`
+(`APP_VERSION`).

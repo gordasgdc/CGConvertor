@@ -2,3 +2,4 @@ tkinterdnd2>=0.3.0
 pyinstaller>=6.0.0
 cryptography>=42.0.0
 certifi>=2024.2.2
+xxhash>=3.4.0
