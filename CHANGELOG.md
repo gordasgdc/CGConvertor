@@ -2,6 +2,15 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.2 — Comparație metadate: din pop-up mic, în pagină HTML (Mac + Windows, 2026-09-06)
+
+Redimensionarea din v3.14.1 nu era suficientă — tot rămânea o fereastră
+mică, greu de citit. „Compară (N)" deschide acum direct o pagină HTML
+completă în browser, exact ca „Generează raport": căutare live,
+evidențierea diferențelor, ascunderea rândurilor identice — mare, cât tot
+ecranul, redimensionabilă/maximizabilă normal. Windows portat identic
+(fostul dialog Treeview eliminat).
+
 ### v3.14.1 — Fix: ferestrele Mac (comparație metadate, player LUT, presetări, istoric) erau needimensionabile (2026-09-06)
 
 Aveau dimensiune fixă — nu se puteau mări/micșora deloc, deranjant mai

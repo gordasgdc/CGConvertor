@@ -2369,6 +2369,47 @@ Windows verificat separat: dialogurile echivalente (`metadata_compare_view.py`,
 
 Versiune 3.14.0 → 3.14.1 (PATCH — fix UX izolat, doar Mac, Regula 14).
 
+## v3.14.2 (2026-09-06) — Comparația de metadate: rescrisă complet ca pagină HTML
+
+**Feedback direct de la Cristi, după ce a testat efectiv fix-ul v3.14.1**
+(redimensionare sheet nativ): "Nu e bine... e o mini fereastră care e
+greu de vizualizat... Trebuie să fie, nu știu, poate ca un HTML sau ca
+un PDF, să fie mare, să pot umbla în el... nu ca un pop-up mic". Apoi,
+confirmând direcția: "ceva în genul generează raport să fie și
+metadatele". Concluzie: nu era problemă de dimensiune (v3.14.1 rezolvase
+tehnic asta), ci de PARADIGMĂ — un pop-up nativ, oricât de mare, tot se
+simte ca o mini-fereastră lângă un tab de browser.
+
+**Fix Mac**: `MetadataCompareSheet.swift` REFĂCUT COMPLET — nu mai e
+`View`/`.sheet`, ci `extension MetadataCompareEngine { static func
+deschideComparatie(jobs:) }`. Motorul de extragere (`categorii(pentru:)`,
+`MetadataCategory`) rămâne neatins în `MetadataCompare.swift` — funcția
+nouă doar generează un HTML autonom (căutare live, evidențiază diferențe,
+ascunde identice — JS simplu inline, temă GDC Shift dark) și îl deschide
+cu `NSWorkspace.shared.open(path)`, exact tiparul deja aprobat de
+"Generează raport". `ContentView.swift`: eliminat `@State showCompare` +
+`.sheet(...)`, butonul „Compară (N)" apelează direct funcția nouă.
+
+**Fix Windows (Regula 31, aceeași sesiune)**: `metadata_compare_view.py`
+rescris — fostul `MetadataCompareDialog(Toplevel)` cu `ttk.Treeview`
+980×640 eliminat complet, înlocuit cu `open_comparison(jobs) -> path`
+care generează BYTE-cât-de-aproape-posibil același HTML (aceleași
+categorii/culori/JS, doar fontul de fallback e `Segoe UI`/`Consolas` în
+loc de `-apple-system`/`Menlo`). `main.py._open_metadata_compare` rulează
+analiza pe thread separat (ffprobe/Sony XML poate dura pe fișiere multe)
+și deschide rezultatul cu `os.startfile`, la fel ca `_generate_report`.
+
+**Verificare**: build Xcode (`BUILD SUCCEEDED`) + harness standalone Mac
+(`/tmp/compare_html_test/`, 2 clipuri ffmpeg reale, cod de producție
+neschimbat) — HTML conține titlu, ambele nume de fișier, metadata video
+reală (`H264`), JS-ul de filtrare, clasificare identic/diferit corectă.
+Python: `python3 -m py_compile main.py metadata_compare_view.py` OK +
+test real (`/tmp/win_compare_test/`, 2 clipuri ffmpeg reale) — aceleași
+asserții, toate trecute.
+
+Versiune 3.14.1 → 3.14.2 (MINOR ar fi fost dacă era funcționalitate nouă;
+e o rescriere de UX pe o funcție existentă → PATCH, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în

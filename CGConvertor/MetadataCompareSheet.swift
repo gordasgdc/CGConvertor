@@ -1,78 +1,24 @@
-import SwiftUI
+import Foundation
 import AppKit
 
-/// Tabel comparativ multi-fișier — pe modelul
-/// `~/Developer/GDC_Metadata_View_Premium` (index.html): rânduri = un
-/// parametru tehnic, coloane = fișierele selectate, cu evidențierea
-/// diferențelor și ascunderea rândurilor identice. SwiftUI nu are un
-/// `Table` cu coloane dinamice practic pentru acest caz (numărul de
-/// fișiere variază) — construit manual: ScrollView orizontal (peste
-/// întregul grid, antet + rânduri) în interiorul unui ScrollView
-/// vertical, cu celule de lățime fixă aliniate pe coloane.
-struct MetadataCompareSheet: View {
-    let jobs: [VideoJob]
-    @Binding var isPresented: Bool
-
-    @State private var categoriiPerJob: [UUID: [MetadataCategory]] = [:]
-    @State private var seIncarca = true
-    @State private var cautare = ""
-    @State private var ascundeIdentice = false
-    @State private var evidentiazaDiferente = true
-
-    private let latimeLabel: CGFloat = 220
-    private let latimeColoana: CGFloat = 200
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider().overlay(Shift.border)
-            if seIncarca {
-                VStack {
-                    Spacer()
-                    ProgressView(L.t("compare.loading"))
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                tabel
-            }
-            Divider().overlay(Shift.border)
-            footer
+/// Comparația de metadate — REFĂCUTĂ COMPLET (2026-09-06), cerut explicit
+/// de Cristi după ce a folosit efectiv fereastra nativă anterioară (sheet
+/// SwiftUI, eliminat complet din acest fișier): "nu pot să văd... trebuie
+/// să fie ca un HTML sau ca un PDF... nu ca un pop-up mic". "Compară (N)"
+/// generează acum direct o pagină HTML autonomă (căutare + evidențiere
+/// diferențe + ascundere identice, toate în JS simplu, fără dependințe)
+/// și o deschide în browser, exact ca „Generează raport" — un tab de
+/// browser normal, redimensionabil/maximizabil ca orice fereastră.
+/// Motorul de extragere (`MetadataCompareEngine.categorii`, tipul
+/// `MetadataCategory`) rămâne în `MetadataCompare.swift` — acest fișier
+/// adaugă DOAR generarea de HTML, ca extensie a aceluiași engine.
+extension MetadataCompareEngine {
+    static func deschideComparatie(jobs: [VideoJob]) {
+        var categoriiPerJob: [UUID: [MetadataCategory]] = [:]
+        for job in jobs {
+            categoriiPerJob[job.id] = categorii(pentru: job.urlSursa)
         }
-        // Fix real (2026-09-06, cerut de Cristi): dimensiune FIXA facea
-        // fereastra neredimensionabila - la o comparatie cu multe fisiere
-        // sau nume lungi, contextul util depasea 900x620 fara nicio
-        // posibilitate de marire. minWidth/minHeight (fara maxim) lasa
-        // SwiftUI sa arate mânerul de redimensionare nativ al sheet-ului.
-        .frame(minWidth: 900, idealWidth: 1100, minHeight: 620, idealHeight: 700)
-        .background(Shift.bg)
-        .task {
-            var rezultat: [UUID: [MetadataCategory]] = [:]
-            for job in jobs {
-                rezultat[job.id] = await Task.detached(priority: .userInitiated) {
-                    MetadataCompareEngine.categorii(pentru: job.urlSursa)
-                }.value
-            }
-            categoriiPerJob = rezultat
-            seIncarca = false
-        }
-    }
 
-    private var header: some View {
-        HStack {
-            Text(L.t("compare.title"))
-                .font(.system(size: 14, weight: .semibold))
-            Spacer()
-            Button { isPresented = false } label: {
-                Image(systemName: "xmark.circle.fill")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Shift.faint)
-        }
-        .padding(16)
-    }
-
-    private var randuriMerge: [(categorie: String, labeluri: [String])] {
         var ordineCategorii: [String] = []
         var labeluriPeCategorie: [String: [String]] = [:]
         for job in jobs {
@@ -84,120 +30,97 @@ struct MetadataCompareSheet: View {
                 labeluriPeCategorie[cat.name] = labeluri
             }
         }
-        return ordineCategorii.map { (categorie: $0, labeluri: labeluriPeCategorie[$0] ?? []) }
-    }
 
-    private func valoare(job: VideoJob, categorie: String, label: String) -> String? {
-        categoriiPerJob[job.id]?.first(where: { $0.name == categorie })?.rows.first(where: { $0.label == label })?.value
-    }
+        func valoare(_ job: VideoJob, _ categorie: String, _ label: String) -> String? {
+            categoriiPerJob[job.id]?.first(where: { $0.name == categorie })?.rows.first(where: { $0.label == label })?.value
+        }
 
-    private func esteIdentic(categorie: String, label: String) -> Bool {
-        let valori = Set(jobs.map { valoare(job: $0, categorie: categorie, label: label) ?? "—" })
-        return valori.count <= 1
-    }
-
-    private func potriveste(_ text: String) -> Bool {
-        cautare.isEmpty || text.localizedCaseInsensitiveContains(cautare)
-    }
-
-    private var tabel: some View {
-        ScrollView([.horizontal, .vertical]) {
-            VStack(alignment: .leading, spacing: 0) {
-                antetColoane
-                ForEach(randuriMerge, id: \.categorie) { grup in
-                    let randuriVizibile = grup.labeluri.filter { label in
-                        guard potriveste(label) || potriveste(grup.categorie) else { return false }
-                        if ascundeIdentice, esteIdentic(categorie: grup.categorie, label: label) { return false }
-                        return true
-                    }
-                    if !randuriVizibile.isEmpty {
-                        randCategorie(grup.categorie)
-                        ForEach(randuriVizibile, id: \.self) { label in
-                            randValoare(categorie: grup.categorie, label: label)
-                        }
-                    }
-                }
+        var randuriHTML = ""
+        for categorie in ordineCategorii {
+            guard let labeluri = labeluriPeCategorie[categorie], !labeluri.isEmpty else { continue }
+            randuriHTML += "<tr class=\"cat\"><td colspan=\"\(jobs.count + 1)\">\(escapeHTML(categorie.uppercased()))</td></tr>\n"
+            for label in labeluri {
+                let valori = jobs.map { valoare($0, categorie, label) ?? "—" }
+                let identic = Set(valori).count <= 1
+                let celule = valori.map { "<td>\(escapeHTML($0))</td>" }.joined()
+                randuriHTML += "<tr class=\"row\(identic ? " identic" : " diferit")\" data-search=\"\(escapeHTML((categorie + " " + label).lowercased()))\"><td class=\"label\">\(escapeHTML(label))</td>\(celule)</tr>\n"
             }
         }
-    }
 
-    private var antetColoane: some View {
-        HStack(spacing: 0) {
-            Text(L.t("compare.parameter"))
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(Shift.accent)
-                .frame(width: latimeLabel, alignment: .leading)
-                .padding(8)
-            ForEach(jobs) { job in
-                Text(job.numeFisier)
-                    .font(.system(size: 11, weight: .semibold))
-                    .lineLimit(2)
-                    .frame(width: latimeColoana, alignment: .leading)
-                    .padding(8)
+        let antetColoane = jobs.map { "<th>\(escapeHTML($0.numeFisier))</th>" }.joined()
+
+        let html = """
+        <!DOCTYPE html><html><head><meta charset="utf-8">
+        <title>Comparație metadate — CG Convertor</title>
+        <style>
+        :root { color-scheme: dark; }
+        body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#14161A;color:#EDEFF2;margin:0;padding:28px 32px 60px}
+        h1{color:#E8963C;font-size:20px;margin:0 0 4px}
+        .subtitle{color:#8A8F98;font-size:13px;margin:0 0 20px}
+        .toolbar{position:sticky;top:0;background:#14161A;padding:10px 0 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #2B2F36;margin-bottom:10px}
+        input[type=text]{background:#1A1D22;border:1px solid #2B2F36;color:#EDEFF2;border-radius:6px;padding:7px 10px;font-size:13px;width:240px}
+        label{font-size:13px;color:#C9CDD3;display:flex;align-items:center;gap:6px;cursor:pointer}
+        table{border-collapse:collapse;width:100%;font-size:12.5px}
+        th,td{border-bottom:1px solid #23262C;padding:8px 10px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
+        th{position:sticky;top:56px;background:#1A1D22;color:#EDEFF2;font-size:11.5px;z-index:2}
+        td.label{color:#9AA0A8;font-weight:500}
+        tr.cat td{background:rgba(232,150,60,0.08);color:#E8963C;font-weight:700;font-size:10.5px;letter-spacing:.04em;position:sticky;left:0}
+        tr.diferit.highlight td{background:rgba(232,150,60,0.10)}
+        tr.hide-identical.identic{display:none}
+        td{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+        </style></head><body>
+        <h1>Comparație metadate</h1>
+        <p class="subtitle">\(jobs.count) fișiere · generat \(dataCurenta())</p>
+        <div class="toolbar">
+          <input type="text" id="search" placeholder="Caută…" oninput="filtreaza()">
+          <label><input type="checkbox" id="highlight" checked onchange="filtreaza()"> Evidențiază diferențele</label>
+          <label><input type="checkbox" id="hideIdentical" onchange="filtreaza()"> Ascunde identice</label>
+        </div>
+        <table id="tbl">
+        <thead><tr><th>Parametru</th>\(antetColoane)</tr></thead>
+        <tbody>
+        \(randuriHTML)
+        </tbody>
+        </table>
+        <script>
+        function filtreaza() {
+          var q = document.getElementById('search').value.toLowerCase();
+          var highlight = document.getElementById('highlight').checked;
+          var hideIdentical = document.getElementById('hideIdentical').checked;
+          document.querySelectorAll('tr.row').forEach(function(tr) {
+            var matches = !q || tr.getAttribute('data-search').indexOf(q) !== -1;
+            tr.style.display = matches ? '' : 'none';
+            tr.classList.toggle('highlight', highlight);
+            tr.classList.toggle('hide-identical', hideIdentical);
+          });
+          document.querySelectorAll('tr.cat').forEach(function(tr) {
+            var next = tr.nextElementSibling, any = false;
+            while (next && !next.classList.contains('cat')) {
+              if (next.style.display !== 'none') any = true;
+              next = next.nextElementSibling;
             }
+            tr.style.display = any ? '' : 'none';
+          });
         }
-        .background(Shift.elevated)
+        filtreaza();
+        </script>
+        </body></html>
+        """
+
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("CGConvertor_Comparatie_\(Int(Date().timeIntervalSince1970)).html")
+        try? html.write(to: path, atomically: true, encoding: .utf8)
+        NSWorkspace.shared.open(path)
     }
 
-    private func randCategorie(_ nume: String) -> some View {
-        Text(nume.uppercased())
-            .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(Shift.accent)
-            .frame(width: latimeLabel + latimeColoana * CGFloat(jobs.count), alignment: .leading)
-            .padding(.horizontal, 8).padding(.vertical, 6)
-            .background(Shift.accent.opacity(0.06))
+    private static func dataCurenta() -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        return f.string(from: Date())
     }
 
-    private func randValoare(categorie: String, label: String) -> some View {
-        let diferit = evidentiazaDiferente && !esteIdentic(categorie: categorie, label: label)
-        return HStack(spacing: 0) {
-            Text(label)
-                .font(.system(size: 11))
-                .foregroundStyle(Shift.muted)
-                .frame(width: latimeLabel, alignment: .leading)
-                .padding(8)
-            ForEach(jobs) { job in
-                Text(valoare(job: job, categorie: categorie, label: label) ?? "—")
-                    .font(.system(size: 11, design: .monospaced))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .frame(width: latimeColoana, alignment: .leading)
-                    .padding(8)
-            }
-        }
-        .background(diferit ? Color.orange.opacity(0.12) : Color.clear)
-        .overlay(Rectangle().frame(height: 1).foregroundStyle(Shift.border), alignment: .bottom)
-    }
-
-    private var footer: some View {
-        HStack {
-            TextField(L.t("compare.search"), text: $cautare)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 220)
-            Toggle(L.t("compare.highlightDiffs"), isOn: $evidentiazaDiferente)
-                .toggleStyle(.checkbox)
-            Toggle(L.t("compare.hideIdentical"), isOn: $ascundeIdentice)
-                .toggleStyle(.checkbox)
-            Spacer()
-            Button(L.t("compare.exportCsv")) { exportaCSV() }
-                .buttonStyle(ShiftGhostButtonStyle())
-        }
-        .padding(12)
-    }
-
-    private func exportaCSV() {
-        var linii = ["Categorie,Parametru," + jobs.map { "\"\($0.numeFisier)\"" }.joined(separator: ",")]
-        for grup in randuriMerge {
-            for label in grup.labeluri {
-                let valori = jobs.map { "\"\(valoare(job: $0, categorie: grup.categorie, label: label) ?? "")\"" }
-                linii.append("\"\(grup.categorie)\",\"\(label)\"," + valori.joined(separator: ","))
-            }
-        }
-        let continut = linii.joined(separator: "\n")
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = "Comparatie_Metadata.csv"
-        if panel.runModal() == .OK, let url = panel.url {
-            try? continut.write(to: url, atomically: true, encoding: .utf8)
-        }
+    private static func escapeHTML(_ s: String) -> String {
+        s.replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
     }
 }

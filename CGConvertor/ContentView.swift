@@ -18,7 +18,6 @@ struct ContentView: View {
     @State private var showSettingsSheet = false
     @State private var mainMode: MainMode = .convert
     @State private var selectedJobIDs: Set<UUID> = []
-    @State private var showCompare = false
     @State private var showWatchFolderExistingSheet = false
     @State private var pendingWatchFolderPath = ""
     @State private var pendingWatchFolderFiles: [URL] = []
@@ -95,9 +94,6 @@ struct ContentView: View {
                 watchFolders.markBaselineKnown(forPath: pendingWatchFolderPath, files: pendingWatchFolderFiles)
                 if !selectate.isEmpty { vm.adaugaFisiere(selectate) }
             }
-        }
-        .sheet(isPresented: $showCompare) {
-            MetadataCompareSheet(jobs: vm.joburi.filter { selectedJobIDs.contains($0.id) }, isPresented: $showCompare)
         }
         .alert(L.t("update.available.title"), isPresented: $showUpdateAlert) {
             Button(L.t("update.download")) {
@@ -444,8 +440,13 @@ struct ContentView: View {
                     }
                     .buttonStyle(ShiftGhostButtonStyle())
                     if selectedJobIDs.count >= 2 {
+                        // Fix real (2026-09-06, cerut de Cristi): fereastra
+                        // nativa era "un pop-up mic in care nu pot sa vad
+                        // nimica" - acum deschide direct o pagina HTML in
+                        // browser, exact ca "Genereaza raport", navigabila
+                        // liber, fara nicio limita de dimensiune.
                         Button(String(format: L.t("compare.button"), selectedJobIDs.count)) {
-                            showCompare = true
+                            MetadataCompareEngine.deschideComparatie(jobs: vm.joburi.filter { selectedJobIDs.contains($0.id) })
                         }
                         .buttonStyle(ShiftGhostButtonStyle())
                     }

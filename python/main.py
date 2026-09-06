@@ -1064,9 +1064,24 @@ class CGConvertorApp(BASE_CLASS):
         menu.tk_popup(event.x_root, event.y_root)
 
     def _open_metadata_compare(self, jobs):
-        from metadata_compare_view import MetadataCompareDialog
+        # Rescris 2026-09-06 — genereaza HTML si-l deschide in browser,
+        # exact ca `_generate_report`, in loc de fostul Toplevel/Treeview
+        # (vezi metadata_compare_view.py). Analiza (ffprobe/Sony XML) merge
+        # pe thread separat ca sa nu inghete UI-ul pe fisiere multe/mari.
+        from metadata_compare_view import open_comparison
         cleaned = [{"path": j["path"], "name": os.path.basename(j["path"])} for j in jobs]
-        MetadataCompareDialog(self, self, cleaned)
+
+        def worker():
+            path = open_comparison(cleaned)
+            self.after(0, lambda: self._open_generated_html(path))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _open_generated_html(self, path):
+        if sys.platform == "darwin":
+            subprocess.run(["open", path])
+        elif sys.platform == "win32":
+            os.startfile(path)  # noqa: S606 — deschidere fisier local, generat de noi
 
     def _open_preview(self, job):
         MediaPreviewDialog(self, self, job)
