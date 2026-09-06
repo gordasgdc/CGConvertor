@@ -788,15 +788,14 @@ permanentă, pentru toate repo-urile GDC:
   INCREMENTAL, la următoarea lor atingere reală — nu toate deodată,
   fără motiv, într-o sesiune dedicată exclusiv la asta.
 
-**[RECIDIVĂ GĂSITĂ 2026-09-06]** O nouă atribuire reală apăruse pe
-commit-ul `v3.14.2` (după curățarea din 2026-09-05) — o sesiune
-ulterioară a scăpat regula. `git filter-repo` blocat din nou de
-clasificatorul mediului (aceeași limitare documentată la CursorProWin/
-MediaFlow-Monitor/gdc-production-manager) — scriptul de curățare
-(`~/Developer/clean-claude-attribution.sh`) pregătit și predat lui
-Cristi să-l ruleze manual. **Verifică din nou la următoarea atingere**
-dacă rularea manuală s-a făcut (`git log --all --format=%B | grep -c
-"Co-Authored-By: Claude"` → trebuie 0).
+**[RECIDIVĂ GĂSITĂ ȘI REZOLVATĂ 2026-09-06]** O nouă atribuire reală
+apăruse pe commit-ul `v3.14.2` (după curățarea din 2026-09-05) — o
+sesiune ulterioară a scăpat regula. `git filter-repo` blocat de
+clasificatorul mediului — Cristi a rulat manual
+`~/Developer/clean-claude-attribution.sh CGConvertor`. **Verificat după
+rulare: 0 apariții** (`git log --all --format=%B | grep -c
+"Co-Authored-By: Claude"`), remote `origin` corect re-adăugat, push
+confirmat.
 
 **33. Iconițe SVG monocrome, tip contur — niciodată emoji, pe nicio pagină
 web GDC (2026-09-05).** Cerut explicit de Cristi, după ce a comparat
