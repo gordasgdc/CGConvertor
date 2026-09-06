@@ -27,7 +27,14 @@ if (-not (Test-Path $TargetPath)) {
 }
 
 $pfxPath = Join-Path $env:RUNNER_TEMP "cgconvertor-selfsign.pfx"
-[IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:WIN_SELFSIGN_PFX_BASE64))
+# [FIX 2026-09-06] Esec real de CI: "The input is not a valid Base-64
+# string" - secretul GitHub poate ajunge cu spatii/newline-uri parazite
+# (copiere din terminal/caseta web), care strica decodarea Base64. Curatam
+# orice caracter alb (spatiu, tab, \r, \n) inainte de decodare, indiferent
+# CUM a fost lipit secretul in GitHub - fix robust, nu doar o presupunere
+# punctuala despre sursa exacta a spatiilor.
+$cleanBase64 = ($env:WIN_SELFSIGN_PFX_BASE64 -replace '\s', '')
+[IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($cleanBase64))
 
 try {
     $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue |
