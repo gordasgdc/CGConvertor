@@ -57,7 +57,7 @@ struct WatchFolderExistingFilesSheet: View {
                     }
                 }
             }
-            .frame(height: 220)
+            .frame(minHeight: 160, idealHeight: 300)
 
             HStack {
                 Spacer()
@@ -75,7 +75,7 @@ struct WatchFolderExistingFilesSheet: View {
             }
         }
         .padding(20)
-        .frame(width: 420)
+        .frame(minWidth: 420, idealWidth: 480)
         .background(Shift.bg)
     }
 }

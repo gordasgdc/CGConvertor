@@ -2348,6 +2348,27 @@ instalat real (`/Applications`, versiune confirmată `PlistBuddy`).
 Versiune 3.13.2 → 3.14.0 (MINOR — funcționalitate nouă vizibilă, Mac +
 Windows, Regula 14).
 
+## v3.14.1 (2026-09-06) — Fix: ferestre Mac needimensionabile
+
+**Raportat direct de Cristi**, după ce a folosit efectiv comparația de
+metadate: "nu înțeleg de ce sunt limitate dimensiunea ferestrelor... sau
+să-l modific eu". Cauza reală: `MetadataCompareSheet`/`LUTPlayerSheet`/
+`PresetsManagerSheet`/`HistoryView` foloseau toate `.frame(width:height:)`
+cu valori FIXE la rădăcina view-ului — SwiftUI nu lasă userul să
+redimensioneze un sheet al cărui conținut cere explicit o dimensiune
+exactă, indiferent de fereastra din spate. Regula 18 (Standard UX) cerea
+asta doar pentru fereastra PRINCIPALĂ — gap real, nemenționat explicit
+până acum, pentru sheet-uri.
+
+**Fix**: toate patru trecute pe `.frame(minWidth:idealWidth:minHeight:
+idealHeight:)` (fără maxim) — playerul LUT capătă și `.aspectRatio(16/9)`
+pe zona video, ca proporția să rămână corectă la orice dimensiune aleasă.
+Windows verificat separat: dialogurile echivalente (`metadata_compare_view.py`,
+`lut_player.py`, `presets_dialog.py`) NU dezactivează explicit resize —
+`tk.Toplevel` e implicit redimensionabil, deci nu exista niciun gap acolo.
+
+Versiune 3.14.0 → 3.14.1 (PATCH — fix UX izolat, doar Mac, Regula 14).
+
 ## ⏳ Cerințe noi de la Cristi (2026-09-05), neîncepute — de adăugat la coadă
 
 (Preview LUT fullscreen/zoom — FĂCUT, vezi v3.5.0. Discuri detectate în

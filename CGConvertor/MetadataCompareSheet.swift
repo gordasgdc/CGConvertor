@@ -39,7 +39,12 @@ struct MetadataCompareSheet: View {
             Divider().overlay(Shift.border)
             footer
         }
-        .frame(width: 900, height: 620)
+        // Fix real (2026-09-06, cerut de Cristi): dimensiune FIXA facea
+        // fereastra neredimensionabila - la o comparatie cu multe fisiere
+        // sau nume lungi, contextul util depasea 900x620 fara nicio
+        // posibilitate de marire. minWidth/minHeight (fara maxim) lasa
+        // SwiftUI sa arate mânerul de redimensionare nativ al sheet-ului.
+        .frame(minWidth: 900, idealWidth: 1100, minHeight: 620, idealHeight: 700)
         .background(Shift.bg)
         .task {
             var rezultat: [UUID: [MetadataCategory]] = [:]

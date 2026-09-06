@@ -82,7 +82,12 @@ struct LUTPlayerSheet: View {
                     ProgressView().controlSize(.small)
                 }
             }
-            .frame(width: 720, height: 405)
+            // Fix real (2026-09-06, cerut de Cristi): dimensiune FIXA
+            // impiedica marirea ferestrei playerului - aspectRatio(16:9)
+            // pastreaza proportia corecta indiferent cat de mult
+            // redimensioneaza userul fereastra.
+            .aspectRatio(16.0 / 9.0, contentMode: .fit)
+            .frame(minWidth: 480, idealWidth: 900, minHeight: 270, idealHeight: 506)
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
             HStack {
@@ -100,7 +105,7 @@ struct LUTPlayerSheet: View {
             }
         }
         .padding(20)
-        .frame(width: 760)
+        .frame(minWidth: 560, idealWidth: 940)
         .background(Shift.bg)
         .onAppear { configureazaPlayer() }
         .onDisappear { player?.pause() }

@@ -2,6 +2,13 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.1 — Fix: ferestrele Mac (comparație metadate, player LUT, presetări, istoric) erau needimensionabile (2026-09-06)
+
+Aveau dimensiune fixă — nu se puteau mări/micșora deloc, deranjant mai
+ales la comparația de metadate cu multe fișiere. Toate patru se pot acum
+redimensiona liber, cu un minim rezonabil sub care textul ar deveni
+ilizibil. Windows era deja corect (Tkinter permite implicit).
+
 ### v3.14.0 — Selectează tot / Deselectează tot (Mac + Windows, 2026-09-05)
 
 Butoane noi lângă „Golește lista"/„Generează raport" — selectează sau

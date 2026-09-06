@@ -51,7 +51,10 @@ struct PresetsManagerSheet: View {
             }
             .padding(14)
         }
-        .frame(width: 760, height: 480)
+        // Fix real (2026-09-06, cerut de Cristi): dimensiune FIXA
+        // impiedica redimensionarea - utila mai ales aici, unde etichete
+        // lungi de presetari pot fi taiate la 760px.
+        .frame(minWidth: 760, idealWidth: 940, minHeight: 480, idealHeight: 560)
         .background(Shift.bg)
         .foregroundStyle(Shift.text)
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in

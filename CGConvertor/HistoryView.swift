@@ -86,7 +86,9 @@ struct OffloadHistorySheet: View {
             }
         }
         .padding(20)
-        .frame(width: 480, height: 480)
+        // Fix real (2026-09-06, cerut de Cristi): dimensiune FIXA
+        // impiedica redimensionarea.
+        .frame(minWidth: 480, idealWidth: 640, minHeight: 420, idealHeight: 560)
         .background(Shift.bg)
     }
 }
