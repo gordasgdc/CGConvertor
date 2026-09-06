@@ -75,9 +75,23 @@ from dependency_manager import find_mpv
 # - forteaza mpv sa foloseasca modelul vechi de prezentare (bitblt), fara
 # flip-model, compatibil cu drivere de VM care nu implementeaza corect
 # scanout-ul direct cerut de flip-model.
+#
+# CORECTIE 3 (2026-09-06, tot cu jurnal real): "--d3d11-flip=no" NU a
+# rezolvat - jurnalul confirma "Using bitblt-model presentation" aplicat
+# corect, INIT tot complet reusit ("first video frame after restart
+# shown", "video=playing"), dar Cristi confirma explicit: tot negru.
+# Concluzie: problema NU e in modelul de prezentare (flip vs bitblt) -
+# AMBELE variante ale backend-ului DXGI modern (vo=gpu, bazat pe D3D11)
+# esueaza vizual identic pe placa virtuala Parallels, desi raporteaza
+# succes intern amandoua. mpv are un backend COMPLET SEPARAT, mai vechi
+# (D3D9, nu DXGI/D3D11) - confirmat compilat si disponibil ("direct3d" in
+# "List of enabled features" din jurnal) - istoric mult mai compatibil cu
+# placi grafice virtuale tocmai pentru ca prezentarea D3D9 e mult mai
+# simpla (blit direct), fara straturile DXGI moderne care esueaza aici.
+# Trecut la acest backend complet diferit, nu doar la un alt flag pe
+# acelasi backend care a esuat de doua ori.
 _WINDOWS_MPV_VIDEO_ARGS = [
-    "--vo=gpu",
-    "--d3d11-flip=no",
+    "--vo=direct3d",
     "--hwdec=no",
 ] if sys.platform.startswith("win") else []
 

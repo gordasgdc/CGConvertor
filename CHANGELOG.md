@@ -2,6 +2,15 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.13 — Player LUT: backend video alternativ pentru mașini virtuale (2026-09-06)
+
+- Încercare suplimentară de a rezolva ecranul negru la Player LUT pe
+  mașini virtuale (Parallels/VMware) — trecut pe un motor de randare
+  video mai vechi, istoric mai compatibil cu plăci grafice virtuale.
+  **Limitare cunoscută**: pe unele mașini virtuale, ecranul poate rămâne
+  negru în continuare (problemă la nivelul virtualizării grafice, nu a
+  aplicației) — playback-ul funcționează normal pe hardware real.
+
 ### v3.14.12 — FIX real: ecran negru Player LUT pe mașini virtuale (Windows) (2026-09-06)
 
 - Player-ul LUT rămânea negru pe mașini virtuale (Parallels/VMware/RDP)

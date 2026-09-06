@@ -2931,3 +2931,39 @@ putut verifica REAL pe masina lui Cristi - confirmare asteptata.
 
 Versiune 3.14.11 -> 3.14.12 (PATCH — fix izolat, fara arhitectura noua,
 Regula 14).
+
+## v3.14.13 (2026-09-06) — Player LUT: backend direct3d (D3D9), limitare VM acceptata
+
+**Raportat de Cristi**: cu `--d3d11-flip=no` (v3.14.12), jurnalul confirma
+`Using bitblt-model presentation` aplicat corect, init tot complet
+reusit ("first video frame after restart shown", "video=playing") - dar
+tot negru, confirmat explicit ("Tot negru, fara imagine"). Deci NICI
+flip-model, NICI bitblt-model (ambele pe backend-ul DXGI/D3D11 `vo=gpu`)
+nu se compun vizual pe placa virtuala Parallels, desi ambele raporteaza
+succes intern identic.
+
+**Fix incercat**: `--vo=direct3d` - backend COMPLET SEPARAT in mpv (D3D9,
+nu DXGI/D3D11), confirmat compilat si disponibil ("direct3d" in "List of
+enabled features" din jurnalele anterioare) - prezentare mult mai simpla
+(blit direct), istoric mai compatibila cu placi grafice virtuale tocmai
+pentru ca nu foloseste straturile DXGI moderne care au esuat de doua ori
+la Cristi.
+
+**Decizie Cristi (2026-09-06)**: dupa 3 incercari succesive de fix pe
+randarea video in Parallels (vo=gdi invalid -> vo=gpu+flip -> vo=gpu+
+bitblt -> acum vo=direct3d), Cristi a decis explicit sa NU mai investim
+timp suplimentar aici ("sunt sigur ca problema este din cauza masinii
+virtuale") si sa trecem mai departe la Pasul 2 (sincronizare Offload cu
+Data Mover v2.14.0). Player-ul LUT ramane cu acest ultim fix aplicat, dar
+**NECONFIRMAT** daca rezolva complet pe masina virtuala a lui Cristi -
+documentat explicit ca limitare cunoscuta pe VM (Parallels/VMware/RDP),
+NU ca bug rezolvat cu certitudine. Pe hardware Windows real, oricare
+dintre variantele incercate (`vo=gpu` sau `vo=direct3d`) ar trebui sa
+functioneze normal - nu exista niciun motiv sa esueze acolo.
+
+**Verificat**: `python3 -m py_compile lut_player.py` - 0 erori. NU s-a
+verificat REAL pe masina lui Cristi (decizie explicita de a trece mai
+departe fara aceasta confirmare).
+
+Versiune 3.14.12 -> 3.14.13 (PATCH — fix izolat + documentare limitare
+cunoscuta, fara arhitectura noua, Regula 14).
