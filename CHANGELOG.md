@@ -2,6 +2,15 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.8 — FIX Windows: ecran negru la Player LUT + buton „Compară metadatele" adăugat (2026-09-06)
+
+- Player-ul real-time cu LUT (Windows) nu mai afișa ecran negru fără
+  controale — driverul video mpv este acum ales explicit, în loc de
+  auto-detectare (care eșua la embed-ul în fereastra aplicației).
+- Butonul „Compară metadatele (N)" apare acum permanent lângă
+  „Generează raport" când sunt selectate 2+ fișiere (identic cu Mac) —
+  înainte era accesibil doar din meniul click-dreapta pe Windows.
+
 ### v3.14.7 — mpv (playerul LUT live) bundle-uit direct în instalator, Windows (2026-09-06)
 
 - Playerul real-time cu LUT nu mai descarcă `mpv.exe` la prima utilizare

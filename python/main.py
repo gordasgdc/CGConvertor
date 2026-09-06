@@ -468,6 +468,14 @@ class CGConvertorApp(BASE_CLASS):
         self.select_none_btn = ttk.Button(bottom_bar, command=self._select_no_jobs,
                                            style="Ghost.TButton", cursor="hand2")
         self.select_none_btn.pack(side="left", padx=(6, 0))
+        # Paritate cu Mac (fix real, 2026-09-06, raportat de Cristi): pe
+        # Mac, "Compara metadatele (N)" e un buton PERMANENT in bara de
+        # jos cand >=2 randuri sunt selectate (ContentView.swift) — pe
+        # Windows exista pana acum DOAR ca intrare in meniul click-dreapta
+        # (mult mai putin descoperibila). Adaugat aici, ascuns/aratat de
+        # _on_tree_selection_changed, exact ca omologul Mac.
+        self.compare_btn = ttk.Button(bottom_bar, command=self._compare_selected_jobs,
+                                       style="Ghost.TButton", cursor="hand2")
         self.add_more_btn = ttk.Button(bottom_bar, command=self._choose_files,
                                         style="Ghost.TButton", cursor="hand2")
         self.add_more_btn.pack(side="right")
@@ -839,6 +847,14 @@ class CGConvertorApp(BASE_CLASS):
             self.start_btn.config(text=t(self.lang, "start_conversion_selected", n=count))
         else:
             self.start_btn.config(text=t(self.lang, "start_conversion"))
+        # Vezi comentariul de la crearea self.compare_btn — buton
+        # permanent, nu doar intrare de meniu, aratat identic cu Mac
+        # (selectedJobIDs.count >= 2).
+        if count >= 2:
+            self.compare_btn.config(text=t(self.lang, "compare_button", n=count))
+            self.compare_btn.pack(side="left", padx=(6, 0))
+        else:
+            self.compare_btn.pack_forget()
 
     def _start_queue(self):
         if self.is_running or not self.jobs:
@@ -1095,6 +1111,11 @@ class CGConvertorApp(BASE_CLASS):
             menu.add_command(label=t(self.lang, "queue_move_up"), command=lambda: self._move_job(item_id, -1))
             menu.add_command(label=t(self.lang, "queue_move_down"), command=lambda: self._move_job(item_id, 1))
         menu.tk_popup(event.x_root, event.y_root)
+
+    def _compare_selected_jobs(self):
+        selected_jobs = [j for iid in self.tree.selection() for j in [self._job_for_item(iid)] if j]
+        if len(selected_jobs) >= 2:
+            self._open_metadata_compare(selected_jobs)
 
     def _open_metadata_compare(self, jobs):
         # Rescris 2026-09-06 — genereaza HTML si-l deschide in browser,

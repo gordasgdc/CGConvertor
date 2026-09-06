@@ -28,10 +28,27 @@ repo care au necesitat testare reală pe Parallels.
 import json
 import os
 import subprocess
+import sys
 import tkinter as tk
 from tkinter import filedialog, ttk
 
 from dependency_manager import find_mpv
+
+# Fix real (2026-09-06, raportat de Cristi, testat pe Windows real):
+# fara "--vo" explicit, mpv face auto-probe intre driverele de output
+# video disponibile — in contextul de embed printr-un HWND strain
+# (`--wid`, vezi mai jos), auto-probe-ul alege des un vo care nu poate
+# desena in fereastra Tkinter primita (ecran negru, audio se aude,
+# NICIUN control OSC vizibil fiindca OSC se randeaza peste suprafata
+# video, care nu exista). "--vo" accepta o LISTA prioritara separata
+# prin virgula (documentat oficial, man mpv) — mpv incearca in ordine
+# pana gaseste unul care porneste. d3d11/gpu-next sunt cele mai fiabile
+# pentru embed HWND pe Windows 10/11; "gpu"/"gdi" raman ca fallback.
+_WINDOWS_MPV_VIDEO_ARGS = [
+    "--vo=gpu-next,gpu,direct3d11,gdi",
+    "--gpu-context=d3d11",
+    "--hwdec=auto-safe",
+] if sys.platform.startswith("win") else []
 
 
 class LUTPlayerWindow(tk.Toplevel):
@@ -99,6 +116,7 @@ class LUTPlayerWindow(tk.Toplevel):
             mpv_exe,
             f"--wid={hwnd}",
             f"--input-ipc-server={self.ipc_path}",
+            *_WINDOWS_MPV_VIDEO_ARGS,
             "--osc=yes",
             "--keep-open=yes",
             "--border=no",

@@ -2628,3 +2628,52 @@ erori (verificat inainte de bump-ul final de versiune).
 
 Versiune 3.14.6 -> 3.14.7 (PATCH — fix izolat + hardening, fara
 arhitectura noua, Regula 14).
+
+## v3.14.8 (2026-09-06) — FIX ecran negru Player LUT (Windows) + paritate buton Comparatie Metadate
+
+**Raportat de Cristi, testat pe Windows real dupa v3.14.7**: doua
+probleme separate.
+
+**1. Ecran negru + fara controale la Player LUT (`lut_player.py`)**.
+Cauza radacina reala, confirmata din citirea codului: `_launch_mpv()`
+pornea `mpv.exe` FARA niciun flag `--vo` explicit — mpv face auto-probe
+intre driverele de output video disponibile, iar in contextul de embed
+printr-un HWND strain (`--wid=<hwnd>`, necesar ca sa deseneze DIN INTERIORUL
+ferestrei Tkinter), auto-probe-ul alege des un driver care nu poate
+desena acolo. Rezultat: fereastra se deschide, audio-ul ruleaza (procesul
+mpv functioneaza), dar suprafata video ramane neagra — si OSC-ul
+(controalele native mpv) nu apar fiindca se randeaza PESTE suprafata
+video, care nu exista.
+
+Cristi a venit cu diagnosticul tehnic corect (flag-urile `--vo=direct3d11`
+etc.) — aplicat, cu o mica imbunatatire: `--vo` accepta o LISTA
+prioritara separata prin virgula (documentat oficial in man mpv, nu
+presupus), nu doar un singur driver, deci fix-ul foloseste
+`--vo=gpu-next,gpu,direct3d11,gdi` (mpv incearca in ordine pana porneste
+unul) + `--gpu-context=d3d11` + `--hwdec=auto-safe`, activate DOAR pe
+`sys.platform.startswith("win")` (Mac nu foloseste deloc mpv — vezi
+`LUTPlayerSheet.swift`, AVFoundation).
+
+**2. Buton „Compara metadatele (N)" lipsa pe Windows**. Cristi a
+presupus o conditionare `sys.platform == 'darwin'` gresita — verificat
+direct in cod, NU exista asa ceva; cauza reala e ca feature-ul pur si
+simplu nu fusese portat complet: pe Mac (`ContentView.swift`) e un buton
+PERMANENT in bara de jos, langa "Genereaza raport", vizibil cand
+`selectedJobIDs.count >= 2`; pe Windows exista doar ca intrare in meniul
+click-dreapta (`_on_tree_right_click`), mult mai putin descoperibila -
+identic din punct de vedere functional, dar nu din punct de vedere UI.
+Fix: adaugat `self.compare_btn` in aceeasi bara de jos ca
+`select_all_btn`/`select_none_btn`, aratat/ascuns din
+`_on_tree_selection_changed` (acelasi hook care actualizeaza deja
+eticheta butonului Start dupa selectie), text cu numarul de fisiere
+selectate (`compare_button` din `translations.py`, deja exista, cheie
+nefolosita pana acum in bara de jos). Intrarea din meniul click-dreapta
+ramane neschimbata (cale alternativa, nu conflict).
+
+**Nu s-a putut verifica REAL pe Windows** (ca la v3.14.6/v3.14.7) —
+`python3 -m py_compile` confirma doar sintaxa; Cristi confirma manual pe
+masina reala ca playback-ul video + OSC-ul functioneaza si ca butonul
+apare corect.
+
+Versiune 3.14.7 -> 3.14.8 (PATCH — fix-uri izolate, fara arhitectura
+noua, Regula 14).
