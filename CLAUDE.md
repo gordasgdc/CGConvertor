@@ -2843,3 +2843,43 @@ negru persista.
 
 Versiune 3.14.9 -> 3.14.10 (PATCH — fix-uri + instrumentare de
 diagnosticare, fara arhitectura noua, Regula 14).
+
+## v3.14.11 (2026-09-06) — FIX REAL, dovedit cu jurnal: ecran negru Player LUT
+
+**Instrumentarea din v3.14.10 (`--log-file`) si-a facut treaba** — Cristi
+a trimis jurnalul complet mpv, prima dovada REALA (nu presupunere) a
+cauzei. Linia decisiva:
+
+```
+[e][vo] Video output gdi not found!
+[f][cplayer] Error opening/initializing the selected video_out (--vo) device.
+```
+
+**Ambele ipoteze anterioare erau gresite**: nu era compunere GPU
+virtualizata (Parallels), nu era o combinatie subtila de flag-uri —
+`--vo=gdi` (fix-ul din v3.14.9) e pur si simplu un NUME DE DRIVER care
+NU MAI EXISTA in build-urile moderne mpv (vo_gdi eliminat de mult din
+proiect). mpv esua sa initializeze VIDEO-UL COMPLET (nu doar randa
+gresit) - audio-ul mergea perfect (`AO: [wasapi]... audio ready` in
+jurnal), ceea ce explica de ce ecranul era CONSTANT negru, fara nicio
+exceptie, indiferent de masina de testare.
+
+**Fix**: `--vo=gpu` — confirmat disponibil chiar in acelasi jurnal
+("List of enabled features": `d3d11`, `gl`, `libplacebo`, `vulkan`),
+randorul GPU standard mpv pe Windows, fara sa fortam un `--gpu-context`
+anume (mpv alege singur). `--hwdec=no` ramane (decodare software,
+precautie ieftina).
+
+**Lectie practica**: cele doua incercari anterioare (v3.14.8, v3.14.9)
+au fost presupuneri plauzibile dar NECONFIRMATE - abia jurnalul real
+(adaugat in v3.14.10 dupa ce a doua presupunere a esuat identic) a dat
+raspunsul corect in prima incercare. Regula practica pentru viitor: la
+orice bug de randare/integrare externa fara mesaj de eroare vizibil
+userului, PRIMUL pas e sa facem eroarea vizibila (jurnal/log), nu sa
+ghicim combinatii de configurare.
+
+**Verificat**: `python3 -m py_compile lut_player.py` — 0 erori. NU s-a
+putut verifica REAL redarea pe Windows — Cristi confirma pe masina lui.
+
+Versiune 3.14.10 -> 3.14.11 (PATCH — fix izolat, fara arhitectura noua,
+Regula 14).

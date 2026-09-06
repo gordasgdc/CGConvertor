@@ -2,6 +2,13 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.11 — FIX real: ecran negru la Player LUT (Windows) (2026-09-06)
+
+- Găsit, confirmat cu jurnal real: `--vo=gdi` (fix-ul din v3.14.9) nu mai
+  există în build-urile moderne de mpv — video-ul nu se inițializa
+  deloc. Înlocuit cu `--vo=gpu` (randorul GPU standard, confirmat
+  disponibil). Playerul LUT ar trebui să afișeze acum imaginea corect.
+
 ### v3.14.10 — FIX Windows: update automat necesită elevare explicită + ferestre negre la scrubbing + diagnostic Player LUT (2026-09-06)
 
 - Actualizarea automată cere acum elevare (UAC) direct la lansare — la
