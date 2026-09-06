@@ -80,6 +80,32 @@ def _thumbnail_data_uri(dest_path):
             pass
 
 
+def _dit_metadata_line(dest_path):
+    """Linie de metadate DIT (rezoluție · fps · codec · durată · audio),
+    port al rândurilor din raportul PDF Data Mover (M4, `writePDFReport`)
+    — fail-open pe orice altceva (fișier lipsă, format nesuportat,
+    ffprobe eșuat): un rând de metadate lipsă nu trebuie să oprească
+    generarea raportului, la fel ca thumbnail-ul."""
+    if not dest_path or not os.path.isfile(dest_path):
+        return None
+    meta = media_inspector.probe(dest_path)
+    if not meta:
+        return None
+    parts = []
+    res = media_inspector.resolution_text(meta)
+    if res:
+        parts.append(res)
+    if meta.get("frame_rate"):
+        parts.append(f"{meta['frame_rate']} fps")
+    if meta.get("video_codec"):
+        parts.append(meta["video_codec"].upper())
+    if meta.get("duration"):
+        parts.append(f"{meta['duration']:.1f}s")
+    if meta.get("channels"):
+        parts.append(f"{meta['channels']}ch audio")
+    return " · ".join(parts) if parts else None
+
+
 def write_html_report(path, destination, folder_name, rows, meta, started_at, finished_at,
                        ok_count, mismatch_count, error_count, verification_label, mhl_path,
                        app_version, truncated_note=None):
@@ -116,9 +142,18 @@ def write_html_report(path, destination, folder_name, rows, meta, started_at, fi
     for row in rows:
         status = row["status"]
         cls = "s-ok" if status.startswith("OK") else ("s-mismatch" if status == "NEPOTRIVIRE" else "s-fail")
-        thumb_uri = _thumbnail_data_uri(row.get("dest_path", ""))
+        dest_path = row.get("dest_path", "")
+        thumb_uri = _thumbnail_data_uri(dest_path)
         thumb_cell = f'<img class="thumb" src="{thumb_uri}">' if thumb_uri else ""
-        rows_html += (f"<tr><td>{thumb_cell}</td><td>{_esc(row['rel_path'])}</td><td>{_format_bytes(row['size_bytes'])}</td>"
+        meta_line = _dit_metadata_line(dest_path)
+        # Linie DIT (rezoluție/fps/codec/durată/audio) sub numele
+        # fișierului — port al rândurilor din raportul PDF Data Mover
+        # (M4); afișată doar dacă ffprobe a putut extrage ceva (fail-open,
+        # fișiere non-video nu au deloc această linie).
+        file_cell = _esc(row['rel_path'])
+        if meta_line:
+            file_cell += f'<div class="meta-line">{_esc(meta_line)}</div>'
+        rows_html += (f"<tr><td>{thumb_cell}</td><td>{file_cell}</td><td>{_format_bytes(row['size_bytes'])}</td>"
                       f"<td class=\"{cls}\">{_esc(status)}</td><td>{_esc(row.get('error', ''))}</td></tr>")
 
     truncated_html = f'<p class="sub">{_esc(truncated_note)}</p>' if truncated_note else ""
@@ -147,6 +182,7 @@ table {{ width:100%; border-collapse:collapse; margin-top:16px; font-size:12px; 
 th {{ text-align:left; color:#9AA3AE; font-weight:600; border-bottom:1px solid #2A2F36; padding:6px 8px; }}
 td {{ padding:6px 8px; border-bottom:1px solid #20242A; word-break:break-all; }}
 td .thumb {{ display:block; width:64px; max-width:100%; height:36px; object-fit:cover; border-radius:4px; border:1px solid #2A2F36; }}
+td .meta-line {{ color:#9AA3AE; font-size:10.5px; margin-top:2px; }}
 .s-ok {{ color:#4ADE80; }} .s-fail {{ color:#F87171; }} .s-mismatch {{ color:#D08C40; }}
 footer {{ margin-top:24px; color:#6B737D; font-size:11px; }}
 .pdf-btn {{ position:fixed; top:16px; right:16px; background:#D08C40; color:#14161A; border:none; border-radius:6px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; z-index:100; }}
@@ -158,6 +194,7 @@ footer {{ margin-top:24px; color:#6B737D; font-size:11px; }}
   .card,.notes{{background:#f5f5f5!important;color:#111!important;border-color:#ccc!important}}
   th{{color:#333!important;border-bottom:1px solid #ccc!important}}
   td{{border-bottom:1px solid #eee!important}}
+  td .meta-line{{color:#666!important}}
   footer{{color:#666!important}}
 }}
 </style></head><body><div class="wrap">

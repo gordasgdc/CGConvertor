@@ -15,6 +15,7 @@ import csv
 import hashlib
 import os
 import shutil
+import sys
 import threading
 import time
 from datetime import datetime
@@ -29,6 +30,146 @@ import production_meta
 
 VERIFICATION_MODELS = ["xxhash64", "md5", "sha1", "sha256", "size_only"]
 DEFAULT_VERIFICATION_MODEL = "xxhash64"
+
+# [2026-09-06] Port al imbunatatirilor din Data Mover v2.14.0 (M1+M2,
+# vezi CLAUDE.md acelui repo) — motorul vechi (mai jos, `DestinationJob`)
+# citea fiecare fisier sursa de 3 ori PER DESTINATIE: o data la copiere
+# (`copy_file_cancelable`), apoi separat pentru hash-ul sursei si hash-ul
+# destinatiei (`hash_of_file` x2) — exact ineficienta identificata si
+# rezolvata in Data Mover (acolo, 4 citiri cu 2 destinatii). Noul motor
+# (`copy_and_verify_fanout`) citeste sursa O SINGURA DATA, scrie catre
+# TOATE destinatiile din acelasi flux de octeti, si calculeaza hash-ul
+# sursei SI al fiecarei destinatii incremental, pe masura ce datele trec
+# prin bucla — zero re-cititri. Spre deosebire de Data Mover (Swift/C#,
+# thread-uri separate per destinatie cu ring-buffer/backpressure reala),
+# aici scrierea catre destinatii ramane secventiala in acelasi thread per
+# fisier (simplitate — Python/Tkinter, nu un motor de transfer de mare
+# performanta) - castigul real (o singura citire a sursei, nu N) ramane
+# identic, doar paralelismul intre destinatii nu e la fel de fin.
+
+
+class IncrementalHasher:
+    """Hash calculat INCREMENTAL, pe masura ce chunk-urile trec prin
+    bucla de copiere — nu o trecere separata peste fisier (vezi nota de
+    mai sus). `.size_only` nu calculeaza niciun hash (compatibil cu
+    modelul `size_only` existent, care compara doar marimea)."""
+
+    def __init__(self, model):
+        self.model = model
+        if model == "size_only":
+            self._h = None
+        elif model == "xxhash64":
+            self._h = xxhash.xxh64(seed=0)
+        else:
+            self._h = {"md5": hashlib.md5, "sha1": hashlib.sha1, "sha256": hashlib.sha256}[model]()
+
+    def update(self, chunk):
+        if self._h is not None:
+            self._h.update(chunk)
+
+    def hexdigest(self):
+        return self._h.hexdigest() if self._h is not None else ""
+
+
+def physical_flush(f):
+    """Flush FIZIC pe disc (port Data Mover M2) — `f.flush()` (Python) +
+    `os.fsync()` (buffer-ul OS) NU garanteaza ca datele au ajuns fizic pe
+    suportul de stocare, doar ca au parasit buffer-ul procesului/OS-ului;
+    pe un card care se scoate imediat dupa offload, un flush incomplet
+    poate insemna date pierdute la o intrerupere de curent/deconectare
+    brusca. Pe macOS, `fsync()` simplu NU e suficient (documentat de
+    Apple) — trebuie `fcntl(fd, F_FULLFSYNC)` pentru flush fizic real, cu
+    fallback pe `fsync()` daca discul nu suporta `F_FULLFSYNC` (ex. unele
+    unitati de retea — `ENOTSUP`). Pe Windows, `os.fsync()` apeleaza deja
+    nativ `FlushFileBuffers` (documentat de Microsoft) — niciun cod
+    suplimentar necesar. Identic ca logica cu `FanOutCopier.swift`/`.cs`
+    din Data Mover (M2)."""
+    f.flush()
+    fd = f.fileno()
+    if sys.platform == "darwin":
+        import fcntl
+        F_FULLFSYNC = getattr(fcntl, "F_FULLFSYNC", 51)  # 51 = valoarea reala pe macOS, fallback daca modulul nu o expune
+        try:
+            fcntl.fcntl(fd, F_FULLFSYNC)
+            return
+        except OSError:
+            pass  # ENOTSUP pe unele sisteme de fisiere — fallback pe fsync() simplu, mai jos
+    os.fsync(fd)
+
+
+def copy_and_verify_fanout(src_path, dest_paths, model, cancel_event, pause_event, cfg, chunk_size):
+    """Citeste `src_path` O SINGURA DATA, scrie simultan catre TOATE
+    caile din `dest_paths` (listă), calculand hash-ul sursei si al
+    fiecarei destinatii INCREMENTAL, in aceeasi bucla — vezi comentariul
+    de la `IncrementalHasher`/`physical_flush` mai sus.
+
+    Intoarce (source_hash, bytes_read, {dest_path: (ok, dest_hash, error)}).
+    O eroare de scriere la O destinatie NU opreste scrierea celorlalte —
+    fiecare destinatie e independenta (port `FanOutResult`/Data Mover)."""
+    os.makedirs(os.path.dirname(src_path) or ".", exist_ok=True)  # no-op pt sursa, simetrie cu bucla de mai jos
+    for dst in dest_paths:
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        if os.path.exists(dst):
+            os.remove(dst)
+
+    src_hasher = IncrementalHasher(model)
+    dest_handles = {}
+    dest_hashers = {}
+    dest_errors = {}
+    for dst in dest_paths:
+        try:
+            dest_handles[dst] = open(dst, "wb")
+            dest_hashers[dst] = IncrementalHasher(model)
+        except OSError as e:
+            dest_errors[dst] = str(e)
+
+    bytes_read = 0
+    try:
+        with open(src_path, "rb") as fsrc:
+            while True:
+                if cancel_event.is_set():
+                    raise _OffloadCancelled()
+                while pause_event.is_set() and not cancel_event.is_set():
+                    time.sleep(0.2)
+                if cancel_event.is_set():
+                    raise _OffloadCancelled()
+                io_settings.wait_if_over_ram_limit(cancel_event, cfg, on_warning=lambda: None)
+
+                chunk = fsrc.read(chunk_size)
+                if not chunk:
+                    break
+                bytes_read += len(chunk)
+                src_hasher.update(chunk)
+                for dst, handle in list(dest_handles.items()):
+                    if dst in dest_errors:
+                        continue
+                    try:
+                        handle.write(chunk)
+                        dest_hashers[dst].update(chunk)
+                    except OSError as e:
+                        dest_errors[dst] = str(e)
+    finally:
+        for dst, handle in dest_handles.items():
+            try:
+                if dst not in dest_errors:
+                    physical_flush(handle)
+            except OSError as e:
+                dest_errors.setdefault(dst, str(e))
+            finally:
+                handle.close()
+
+    results = {}
+    for dst in dest_paths:
+        if dst in dest_errors:
+            results[dst] = (False, "", dest_errors[dst])
+        else:
+            try:
+                stat = os.stat(src_path)
+                os.utime(dst, (stat.st_atime, stat.st_mtime))
+            except OSError:
+                pass
+            results[dst] = (True, dest_hashers[dst].hexdigest(), None)
+    return src_hasher.hexdigest(), bytes_read, results
 
 
 def is_excluded(filename):
@@ -56,31 +197,6 @@ def list_all_files(root):
     return out
 
 
-def copy_file_cancelable(src, dst, cancel_event, chunk_size):
-    """Copiere in bucati, cancelabila — citire mereu sincron cu scrierea
-    (Regula 21: fara buffer de "read-ahead" care ar acumula date nescrise
-    in RAM)."""
-    os.makedirs(os.path.dirname(dst), exist_ok=True)
-    if os.path.exists(dst):
-        os.remove(dst)
-    with open(src, "rb") as fsrc, open(dst, "wb") as fdst:
-        while True:
-            if cancel_event.is_set():
-                fdst.close()
-                if os.path.exists(dst):
-                    os.remove(dst)
-                raise _OffloadCancelled()
-            chunk = fsrc.read(chunk_size)
-            if not chunk:
-                break
-            fdst.write(chunk)
-    try:
-        stat = os.stat(src)
-        os.utime(dst, (stat.st_atime, stat.st_mtime))
-    except OSError:
-        pass
-
-
 class _OffloadCancelled(Exception):
     pass
 
@@ -98,170 +214,80 @@ def has_enough_space(destination_root, needed_bytes):
     return available >= needed_bytes + margin, available
 
 
-def hash_of_file(path, model, cancel_event, chunk_size):
-    if model == "size_only":
-        return ""
-    hasher = {"md5": hashlib.md5, "sha1": hashlib.sha1, "sha256": hashlib.sha256,
-              "xxhash64": lambda: xxhash.xxh64(seed=0)}[model]()
-    with open(path, "rb") as f:
-        while True:
-            if cancel_event.is_set():
-                raise _OffloadCancelled()
-            chunk = f.read(chunk_size)
-            if not chunk:
-                break
-            hasher.update(chunk)
-    return hasher.hexdigest()
+class DestinationContext:
+    """Bookkeeping pentru O destinatie (CSV, MHL, rows, contoare) — port
+    simplificat al `DestinationContext.swift`/`.cs` din Data Mover (fara
+    checkpoint/resume, care nu exista inca in acest motor — nimic de
+    pastrat acolo). Nu mai contine bucla de copiere in sine — aceea e
+    acum UNICA, in `OffloadRunner.start()`, o singura data per FISIER,
+    cu fan-out catre toate destinatiile (vezi comentariul de la
+    `copy_and_verify_fanout`)."""
 
-
-class DestinationJob:
-    """Copiaza + verifica toate fisierele sursa catre O destinatie, intr-un
-    subfolder generat cu `naming_template` (radacina `destination` ramane
-    discul/folderul ales de user, la fel ca `OffloadEngine.swift`). Rulat
-    pe un thread de fundal, niciodata pe thread-ul UI (Tkinter).
-
-    Etapa 2026-09-05: reincercare automata (o singura data) a fisierelor
-    esuate/nepotrivite, MHL alaturi de CSV, raport HTML brandat cu
-    `production_meta`."""
-
-    def __init__(self, destination, folder_name, files, model, meta, cancel_event, pause_event, cfg,
-                 on_file_done, on_activity, app_version="?"):
+    def __init__(self, destination, folder_name, model, meta, cfg, app_version, started_at):
         self.destination = destination
         self.folder_name = folder_name
-        self.files = files
         self.model = model
         self.meta = meta
-        self.cancel_event = cancel_event
-        self.pause_event = pause_event
-        self.cfg = cfg
-        self.on_file_done = on_file_done
-        self.on_activity = on_activity
         self.app_version = app_version
-        self.started_at = datetime.now()
+        self.started_at = started_at
+        self.target_root = os.path.join(destination, folder_name)
+        os.makedirs(self.target_root, exist_ok=True)
+        timestamp = started_at.strftime("%Y%m%d_%H%M%S")
+        self.timestamp = timestamp
+        self.csv_path = os.path.join(self.target_root, f"offload_report_{timestamp}.csv")
+        mhl_path_target = os.path.join(self.target_root, f"{folder_name}.mhl")
+        self.mhl = mhl_writer.make_writer(mhl_path_target, model, "CGConvertor", started_at)
+        self.csv_file = open(self.csv_path, "w", newline="", encoding="utf-8")
+        self.writer = csv.writer(self.csv_file)
+        self.writer.writerow(["fisier", "marime_bytes", "verificare_sursa", "verificare_destinatie", "status", "eroare"])
+        self.csv_file.flush()
+        self.rows = []
+        self.ok = 0
+        self.mismatch = 0
+        self.errors = 0
+        self.recovered = 0
+        self.failed_entries = []  # [(entry, was_error)]
 
-    def run(self):
-        target_root = os.path.join(self.destination, self.folder_name)
-        os.makedirs(target_root, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        csv_path = os.path.join(target_root, f"offload_report_{timestamp}.csv")
-        mhl_path_target = os.path.join(target_root, f"{self.folder_name}.mhl")
-        mhl = mhl_writer.make_writer(mhl_path_target, self.model, "CGConvertor", self.started_at)
+    def dst_path(self, entry):
+        return os.path.join(self.target_root, entry["rel_path"])
 
-        chunk_size = io_settings.get_chunk_size_bytes(self.cfg)
-        rows = []
-        failed_entries = []  # [(entry, was_error)]
-        ok = mismatch = errors = 0
+    def record_ok(self, entry, is_retry, src_hash):
+        dst_path = self.dst_path(entry)
+        status = "OK (reîncercat)" if is_retry else "OK"
+        row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": status, "error": "", "dest_path": dst_path}
+        self.writer.writerow([entry["rel_path"], entry["size"], src_hash, src_hash, status, ""])
+        self.rows.append(row)
+        if self.mhl:
+            self.mhl.add(entry["rel_path"], entry["size"], src_hash, datetime.now())
+        self.csv_file.flush()
 
-        with open(csv_path, "w", newline="", encoding="utf-8") as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow(["fisier", "marime_bytes", "verificare_sursa", "verificare_destinatie", "status", "eroare"])
-            csv_file.flush()
+    def record_mismatch(self, entry, src_hash, dst_hash, reason):
+        dst_path = self.dst_path(entry)
+        row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": "NEPOTRIVIRE", "error": reason, "dest_path": dst_path}
+        self.writer.writerow([entry["rel_path"], entry["size"], src_hash, dst_hash, "NEPOTRIVIRE", reason])
+        self.rows.append(row)
+        self.csv_file.flush()
 
-            def process_one(entry, is_retry):
-                """O singura trecere de copiere+verificare — IDENTICA la
-                prima trecere SI la reincercare (port DataMover: cele doua
-                cai nu trebuie sa diveraga). Intoarce "ok"/"mismatch"/"error"
-                — NU incrementeaza contoarele, apelantul decide."""
-                if self.cancel_event.is_set():
-                    return "error"
-                while self.pause_event.is_set() and not self.cancel_event.is_set():
-                    time.sleep(0.2)
-                if self.cancel_event.is_set():
-                    return "error"
-                io_settings.wait_if_over_ram_limit(
-                    self.cancel_event, self.cfg, on_warning=lambda: self.on_activity("ram_wait"),
-                )
+    def record_error(self, entry, error):
+        row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": "EROARE", "error": error}
+        self.writer.writerow([entry["rel_path"], entry["size"], "", "", "EROARE", error])
+        self.rows.append(row)
+        self.csv_file.flush()
 
-                dst_path = os.path.join(target_root, entry["rel_path"])
-                if is_retry and os.path.exists(dst_path):
-                    os.remove(dst_path)  # fisierul partial anterior nu trebuie sa induca in eroare verificarea
-
-                status_ok = "OK (reîncercat)" if is_retry else "OK"
-                try:
-                    copy_file_cancelable(entry["full_path"], dst_path, self.cancel_event, chunk_size)
-                    if self.model == "size_only":
-                        dst_size = os.path.getsize(dst_path)
-                        if dst_size == entry["size"]:
-                            row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": status_ok, "error": "", "dest_path": dst_path}
-                            writer.writerow([entry["rel_path"], entry["size"], "", "", status_ok, ""])
-                            rows.append(row)
-                            if mhl:
-                                mhl.add(entry["rel_path"], entry["size"], "", datetime.now())
-                            return "ok"
-                        row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": "NEPOTRIVIRE", "error": "marime diferita", "dest_path": dst_path}
-                        writer.writerow([entry["rel_path"], entry["size"], "", "", "NEPOTRIVIRE", "marime diferita"])
-                        rows.append(row)
-                        return "mismatch"
-                    src_hash = hash_of_file(entry["full_path"], self.model, self.cancel_event, chunk_size)
-                    dst_hash = hash_of_file(dst_path, self.model, self.cancel_event, chunk_size)
-                    if src_hash == dst_hash:
-                        row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": status_ok, "error": "", "dest_path": dst_path}
-                        writer.writerow([entry["rel_path"], entry["size"], src_hash, dst_hash, status_ok, ""])
-                        rows.append(row)
-                        if mhl:
-                            mhl.add(entry["rel_path"], entry["size"], src_hash, datetime.now())
-                        return "ok"
-                    row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": "NEPOTRIVIRE", "error": "hash diferit", "dest_path": dst_path}
-                    writer.writerow([entry["rel_path"], entry["size"], src_hash, dst_hash, "NEPOTRIVIRE", "hash diferit"])
-                    rows.append(row)
-                    self.on_activity(("mismatch", entry["rel_path"]))
-                    return "mismatch"
-                except _OffloadCancelled:
-                    return "error"
-                except OSError as e:
-                    row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": "EROARE", "error": str(e)}
-                    writer.writerow([entry["rel_path"], entry["size"], "", "", "EROARE", str(e)])
-                    rows.append(row)
-                    self.on_activity(("error", entry["rel_path"], str(e)))
-                    return "error"
-                finally:
-                    csv_file.flush()
-
-            for entry in self.files:
-                if self.cancel_event.is_set():
-                    break
-                outcome = process_one(entry, is_retry=False)
-                if outcome == "ok":
-                    ok += 1
-                elif outcome == "mismatch":
-                    mismatch += 1
-                    failed_entries.append((entry, False))
-                else:
-                    errors += 1
-                    failed_entries.append((entry, True))
-                self.on_file_done(entry["size"])
-
-            # Reincercare automata, o singura data — fisierele care mai
-            # esueaza a doua oara raman definitiv NEPOTRIVIRE/EROARE, fara
-            # dubla numarare.
-            recovered = 0
-            if not self.cancel_event.is_set() and failed_entries:
-                self.on_activity(("retrying", len(failed_entries)))
-                for entry, was_error in failed_entries:
-                    if self.cancel_event.is_set():
-                        break
-                    outcome = process_one(entry, is_retry=True)
-                    if outcome == "ok":
-                        ok += 1
-                        recovered += 1
-                        if was_error:
-                            errors = max(0, errors - 1)
-                        else:
-                            mismatch = max(0, mismatch - 1)
-
-        mhl_final_path = mhl.close(datetime.now()) if mhl else None
-        html_path = os.path.join(target_root, f"Raport_{timestamp}.html")
+    def finalize(self):
+        self.csv_file.close()
+        mhl_final_path = self.mhl.close(datetime.now()) if self.mhl else None
+        html_path = os.path.join(self.target_root, f"Raport_{self.timestamp}.html")
         verification_labels = {"xxhash64": "xxHash64", "md5": "MD5", "sha1": "SHA-1", "sha256": "SHA-256", "size_only": "Doar mărime"}
         html_ok = production_meta.write_html_report(
-            html_path, self.destination, self.folder_name, rows, self.meta,
-            self.started_at, datetime.now(), ok, mismatch, errors,
+            html_path, self.destination, self.folder_name, self.rows, self.meta,
+            self.started_at, datetime.now(), self.ok, self.mismatch, self.errors,
             verification_labels.get(self.model, self.model), mhl_final_path, self.app_version,
         )
-
         return {
-            "destination": self.destination, "target_root": target_root,
-            "ok": ok, "mismatch": mismatch, "errors": errors, "recovered": recovered,
-            "csv_path": csv_path, "mhl_path": mhl_final_path, "html_path": html_path if html_ok else None,
+            "destination": self.destination, "target_root": self.target_root,
+            "ok": self.ok, "mismatch": self.mismatch, "errors": self.errors, "recovered": self.recovered,
+            "csv_path": self.csv_path, "mhl_path": mhl_final_path, "html_path": html_path if html_ok else None,
         }
 
 
@@ -282,9 +308,12 @@ def format_speed(bytes_per_second):
 
 
 class OffloadRunner:
-    """Orchestreaza un `DestinationJob` per destinatie, in threaduri
-    paralele. Stare citita de UI (Tkinter) prin polling (`.after(...)`),
-    la fel ca restul aplicatiei (coada de conversie existenta) — nu prin
+    """Orchestreaza un `DestinationContext` per destinatie (bookkeeping),
+    dar bucla de copiere efectivă e UNICĂ, pe un singur thread de fundal —
+    o iterație per fișier, fan-out către toate destinațiile deodată (vezi
+    `copy_and_verify_fanout`). Stare citită de UI (Tkinter) prin polling
+    (`.after(...)`), la fel ca restul aplicației (coada de conversie
+    existentă) — nu prin
     callback-uri directe pe thread-ul UI."""
 
     def __init__(self, cfg):
@@ -368,48 +397,126 @@ class OffloadRunner:
         self.status_text = translate("offload_running", n=len(files), d=len(destinations))
         self._notify()
 
-        results = []
-        results_lock = threading.Lock()
-        threads = []
+        # [2026-09-06] Port Data Mover v2.14.0 (M1+Faza 2) — bucla unica,
+        # o iteratie PE FISIER, fan-out catre toate destinatiile deodata
+        # (`copy_and_verify_fanout`), in loc de N job-uri complet separate
+        # (unul per destinatie, fiecare recitind sursa) ca inainte. Vezi
+        # comentariul de la `copy_and_verify_fanout`/`IncrementalHasher`.
+        started_at = datetime.now()
+        contexts = [
+            DestinationContext(dest, folder_name, model, meta, self.cfg, app_version, started_at)
+            for dest in destinations
+        ]
+        chunk_size = io_settings.get_chunk_size_bytes(self.cfg)
 
-        def run_one(dest):
-            def on_file_done(size):
-                with self._lock:
-                    self.files_done += 1
-                    self._bytes_done += size
-                    self.progress_percent = (self.files_done / self.total_files) * 100 if self.total_files else 0
-                    elapsed = max(time.time() - self._started_at, 0.001)
-                    self.speed_text = format_speed(self._bytes_done / elapsed)
-                self._notify()
+        def on_file_progress(size):
+            with self._lock:
+                self.files_done += 1
+                self._bytes_done += size
+                self.progress_percent = (self.files_done / self.total_files) * 100 if self.total_files else 0
+                elapsed = max(time.time() - self._started_at, 0.001)
+                self.speed_text = format_speed(self._bytes_done / elapsed)
+            self._notify()
 
-            def on_activity(item):
-                if item == "ram_wait":
-                    line = translate("offload_ram_wait_log")
-                elif item[0] == "mismatch":
-                    line = translate("offload_mismatch_log", f=item[1])
-                elif item[0] == "retrying":
-                    line = translate("offload_retrying_log", n=item[1])
+        def log_activity(item):
+            if item == "ram_wait":
+                line = translate("offload_ram_wait_log")
+            elif item[0] == "mismatch":
+                line = translate("offload_mismatch_log", f=item[1])
+            elif item[0] == "retrying":
+                line = translate("offload_retrying_log", n=item[1])
+            else:
+                line = translate("offload_error_log", f=item[1], e=item[2])
+            self.activity_log.append(line)
+            if len(self.activity_log) > self._activity_limit:
+                self.activity_log = self.activity_log[-self._activity_limit:]
+            self._notify()
+
+        def process_entry(entry, ctxs, is_retry):
+            """O singura citire a sursei (`copy_and_verify_fanout`), fan-out
+            catre TOATE `ctxs` ramase active pentru acest fisier — la
+            reincercare, doar contextele care au esuat prima data (nu se
+            recitesc/rescriu destinatiile deja reusite). Intoarce
+            {context: "ok"/"mismatch"/"error"}."""
+            dest_paths = [c.dst_path(entry) for c in ctxs]
+            try:
+                src_hash, _, write_results = copy_and_verify_fanout(
+                    entry["full_path"], dest_paths, model, self._cancel_event, self._pause_event,
+                    self.cfg, chunk_size,
+                )
+            except _OffloadCancelled:
+                return {c: "error" for c in ctxs}
+            outcomes = {}
+            for c in ctxs:
+                dst = c.dst_path(entry)
+                ok_write, dst_hash, error = write_results[dst]
+                if not ok_write:
+                    c.record_error(entry, error)
+                    log_activity(("error", entry["rel_path"], error))
+                    outcomes[c] = "error"
+                    continue
+                if model == "size_only":
+                    dst_size = os.path.getsize(dst) if os.path.exists(dst) else -1
+                    if dst_size == entry["size"]:
+                        c.record_ok(entry, is_retry, "")
+                        outcomes[c] = "ok"
+                    else:
+                        c.record_mismatch(entry, "", "", "marime diferita")
+                        outcomes[c] = "mismatch"
+                    continue
+                if dst_hash == src_hash:
+                    c.record_ok(entry, is_retry, src_hash)
+                    outcomes[c] = "ok"
                 else:
-                    line = translate("offload_error_log", f=item[1], e=item[2])
-                self.activity_log.append(line)
-                if len(self.activity_log) > self._activity_limit:
-                    self.activity_log = self.activity_log[-self._activity_limit:]
-                self._notify()
+                    c.record_mismatch(entry, src_hash, dst_hash, "hash diferit")
+                    log_activity(("mismatch", entry["rel_path"]))
+                    outcomes[c] = "mismatch"
+            return outcomes
 
-            job = DestinationJob(dest, folder_name, files, model, meta, self._cancel_event, self._pause_event,
-                                  self.cfg, on_file_done, on_activity, app_version)
-            result = job.run()
-            with results_lock:
-                results.append(result)
+        def run_all():
+            failed_per_context = {c: [] for c in contexts}
+            for entry in files:
+                if self._cancel_event.is_set():
+                    break
+                outcomes = process_entry(entry, contexts, is_retry=False)
+                for c, outcome in outcomes.items():
+                    if outcome == "ok":
+                        c.ok += 1
+                    elif outcome == "mismatch":
+                        c.mismatch += 1
+                        failed_per_context[c].append((entry, False))
+                    else:
+                        c.errors += 1
+                        failed_per_context[c].append((entry, True))
+                    on_file_progress(entry["size"])
 
-        for dest in destinations:
-            th = threading.Thread(target=run_one, args=(dest,), daemon=True)
-            threads.append(th)
-            th.start()
+            # Reincercare automata, o singura data, grupata PE FISIER (nu
+            # pe destinatie) — daca acelasi fisier a esuat la 2 destinatii
+            # deodata, reincercarea tot citeste sursa o singura data.
+            if not self._cancel_event.is_set():
+                total_failed = sum(len(v) for v in failed_per_context.values())
+                if total_failed:
+                    log_activity(("retrying", total_failed))
+                by_entry = {}
+                for c, entries in failed_per_context.items():
+                    for entry, was_error in entries:
+                        by_entry.setdefault(entry["rel_path"], (entry, []))[1].append((c, was_error))
+                for entry, ctx_pairs in by_entry.values():
+                    if self._cancel_event.is_set():
+                        break
+                    ctxs = [c for c, _ in ctx_pairs]
+                    was_error_map = dict(ctx_pairs)
+                    outcomes = process_entry(entry, ctxs, is_retry=True)
+                    for c, outcome in outcomes.items():
+                        if outcome == "ok":
+                            c.ok += 1
+                            c.recovered += 1
+                            if was_error_map[c]:
+                                c.errors = max(0, c.errors - 1)
+                            else:
+                                c.mismatch = max(0, c.mismatch - 1)
 
-        def wait_all():
-            for th in threads:
-                th.join()
+            results = [c.finalize() for c in contexts]
             self.is_running = False
             self.last_results = results
             total_ok = sum(r["ok"] for r in results)
@@ -431,7 +538,7 @@ class OffloadRunner:
                 )
             self._notify()
 
-        threading.Thread(target=wait_all, daemon=True).start()
+        threading.Thread(target=run_all, daemon=True).start()
 
     def _notify(self):
         if self._on_update:

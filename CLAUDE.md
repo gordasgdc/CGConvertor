@@ -2967,3 +2967,72 @@ departe fara aceasta confirmare).
 
 Versiune 3.14.12 -> 3.14.13 (PATCH — fix izolat + documentare limitare
 cunoscuta, fara arhitectura noua, Regula 14).
+
+## v3.15.0 (2026-09-06) — Offload sincronizat cu Data Mover v2.14.0 (Pasul 2)
+
+**Cerut explicit de Cristi** ("adaptezi modulul de Offload cu beneficiile
+Data Mover si generezi versiunea actualizata"), dupa livrarea completa a
+milestone-urilor M1/M2/M4 din Data Mover in aceeasi sesiune. Spre
+deosebire de Data Mover (Swift/C# native, doua implementari separate),
+CGConvertor are UN SINGUR motor Python (Tkinter, Mac+Windows identic) —
+simplificare reala fata de portul din Data Mover, un singur loc de
+schimbat, nu doua.
+
+**Verificat direct in cod inainte de a incepe (nu presupus)**: motorul
+vechi (`DestinationJob.run()`) citea fiecare fisier sursa de 3 ori PER
+DESTINATIE — o data la `copy_file_cancelable`, apoi separat pentru
+`hash_of_file(sursa)` si `hash_of_file(destinatie)` — exact ineficienta
+identificata si rezolvata in Data Mover (acolo, 4 citiri cu 2 destinatii).
+De asemenea, zero flush fizic pe disc (doar `csv_file.flush()`, care nu
+are nicio legatura cu datele video copiate).
+
+**1. Single-read multi-write + hash in flux** (`copy_and_verify_fanout`,
+`IncrementalHasher`, `offload_engine.py`) — citeste sursa O SINGURA DATA,
+scrie catre TOATE destinatiile din acelasi flux de octeti, calculeaza
+hash-ul sursei SI al fiecarei destinatii incremental, pe masura ce
+datele trec prin bucla. Spre deosebire de Data Mover (thread-uri
+separate per destinatie, ring-buffer/backpressure reala), aici scrierea
+ramane secventiala in acelasi thread per fisier — simplitate deliberata
+(Python/Tkinter, nu un motor de transfer de mare performanta); castigul
+real (o singura citire a sursei) ramane identic.
+
+**2. Flush fizic pe disc** (`physical_flush`) — identic ca logica cu
+Data Mover M2: `fcntl(fd, F_FULLFSYNC)` pe macOS (cu fallback pe
+`fsync()` simplu daca discul nu suporta, `ENOTSUP`), `os.fsync()` simplu
+pe Windows (documentat Microsoft ca apeleaza deja `FlushFileBuffers`
+nativ — nu diferit de Data Mover acolo).
+
+**3. Orchestrare inversata** (`DestinationContext` + bucla unica din
+`OffloadRunner.start()`) — port simplificat al `DestinationContext.swift`/
+`.cs` (FARA checkpoint/resume, care nu exista inca in acest motor —
+nimic de pastrat acolo, spre deosebire de Data Mover). Reincercarea
+automata ramane, dar grupata PE FISIER (nu pe destinatie) — daca acelasi
+fisier esueaza la 2 destinatii deodata, reincercarea tot citeste sursa o
+singura data, nu de doua ori.
+
+**4. Raport DIT** (`production_meta._dit_metadata_line`, folosind
+`media_inspector.probe()` deja existent) — sub numele fiecarui fisier
+video: rezolutie, fps, codec, durata, canale audio, langa thumbnail-ul
+deja existent (portat separat, 2026-09-06 mai devreme). **Decizie
+explicita Cristi**: raman pe raportul HTML + buton "Descarca PDF" (print
+browser), NU pe generare PDF nativa (ar fi cerut o dependinta noua,
+`fpdf2`, in build-ul PyInstaller Mac+Windows) — decizie motivata:
+consistenta cu restul rapoartelor din aplicatie, zero dependinte noi.
+
+**Cod mort eliminat**: `copy_file_cancelable`/`hash_of_file` (functiile
+vechi, inlocuite de `copy_and_verify_fanout`) — verificat cu grep ca nu
+mai sunt folosite nicaieri altundeva inainte de stergere.
+
+**Verificat REAL, nu doar sintactic** (venv temporar cu `xxhash`
+instalat, separat de mediul de sistem):
+- `copy_and_verify_fanout` direct: 2 destinatii, fisier binar 500KB,
+  hash-uri identice intre sursa si ambele destinatii, copii verificate
+  byte-cu-byte cu `filecmp.cmp(shallow=False)`.
+- `OffloadRunner.start()` complet, end-to-end: 2 fisiere -> 2 destinatii,
+  CSV/MHL/HTML generate corect, continut verificat.
+- Raport DIT cu fisier video REAL (generat cu `ffmpeg` local, 320x240,
+  H264+AAC): linia de metadate extrasa corect ("320×240 · 25.000 fps ·
+  H264 · 2.0s · 1ch audio"), thumbnail prezent in HTML.
+
+Versiune 3.14.13 -> 3.15.0 (MINOR — arhitectura noua a motorului de
+Offload, functionalitate vizibila noua in raport, Regula 14).

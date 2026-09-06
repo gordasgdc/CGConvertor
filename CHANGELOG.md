@@ -2,6 +2,18 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.15.0 — Offload: motor sincronizat cu Data Mover v2.14.0 (2026-09-06)
+
+- Motorul de Offload citește acum fiecare fișier o singură dată,
+  indiferent de câte destinații ai ales — copiere + verificare simultan,
+  în loc de citiri separate per destinație (mai rapid, mai puțină uzură
+  pe cardul sursă).
+- Flush fizic pe disc înainte de a marca un fișier ca „OK" — garantează
+  că datele au ajuns fizic pe suportul de stocare, nu doar în memoria
+  tampon a sistemului.
+- Raportul de offload arată acum, per fișier video: rezoluție, cadre/s,
+  codec, durată, canale audio — pe lângă thumbnail-ul deja existent.
+
 ### v3.14.13 — Player LUT: backend video alternativ pentru mașini virtuale (2026-09-06)
 
 - Încercare suplimentară de a rezolva ecranul negru la Player LUT pe
