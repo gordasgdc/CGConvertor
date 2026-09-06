@@ -15,6 +15,14 @@ defaults:
 jobs:
   build:
     runs-on: windows-latest
+    # [FIX 2026-09-06] `secrets` NU e un context permis direct intr-un `if:`
+    # de pas (confirmat cu actionlint, validatorul real folosit de GitHub -
+    # "context 'secrets' is not allowed here") - workflow-ul intreg esua sa
+    # se valideze (0 joburi create), nu doar pasul respectiv. Fix: valoarea
+    # trece printr-un `env:` la nivel de JOB (aici `secrets` E permis),
+    # iar pasii citesc `env.HAS_WIN_SELFSIGN` (context permis in `if:`).
+    env:
+      HAS_WIN_SELFSIGN: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +91,7 @@ jobs:
       # cu Claude) - altfel build-ul continua NESEMNAT, exact ca inainte,
       # fara nicio eroare (acelasi tipar ca semnarea Mac, APPLE_SIGN_IDENTITY_APP).
       - name: Semneaza CGConvertor.exe (Self-Signed, test intern)
-        if: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 != '' }}
+        if: ${{ env.HAS_WIN_SELFSIGN == 'true' }}
         shell: pwsh
         env:
           WIN_SELFSIGN_PFX_BASE64: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 }}
@@ -109,7 +117,7 @@ jobs:
           }
 
       - name: Semneaza installer-ul final (Self-Signed, test intern)
-        if: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 != '' }}
+        if: ${{ env.HAS_WIN_SELFSIGN == 'true' }}
         shell: pwsh
         env:
           WIN_SELFSIGN_PFX_BASE64: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 }}
