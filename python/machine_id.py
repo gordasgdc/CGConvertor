@@ -29,6 +29,7 @@ def _raw_machine_id():
             result = subprocess.run(
                 ["reg", "query", r"HKLM\SOFTWARE\Microsoft\Cryptography", "/v", "MachineGuid"],
                 capture_output=True, text=True, timeout=5,
+                creationflags=subprocess.CREATE_NO_WINDOW,
             )
             for line in result.stdout.splitlines():
                 if "MachineGuid" in line:

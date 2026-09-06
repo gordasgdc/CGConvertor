@@ -8,10 +8,16 @@ import base64
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import time
 
 from converter import get_ffmpeg_path, get_ffprobe_path
+
+# Vezi comentariul din converter.py — acelasi fix pentru "fereastra
+# neagra care clipeste" pe Windows (aici, cel mai vizibil: un apel
+# ffmpeg PER MISCARE de slider in previzualizarea interactiva).
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 
 def probe(path):
@@ -23,7 +29,7 @@ def probe(path):
         result = subprocess.run(
             [ffprobe_path, "-v", "error", "-print_format", "json",
              "-show_format", "-show_streams", path],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, check=True, creationflags=_NO_WINDOW,
         )
         data = json.loads(result.stdout)
     except (subprocess.CalledProcessError, FileNotFoundError, json.JSONDecodeError):
@@ -110,7 +116,7 @@ def generate_thumbnail(path, lut_path, output_path, at_seconds=1.0, width=320):
         result = subprocess.run(
             [ffmpeg_path, "-y", "-ss", f"{max(0.0, at_seconds):.3f}", "-i", path,
              "-frames:v", "1", "-vf", vf, output_path],
-            capture_output=True, check=False,
+            capture_output=True, check=False, creationflags=_NO_WINDOW,
         )
         return result.returncode == 0 and os.path.isfile(output_path)
     except FileNotFoundError:

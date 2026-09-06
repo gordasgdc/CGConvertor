@@ -2,6 +2,19 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.10 — FIX Windows: update automat necesită elevare explicită + ferestre negre la scrubbing + diagnostic Player LUT (2026-09-06)
+
+- Actualizarea automată cere acum elevare (UAC) direct la lansare — la
+  fel ca dublu-click + "Run as administrator" — eliminând complet
+  eroarea "Security validation failure" (fix-ul din v3.14.9 nu era
+  suficient).
+- Eliminate ferestrele negre care clipeau la fiecare mișcare a
+  cursorului în Previzualizare/detectarea GPU/ID mașină (ffmpeg/ffprobe
+  rulau cu o consolă vizibilă, acum ascunsă corect).
+- Player-ul LUT scrie acum un jurnal de diagnosticare detaliat dacă mpv
+  se oprește neașteptat — necesar ca să localizăm exact cauza ecranului
+  negru pe configurația ta (Parallels).
+
 ### v3.14.9 — FIX Windows: "Security validation failure" la update + ecran negru pe plăci grafice virtuale/VM (2026-09-06)
 
 - Actualizarea automată (Caută actualizare → descarcă → lansează

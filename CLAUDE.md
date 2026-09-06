@@ -2733,3 +2733,63 @@ calitate fata de varianta cu compunere GPU.
 
 Versiune 3.14.8 -> 3.14.9 (PATCH — fix-uri izolate, fara arhitectura
 noua, Regula 14).
+
+## v3.14.10 (2026-09-06) — Elevare UAC explicita + fix ferestre negre consola + diagnostic mpv
+
+**Raportat de Cristi, dupa testarea reala a v3.14.9 - AMBELE fix-uri
+anterioare (update + Player LUT) au esuat identic**, plus doua probleme
+noi observate.
+
+**1. "Security validation failure" - PERSISTA identic dupa v3.14.9**.
+Cristi a dat testul decisiv: dublu-click manual + "Run as administrator"
+pe `.exe` -> FUNCTIONEAZA, fara nicio eroare. Asta izoleaza exact cauza:
+`installer.iss` cere `PrivilegesRequired=admin`; lansat NEELEVAT (orice
+metoda simpla - `Popen` VECHI sau `os.startfile()` simplu din v3.14.9),
+Setup.exe trebuie sa se auto-relanseze intern prin UAC - exact acolo
+esueaza verificarea lui interna (nedocumentata public, cautat explicit
+prin Sourcegraph pe tot codul open-source, 0 rezultate - deci probabil
+un binar precompilat intern, nu Pascal-ul open-source din issrc). Lansat
+DEJA elevat (ca la "Run as administrator"), acel al doilea proces intern
+nu se mai declanseaza NICIODATA. Fix real: `os.startfile(exe_path,
+"runas")` - al doilea parametru documentat oficial Python (doar Windows)
+cere UAC direct la apel, identic cu alegerea manuala a lui Cristi.
+
+**2. Fereastra neagra la scrubbing in Previzualizare ("mi se fac niste
+ferestre negre si se inchide")**. Cauza reala, gasita prin audit
+sistematic al TUTUROR apelurilor `subprocess` din tot `python/`: ffmpeg/
+ffprobe sunt aplicatii de CONSOLA; apelate din build-ul nostru "windowed"
+(`build-windows.spec`, `console=False`) FARA `creationflags=
+CREATE_NO_WINDOW`, Windows deschide o consola noua VIZIBILA pentru
+FIECARE apel — la scrubbing rapid in Preview (un apel ffmpeg per miscare
+de slider), efectul e exact "ferestre negre care clipesc". Bug LATENT,
+pre-existent in tot codul (niciodata raportat inainte, probabil fiindca
+o consola singura, la o conversie lunga, trece neobservata) - fix aplicat
+consecvent in TOATE punctele: `converter.py` (3 apeluri: is_available,
+get_duration, convert), `media_inspector.py` (2 apeluri: probe,
+generate_thumbnail), `dependency_manager.py` (2 apeluri: verificare
+ffmpeg/mpv), `gpu_probe.py` (1 apel: listare encodere), `machine_id.py`
+(1 apel: `reg query` pentru MachineGuid).
+
+**3. Player LUT - ecran negru PERSISTA identic dupa v3.14.9** (fix-ul
+`--vo=gdi --hwdec=no` NU a rezolvat, contrar ipotezei "compunere GPU
+virtualizata"). Onest: dupa 2 incercari esuate de fix "orb" pe combinatia
+`--vo`/`--hwdec`, fara nicio dovada REALA a cauzei (mpv rula cu consola
+ascunsa - `CREATE_NO_WINDOW` - deci orice mesaj de eroare al lui era
+invizibil, si pentru user, si pentru noi), continuarea cu inca o
+presupunere ar irosi inca un ciclu de build/testare al lui Cristi
+degeaba. In loc sa ghicim a treia oara: adaugat `--log-file=<cale>` +
+`--msg-level=all=v` la lansarea mpv, plus detectie activa
+(`_check_mpv_alive`, la 1.5s dupa lansare) - daca mpv moare imediat,
+fereastra arata explicit eroarea + calea jurnalului, in loc sa ramana
+"muta" (negru, fara niciun indiciu). URMATORUL raport de la Cristi
+trebuie sa includa continutul acelui jurnal, ca sa localizam cauza REALA
+in loc sa continuam sa incercam combinatii de flag-uri la intamplare.
+
+**Verificat**: `python3 -m py_compile` pe toate fisierele modificate - 0
+erori. `xcodebuild -configuration Debug` - BUILD SUCCEEDED. NU s-a putut
+verifica real pe Windows/Parallels (ca la toate versiunile anterioare) -
+Cristi confirma manual update-ul + trimite jurnalul mpv daca ecranul
+negru persista.
+
+Versiune 3.14.9 -> 3.14.10 (PATCH — fix-uri + instrumentare de
+diagnosticare, fara arhitectura noua, Regula 14).

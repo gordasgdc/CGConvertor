@@ -29,6 +29,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import tkinter as tk
 from tkinter import filedialog, ttk
 
@@ -126,11 +127,22 @@ class LUTPlayerWindow(tk.Toplevel):
         self.update_idletasks()
         hwnd = self.video_frame.winfo_id()
         self.ipc_path = rf"\\.\pipe\cgconvertor_mpv_{os.getpid()}_{id(self)}"
+        # Diagnostic (2026-09-06, dupa 2 incercari esuate de fix "oarbe"
+        # pe combinatia --vo/--hwdec, fara sa avem vreo dovada REALA a
+        # motivului pentru care randarea esueaza pe masina lui Cristi -
+        # mpv insusi ruleaza cu consola ascunsa (`CREATE_NO_WINDOW` mai
+        # jos), deci orice mesaj de eroare al lui era pierdut, invizibil,
+        # atat pentru user cat si pentru noi. `--log-file` + verbozitate
+        # scriu jurnalul REAL al mpv intr-un fisier - urmatorul raport
+        # trebuie sa includa continutul lui, nu o alta presupunere.
+        self.mpv_log_path = os.path.join(tempfile.gettempdir(), f"cgconvertor_mpv_{os.getpid()}.log")
 
         args = [
             mpv_exe,
             f"--wid={hwnd}",
             f"--input-ipc-server={self.ipc_path}",
+            f"--log-file={self.mpv_log_path}",
+            "--msg-level=all=v",
             *_WINDOWS_MPV_VIDEO_ARGS,
             "--osc=yes",
             "--keep-open=yes",
@@ -143,6 +155,19 @@ class LUTPlayerWindow(tk.Toplevel):
             self.mpv_process = subprocess.Popen(args, creationflags=creationflags)
         except OSError:
             self.mpv_process = None
+            return
+        # Daca mpv moare imediat (crash la pornire, argument invalid etc.),
+        # aratam explicit eroarea + calea jurnalului, in loc sa lasam
+        # fereastra neagra "muta" sa para doar un bug de randare tacut.
+        self.after(1500, self._check_mpv_alive)
+
+    def _check_mpv_alive(self):
+        if self.mpv_process and self.mpv_process.poll() is not None:
+            for widget in self.video_frame.winfo_children():
+                widget.destroy()
+            tk.Label(self.video_frame, bg="black", fg=self.th["fg_dim"], justify="center",
+                     wraplength=440, font=self.app._f(10),
+                     text=self._t("player_mpv_crashed", log_path=self.mpv_log_path)).pack(expand=True)
 
     def _send_ipc_command(self, command_list):
         """Trimite o comanda JSON one-way catre mpv, prin named pipe —

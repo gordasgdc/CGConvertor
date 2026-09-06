@@ -19,21 +19,26 @@ Flux:
 
 FIX real (2026-09-06, raportat de Cristi cu popup exact: "Security
 validation failure: parent process has different executable!", aparut
-la lansarea automata a Setup.exe): pasul 2 folosea `subprocess.Popen(...,
-creationflags=DETACHED_PROCESS, close_fds=True)` — CreateProcess "brut".
-Setup.exe (installer.iss cere `PrivilegesRequired=admin`) se auto-
-relanseaza intern, elevat, prin UAC (ShellExecute cu verb "runas") -
-mecanism intern Inno, NU codul nostru. Un CreateProcess direct, detasat
-de consola, DIFERA de calea normala prin care orice installer descarcat
-e lansat de un user (dublu-click in Explorer = ShellExecute), calea pe
-care o asteapta verificarea anti-hijacking mai noua din Inno Setup
-(introdusa ca protectie DLL-preloading/proces-injection). Nu s-a gasit
-documentatie oficiala JRSoftware care sa confirme exact mecanismul intern
-al acestei verificari (cautat explicit, neconfirmat 100%) - dar fix-ul
-aplicat e cel corect indiferent de detaliul exact: `os.startfile()`
-foloseste ShellExecuteExW, IDENTIC cu ce declanseaza un dublu-click din
-Explorer (calea "normala", niciodata raportata cu aceasta eroare de
-niciun user care descarca installer-ul manual din release).
+DOAR la lansarea automata din aplicatie, NICIODATA la dublu-click manual
++ "Run as administrator" — confirmat direct de Cristi, testat pe masina
+lui reala). Cautat explicit acest string exact (Sourcegraph, cod public,
+inclusiv sursele Inno Setup jrsoftware/issrc) — 0 rezultate; verificarea
+nu vine din Pascal-ul open-source al Inno, deci probabil dintr-un
+binar precompilat intern (Setup.e32/SetupLdr.e32, neindexabil ca text).
+
+Incercarea 1 (`os.startfile()` simplu, in loc de `subprocess.Popen`) NU a
+rezolvat - eroarea a persistat identic. Diferenta REALA, confirmata de
+testul lui Cristi: `installer.iss` cere `PrivilegesRequired=admin`;
+lansat NEELEVAT (orice metoda simpla, Popen SAU os.startfile fara verb),
+Setup.exe trebuie sa se auto-relanseze intern, elevat, printr-un al
+doilea proces (UAC) — exact acolo verificarea interna esueaza. Lansat
+DEJA elevat (dublu-click + "Run as administrator" din Explorer), acel
+al doilea proces intern nu se mai declanseaza niciodata, deci verificarea
+nu are ce sa esueze. Fix: `os.startfile(exe_path, "runas")` — al doilea
+parametru al lui `os.startfile` (documentat oficial Python, doar Windows)
+cere explicit elevare prin UAC la lansare, identic cu meniul "Run as
+administrator" al lui Cristi - Setup.exe porneste DEJA elevat, fara
+niciun re-exec intern.
 
 WARNING: pasul de instalare efectiv (wizard-ul Inno, click-urile
 userului) NU poate fi verificat automat de Claude.
@@ -67,12 +72,14 @@ def download_and_install(download_url, version, on_status=None, on_done=None):
 
         if on_status:
             on_status("launching")
-        # os.startfile() = ShellExecuteExW, aceeasi cale ca un dublu-click
-        # in Explorer - vezi FIX-ul din docstring-ul modulului. Procesul
-        # lansat astfel NU e un copil CreateProcess al nostru (Explorer/
-        # Shell-ul e intermediarul), deci supravietuieste independent
-        # inchiderii noastre (sys.exit mai jos) fara niciun flag special.
-        os.startfile(exe_path)  # noqa: S606 — installer descarcat de noi, semnat, verificat mai sus
+        # os.startfile(path, "runas") = ShellExecuteExW cu verb "runas" —
+        # cere elevare UAC DIRECT la lansare, exact ca "Run as
+        # administrator" manual din Explorer (vezi FIX-ul din docstring-ul
+        # modulului - fara elevare de la inceput, Setup.exe trebuie sa se
+        # auto-relanseze intern, unde esueaza verificarea lui interna).
+        # Procesul lansat astfel supravietuieste independent inchiderii
+        # noastre (sys.exit mai jos), fara niciun flag special.
+        os.startfile(exe_path, "runas")  # noqa: S606 — installer descarcat de noi, verificat mai sus
 
         if on_done:
             on_done(None)

@@ -26,6 +26,11 @@ import urllib.request
 import urllib.error
 import zipfile
 
+# Vezi comentariul din converter.py — acelasi fix pentru "fereastra
+# neagra care clipeste" pe Windows (aici: verificarea ffmpeg/mpv la
+# pornirea panoului de dependinte).
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
 STATE_OK = "ok"
 STATE_MISSING = "missing"
 STATE_OPTIONAL_MISSING = "optional_missing"
@@ -95,7 +100,7 @@ def _verify_runs(path):
     if not path or not os.path.isfile(path):
         return False
     try:
-        result = subprocess.run([path, "-version"], capture_output=True, timeout=10)
+        result = subprocess.run([path, "-version"], capture_output=True, timeout=10, creationflags=_NO_WINDOW)
         return result.returncode == 0
     except Exception:
         return False
@@ -172,7 +177,7 @@ def _verify_mpv_runs(path):
     try:
         # mpv foloseste "--version" (dublu liniuta) - spre deosebire de
         # ffmpeg, "-v" la mpv inseamna verbose, nu versiune.
-        result = subprocess.run([path, "--version"], capture_output=True, timeout=10)
+        result = subprocess.run([path, "--version"], capture_output=True, timeout=10, creationflags=_NO_WINDOW)
         return result.returncode == 0
     except Exception:
         return False

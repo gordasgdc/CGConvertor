@@ -9,6 +9,17 @@ import dependency_manager
 import format_registry
 import presets_manager
 
+# Fix real (2026-09-06, raportat de Cristi: "mi se fac niste ferestre
+# negre si se inchide" la scrubbing in Preview) — ffmpeg.exe/ffprobe.exe
+# sunt aplicatii de CONSOLA; lansate din build-ul nostru "windowed"
+# (build-windows.spec, console=False) FARA acest flag, Windows deschide
+# o consola noua VIZIBILA (fereastra neagra) pentru fiecare apel, care
+# clipeste si se inchide quasi-instant — cu atat mai vizibil la
+# scrubbing rapid (un apel ffmpeg per miscare de slider). Identic aplicat
+# in media_inspector.py/gpu_probe.py/machine_id.py (orice apel de
+# subprocess consola pe Windows).
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
 def get_ffmpeg_path():
     """Returneaza calea catre ffmpeg — vezi dependency_manager.find_ffmpeg()
     pentru ordinea reala de cautare (descarcat manual > bundle-uit > PATH).
@@ -31,7 +42,8 @@ class Converter:
 
     def is_available(self):
         try:
-            subprocess.run([self.ffmpeg_path, "-version"], capture_output=True, check=True)
+            subprocess.run([self.ffmpeg_path, "-version"], capture_output=True, check=True,
+                            creationflags=_NO_WINDOW)
             return True
         except (FileNotFoundError, subprocess.CalledProcessError):
             return False
@@ -49,7 +61,7 @@ class Converter:
             result = subprocess.run(
                 [self.ffprobe_path, "-v", "error", "-show_entries", "format=duration",
                  "-of", "default=noprint_wrappers=1:nokey=1", input_path],
-                capture_output=True, text=True, check=True
+                capture_output=True, text=True, check=True, creationflags=_NO_WINDOW
             )
             return float(result.stdout.strip())
         except (subprocess.CalledProcessError, ValueError, FileNotFoundError):
@@ -96,7 +108,7 @@ class Converter:
         try:
             process = subprocess.Popen(
                 args, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL,
-                universal_newlines=True, bufsize=1
+                universal_newlines=True, bufsize=1, creationflags=_NO_WINDOW
             )
         except FileNotFoundError:
             return {"success": False, "error": "FFmpeg nu a fost gasit."}

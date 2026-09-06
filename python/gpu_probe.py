@@ -50,6 +50,7 @@ def _run_encoders_list():
         result = subprocess.run(
             [ffmpeg, "-hide_banner", "-encoders"],
             capture_output=True, text=True, timeout=10,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
         return result.stdout or ""
     except Exception:
