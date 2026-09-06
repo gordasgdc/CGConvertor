@@ -184,7 +184,14 @@ class CGConvertorApp(BASE_CLASS):
         acum (aplicatia nu avea NICIUN meniu de sus, doar meniuri
         contextuale pe click-dreapta). Port 1:1 al meniului Help adaugat
         pe Mac (HelpGuide.swift/CommandGroup(replacing: .help))."""
-        menubar = tk.Menu(self)
+        # [FIX REAL 2026-09-06] Fara tearoff=0, Tkinter insereaza implicit o
+        # intrare invizibila de "tear-off" la indexul 0 (linia punctata din
+        # capul meniului pe Windows/X11) - orice `entryconfig(0, ...)`
+        # ulterior (vezi _refresh_texts) tinteste acea intrare, care NU
+        # suporta optiunea `label` -> _tkinter.TclError: unknown option
+        # "-label". Pe Mac nu se manifesta (Aqua ignora tearoff-ul pe
+        # meniul nativ de sus), de-asta crash-ul aparea DOAR pe Windows.
+        menubar = tk.Menu(self, tearoff=0)
         help_menu = tk.Menu(menubar, tearoff=0)
         help_menu.add_command(label=t(self.lang, "menu_help_guide"), command=self._open_help_guide)
         menubar.add_cascade(label=t(self.lang, "menu_help"), menu=help_menu)

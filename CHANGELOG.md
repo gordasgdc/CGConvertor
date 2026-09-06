@@ -2,6 +2,11 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.6 — FIX CRITIC: aplicația nu pornea pe Windows (2026-09-06)
+
+- Meniul „Ajutor" nou (v3.14.4) crăpa aplicația la lansare pe Windows
+  (`_tkinter.TclError: unknown option "-label"`) — reparat.
+
 ### v3.14.5 — Descarcă PDF din rapoarte + thumbnail-uri în raportul de offload (Mac + Windows, 2026-09-06)
 
 - Buton „Descarcă PDF” (imprimare nativă a browserului) în toate rapoartele

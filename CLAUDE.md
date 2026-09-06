@@ -2543,3 +2543,37 @@ py_compile` pe TOATE fișierele din `python/` — 0 erori.
 
 Versiune 3.14.4 → 3.14.5 (PATCH — completări/fix-uri pe funcții
 existente, fără arhitectură nouă, Regula 14).
+
+## v3.14.6 (2026-09-06) — FIX CRITIC: crash la lansare pe Windows (meniul Ajutor)
+
+**Raportat de Cristi cu screenshot exact**: `_tkinter.TclError: unknown
+option "-label"` la lansare, in `_refresh_texts` -> `entryconfig`.
+
+**Cauza radacina reala**: `_build_menu_bar()` (adaugat in v3.14.4, meniul
+Ajutor) crea `menubar = tk.Menu(self)` FARA `tearoff=0`. Implicit,
+Tkinter insereaza o intrare invizibila de "tear-off" la INDEXUL 0 (linia
+punctata din capul meniului, pe Windows/X11) — orice widget adaugat dupa
+aceea (`add_cascade`) ajunge la indexul 1, nu 0. `_refresh_texts` apela
+insa `self._menubar.entryconfig(0, label=...)`, tintind din greseala
+intrarea de tear-off, care NU suporta optiunea `label`.
+
+**De ce a scapat la testare pe Mac**: Aqua (meniul nativ macOS) IGNORA
+tearoff-ul pe meniul de sus — indexul 0 chiar corespunde primei cascade
+reale acolo, deci bug-ul nu s-a manifestat niciodata in testele facute
+pe Mac. Confirmat direct: un test minimal cu exact aceeasi structura,
+rulat pe acest Mac, NU reproduce eroarea — dovedeste diferenta reala de
+comportament Aqua vs Windows/X11, nu doar o presupunere.
+
+**Fix**: `menubar = tk.Menu(self, tearoff=0)` — o linie. Verificat cu un
+script minimal separat: ACELASI apel `entryconfig(0, label=...)` esueaza
+fara `tearoff=0` pe structura corecta de test, functioneaza corect cu el
+(Regula practica noua: orice `tk.Menu()` folosit ca menubar de top NEBUIE
+sa aiba `tearoff=0` explicit daca urmeaza sa i se faca `entryconfig` pe
+index, nu doar meniurile-copil).
+
+**Nu s-a putut verifica REAL lansarea pe Windows** (Claude nu poate rula
+GUI Windows de pe Mac) — CI-ul de build a confirmat doar ca scriptul
+compileaza si se ambaleaza corect; Cristi confirma manual, o data,
+lansarea curata pe Windows real.
+
+Versiune 3.14.5 -> 3.14.6 (PATCH — fix critic izolat, Regula 14).
