@@ -135,6 +135,7 @@ class CGConvertorApp(BASE_CLASS):
         self.minsize(780, 540)
         self.configure(bg=self.th["bg"])
         self._set_window_icon()
+        self._build_menu_bar()
 
         self._setup_style()
         self._build_ui()
@@ -177,6 +178,28 @@ class CGConvertorApp(BASE_CLASS):
         # Pe Mac, iconita Dock-ului vine din bundle-ul .app (.icns, deja
         # setat in build-mac.spec) — Tk nu are echivalent de title-bar icon
         # acolo, deci nimic suplimentar de facut.
+
+    def _build_menu_bar(self):
+        """[2026-09-06] Meniu Ajutor cu ghidul PDF — lipsea complet pana
+        acum (aplicatia nu avea NICIUN meniu de sus, doar meniuri
+        contextuale pe click-dreapta). Port 1:1 al meniului Help adaugat
+        pe Mac (HelpGuide.swift/CommandGroup(replacing: .help))."""
+        menubar = tk.Menu(self)
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label=t(self.lang, "menu_help_guide"), command=self._open_help_guide)
+        menubar.add_cascade(label=t(self.lang, "menu_help"), menu=help_menu)
+        self.config(menu=menubar)
+        self._help_menu = help_menu
+        self._menubar = menubar
+
+    def _open_help_guide(self):
+        pdf_path = _resource_path("Instructiuni_Utilizare.pdf")
+        if not os.path.isfile(pdf_path):
+            return
+        if sys.platform == "darwin":
+            subprocess.run(["open", pdf_path])
+        elif sys.platform == "win32":
+            os.startfile(pdf_path)  # noqa: S606 — deschidere fisier local, bundle-uit cu aplicatia
 
     # ── Stil ──────────────────────────────────────────────────────────
 
@@ -475,6 +498,9 @@ class CGConvertorApp(BASE_CLASS):
     def _refresh_texts(self):
         lang = self.lang
         self.title(t(lang, "app_title"))
+        if hasattr(self, "_menubar"):
+            self._menubar.entryconfig(0, label=t(lang, "menu_help"))
+            self._help_menu.entryconfig(0, label=t(lang, "menu_help_guide"))
         self.title_label.config(text=t(lang, "app_title"))
         self.subtitle_label.config(text=t(lang, "app_subtitle"))
         for m, btn in self.mode_buttons.items():

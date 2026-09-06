@@ -2,6 +2,8 @@
 TRANSLATIONS = {
     "ro": {
         "app_title": "CG Convertor",
+        "menu_help": "Ajutor",
+        "menu_help_guide": "Ghid de utilizare (PDF)",
         "app_subtitle": "Transcode & Rewrap pentru DaVinci Resolve",
         "conversion_mode": "Mod conversie",
         "rewrap": "Rewrap (rapid, fara re-encode)",
@@ -242,6 +244,8 @@ TRANSLATIONS = {
     },
     "en": {
         "app_title": "CG Convertor",
+        "menu_help": "Help",
+        "menu_help_guide": "User Guide (PDF)",
         "app_subtitle": "Transcode & Rewrap for DaVinci Resolve",
         "conversion_mode": "Conversion mode",
         "rewrap": "Rewrap (fast, no re-encode)",
@@ -482,6 +486,8 @@ TRANSLATIONS = {
     },
     "es": {
         "app_title": "CG Convertor",
+        "menu_help": "Ayuda",
+        "menu_help_guide": "Guía de uso (PDF)",
         "app_subtitle": "Transcode y Rewrap para DaVinci Resolve",
         "conversion_mode": "Modo de conversion",
         "rewrap": "Rewrap (rapido, sin re-codificacion)",

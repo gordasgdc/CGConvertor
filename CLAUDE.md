@@ -2436,3 +2436,49 @@ Prioritate sugerată la reluare: metadata Sony/EXIF/ID3 (secțiunea
 anterioară, UI de tabel comparativ neînceput) sau 2 (control fps, mediu,
 atinge motorul de conversie) — oricare, la alegerea lui Cristi; 1
 (playerul real-time) rămâne discuție de scop separată.
+
+## v3.14.4 (2026-09-06) — Meniu Ajutor + PDF regenerat complet (Mac + Windows)
+
+Audit ecosistem (cerut de Cristi): CGConvertor nu avea NICIUN meniu
+Ajutor/Help — nici pe Mac, nici pe Windows — spre deosebire de restul
+aplicațiilor GDC (CursorPro, GDCVault, MacMasterControlPro, toate au
+deja acest tipar). Plus, `installer/Instructiuni_Utilizare.pdf` era din
+26 august, cu mult în urma codului (~10 versiuni de funcții noi de atunci).
+
+**PDF regenerat** (`installer/generate_pdf.py`, RO/EN/ES) — 4 secțiuni
+noi (5-10), verificate direct în `ContentView.swift` înainte de scris
+(nu presupuse): Selecție și conversie parțială (Select All/None, Start
+Selected), Presetări de ieșire, Watch Folders, Previzualizare LUT/LOG,
+Comparație de metadate (thumbnail-uri, căutare, evidențiere diferențe),
+Generează raport. Secțiunile vechi (Moduri de conversie, Licență,
+Dezinstalare, Suport) renumerotate 11-14. 13 pagini rezultate (verificat
+cu `pypdf`, nu presupus).
+
+**Mac**: `HelpGuide.swift` (nou) — `Bundle.main.url(forResource:
+"Instructiuni_Utilizare", withExtension: "pdf")` + `NSWorkspace.shared.
+open`. PDF adăugat ca resursă Xcode (editat manual `project.pbxproj` —
+proiectul folosește `PBXFileSystemSynchronizedRootGroup` pentru folderul
+`CGConvertor/`, dar `installer/` e în afara lui, deci fișierul trebuie
+înregistrat explicit ca `PBXFileReference`+`PBXBuildFile`, la fel ca
+`ffmpeg`/`ffprobe`). `CommandGroup(replacing: .help)` nou în
+`CGConvertorApp.swift`. **Bug real la prima încercare**: path relativ
+`../installer/...` rezolva greșit la `~/Developer/installer` (un nivel
+prea sus) — proiectul root ESTE deja `~/Developer/CGConvertor`, fix la
+`installer/Instructiuni_Utilizare.pdf` (fără `../`).
+
+**Windows**: `main.py._build_menu_bar()`/`_open_help_guide()` (noi) —
+prima dată când aplicația are un meniu de sus (avea doar meniuri
+contextuale click-dreapta). `build-windows.spec` — PDF adăugat în
+`datas`. Chei noi `menu_help`/`menu_help_guide` (RO/EN/ES) în
+`translations.py`. `_refresh_texts()` re-etichetează meniul la schimbarea
+limbii.
+
+**Verificat REAL**: build Xcode → `BUILD SUCCEEDED`, PDF confirmat fizic
+în `Contents/Resources/`. Harness Python real (venv izolat, dependențe
+instalate din `requirements.txt`): `CGConvertorApp()` pornit efectiv,
+meniul „Ajutor” confirmat cu eticheta corectă, `_open_help_guide()`
+apelat — Preview.app confirmat deschis (`osascript`... `exists
+(processes where name is "Preview")` → true) — fluxul complet,
+cap-coadă, nu doar cod care compilează.
+
+Versiune 3.14.3 → 3.14.4 (PATCH — completare UX, fără arhitectură nouă).

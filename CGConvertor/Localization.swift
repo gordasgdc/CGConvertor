@@ -191,6 +191,7 @@ enum L {
 
         "menu.about": [.ro: "Despre CG Convertor", .en: "About CG Convertor", .es: "Acerca de CG Convertor"],
         "menu.checkForUpdates": [.ro: "Caută actualizări…", .en: "Check for Updates…", .es: "Buscar actualizaciones…"],
+        "menu.helpGuide": [.ro: "Ghid de utilizare (PDF)", .en: "User Guide (PDF)", .es: "Guía de uso (PDF)"],
 
         // MARK: - Dependency Manager
 

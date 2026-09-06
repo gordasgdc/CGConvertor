@@ -16,6 +16,10 @@ struct CGConvertorApp: App {
             CommandGroup(after: .appInfo) {
                 Button(L.t("menu.checkForUpdates")) { UpdateChecker.checkAndShowAlert() }
             }
+            // [2026-09-06] Meniu Ajutor cu ghidul PDF — lipsea complet.
+            CommandGroup(replacing: .help) {
+                Button(L.t("menu.helpGuide")) { HelpGuide.openPDF() }
+            }
         }
     }
 

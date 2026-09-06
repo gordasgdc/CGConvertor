@@ -2,6 +2,14 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.4 — Meniu Ajutor cu ghid PDF (Mac + Windows, 2026-09-06)
+
+Aplicația nu avea niciun meniu Ajutor/Help până acum. Adăugat pe ambele
+platforme, cu acces direct la ghidul de utilizare (PDF) — actualizat și
+el complet, cu toate funcțiile adăugate recent (selecție parțială,
+presetări, Watch Folders, previzualizare LUT/LOG, comparație metadate,
+generare raport).
+
 ### v3.14.3 — Thumbnail per clip în comparația de metadate (Mac + Windows, 2026-09-06)
 
 Cerut de Cristi după ce a văzut comparația nouă: fiecare coloană din

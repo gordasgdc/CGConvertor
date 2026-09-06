@@ -12,7 +12,10 @@ a = Analysis(
     # insusi) - main.py._set_window_icon() il citeste la runtime din
     # sys._MEIPASS ca sa seteze explicit iconita FERESTREI (title bar +
     # taskbar), separat de iconita exe-ului setata mai jos.
-    datas=[('CGConvertor.ico', '.')],
+    # [2026-09-06] Ghidul PDF, bundle-uit ca sa fie accesibil din meniul
+    # Ajutor (main.py, _open_help_guide) fara sa depinda de o instalare
+    # separata a arhivei installer/.
+    datas=[('CGConvertor.ico', '.'), ('../installer/Instructiuni_Utilizare.pdf', '.')],
     hiddenimports=['tkinterdnd2', 'cryptography.hazmat.bindings._rust'],
     hookspath=[],
     hooksconfig={},

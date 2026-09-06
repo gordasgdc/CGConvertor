@@ -106,6 +106,36 @@ def page(d):
     flow.append(h3(d["postconv_label"]))
     flow.append(bullets(d["postconv"]))
 
+    # --- Selectie si conversie partiala (2026-09-06) ----------------------
+    flow.append(Paragraph(d["h_selection"], h2_style))
+    flow.append(Paragraph(d["selection_intro"], body_style))
+    flow.append(bullets(d["selection_items"]))
+
+    # --- Presetari de iesire ------------------------------------------------
+    flow.append(Paragraph(d["h_presets"], h2_style))
+    flow.append(Paragraph(d["presets_intro"], body_style))
+    flow.append(numbered(d["presets_steps"]))
+
+    # --- Watch Folders --------------------------------------------------
+    flow.append(Paragraph(d["h_watchfolders"], h2_style))
+    flow.append(Paragraph(d["watchfolders_intro"], body_style))
+    flow.append(numbered(d["watchfolders_steps"]))
+    flow.append(note(d["watchfolders_note"]))
+
+    # --- Previzualizare LUT/LOG ------------------------------------------
+    flow.append(Paragraph(d["h_player"], h2_style))
+    flow.append(Paragraph(d["player_intro"], body_style))
+
+    # --- Comparatie de metadate -------------------------------------------
+    flow.append(Paragraph(d["h_compare"], h2_style))
+    flow.append(Paragraph(d["compare_intro"], body_style))
+    flow.append(numbered(d["compare_steps"]))
+    flow.append(bullets(d["compare_features"]))
+
+    # --- Genereaza raport ---------------------------------------------------
+    flow.append(Paragraph(d["h_report"], h2_style))
+    flow.append(Paragraph(d["report_intro"], body_style))
+
     flow.append(Paragraph(d["h_modes"], h2_style))
     flow.append(bullets(d["modes"]))
 
@@ -177,12 +207,48 @@ RO = dict(
         "<b>„Deschide fișierul”</b> — deschide fișierul convertit direct în aplicația implicită de pe calculatorul tău pentru redare video (de exemplu QuickTime Player sau DaVinci Resolve, dacă e setat implicit).",
         "<b>„Arată în Finder”</b> — deschide o fereastră Finder cu folderul de destinație, având fișierul convertit deja selectat (evidențiat), ca să-l găsești instant fără să cauți manual prin foldere.",
     ],
-    h_modes="5. Moduri de conversie",
+    h_selection="5. Selecție și conversie parțială",
+    selection_intro="Nu trebuie mereu să convertești toată coada. Bifează căsuța din stânga fiecărui rând ca să selectezi doar fișierele pe care le vrei:",
+    selection_items=[
+        "<b>„Selectează tot” / „Deselectează tot”</b> — butoane în bara de jos, lângă „Golește lista”, pentru a bifa/debifa dintr-un click toate fișierele din coadă.",
+        "Dacă ai cel puțin un fișier bifat, butonul principal devine <b>„Pornește (N)”</b> și convertește DOAR fișierele selectate, lăsând restul neatinse în coadă.",
+        "Dacă nu ai nimic bifat, „Pornește” convertește toată coada, ca înainte.",
+    ],
+    h_presets="6. Presetări de ieșire",
+    presets_intro="O presetare salvează o combinație completă de format/codec, ca să nu o mai alegi manual de fiecare dată. Se editează din fereastra „Presetări”:",
+    presets_steps=[
+        "Apasă „Editează” lângă selectorul de presetări, din bara laterală.",
+        "Adaugă o presetare nouă (nume liber, ales de tine) sau editează una existentă — alege containerul, codecul video, FPS-ul dorit și celelalte opțiuni.",
+        "Salvează — presetarea apare imediat în lista din bara laterală, gata de folosit pentru conversiile următoare.",
+    ],
+    h_watchfolders="7. Watch Folders — conversie automată de folder",
+    watchfolders_intro="Un Watch Folder e un folder pe care aplicația îl supraveghează constant — orice fișier video nou apărut acolo (de pe un card de memorie, dintr-un export automat etc.) e adăugat singur la coadă:",
+    watchfolders_steps=[
+        "Apasă „Adaugă folder” în panoul „Watch Folders” și alege folderul de urmărit.",
+        "Dacă folderul are deja fișiere în el, aplicația te întreabă dacă vrei să le adaugi și pe acelea, sau doar pe cele care vor apărea de acum înainte.",
+        "Comutatorul de lângă fiecare folder îl activează/dezactivează temporar, fără să-l ștergi din listă.",
+    ],
+    watchfolders_note="<b>Notă:</b> un Watch Folder rămâne activ doar cât timp aplicația CG Convertor este deschisă.",
+    h_player="8. Previzualizare LUT/LOG în timp real",
+    player_intro="Din meniul contextual al unui fișier (click-dreapta pe rândul lui), „Deschide previzualizarea” pornește un player video care redă fișierul cu un LUT 3D (.cube) aplicat live, direct pe imaginea originală — util ca să verifici rapid cum arată un clip Log cu un anumit LUT de vizualizare, fără să aștepți conversia efectivă.",
+    h_compare="9. Comparație de metadate",
+    compare_intro="Selectează 2 sau mai multe fișiere din coadă (Cmd+click sau Shift+click pe rânduri) și apasă butonul „Compară (N)” — se deschide o pagină completă, într-o filă de browser, cu TOATE metadatele tehnice ale fișierelor selectate, puse unele lângă altele:",
+    compare_steps=[
+        "Fiecare coloană din tabel arată un thumbnail al clipului deasupra numelui fișierului, ca să știi exact la ce fișier te uiți.",
+        "Câmpul de căutare din partea de sus filtrează instant rândurile după numele parametrului tehnic căutat.",
+    ],
+    compare_features=[
+        "„Evidențiază diferențele” — colorează rândurile unde fișierele NU au aceeași valoare.",
+        "„Ascunde identice” — arată doar parametrii care diferă între fișiere, util când compari zeci de parametri și vrei să vezi rapid doar ce nu se potrivește.",
+    ],
+    h_report="10. Generează raport",
+    report_intro="Butonul „Generează raport” din bara de jos creează o pagină HTML cu un rezumat al întregii cozi curente — thumbnail, nume fișier, metadate de bază și statusul conversiei pentru fiecare fișier — utilă ca dovadă/jurnal al unei sesiuni de conversie, trimisă mai departe pe email sau păstrată ca arhivă.",
+    h_modes="11. Moduri de conversie",
     modes=[
         "<b>Rewrap</b> — rapid, fără re-encode, doar schimbă containerul. Păstrează exact calitatea și timecode-ul original.",
         "<b>Transcode</b> — re-encode complet în ProRes 422/422 HQ/422 LT/4444 sau DNxHD/DNxHR HQ, cu păstrarea timecode-ului și a bit depth-ului audio original.",
     ],
-    h_trial="6. Licență, Trial și Donație",
+    h_trial="12. Licență, Trial și Donație",
     trial_intro="Aplicația oferă acces complet, fără restricții, timp de <b>15 zile</b> de la prima pornire. După expirarea acestei perioade de probă (Trial), conversiile noi se opresc până activezi o licență.",
     trial=[
         "Apasă „Activează licența” — se deschide un mesaj WhatsApp pre-completat, cu ID-ul unic al calculatorului tău deja inclus.",
@@ -190,9 +256,9 @@ RO = dict(
     ],
     donation_note="<b>Donație:</b> 23 € — susține continuarea dezvoltării aplicației și a platformei, după cele 15 zile de Trial gratuit. Nu este o vânzare — activarea se face manual, prin WhatsApp, pe baza donației.",
     trial_note="<b>Important:</b> dacă schimbi calculatorul, scrie din nou pe WhatsApp — codul se regenerează pentru noul ID.",
-    h_uninstall="7. Dezinstalare",
+    h_uninstall="13. Dezinstalare",
     uninstall="Rulează <b>Dezinstalare_CGConvertor.command</b> din arhiva descărcată — șterge aplicația și toate fișierele de date.",
-    h_support="8. Suport",
+    h_support="14. Suport",
     support="Pentru orice întrebare, scrie pe WhatsApp (buton în fereastra de activare) sau deschide un Issue pe GitHub.",
 )
 
@@ -247,12 +313,48 @@ EN = dict(
         "<b>“Open File”</b> — opens the converted file directly in your computer's default video player app (for example QuickTime Player, or DaVinci Resolve if that's set as default).",
         "<b>“Show in Finder”</b> — opens a Finder window at the destination folder, with the converted file already selected (highlighted), so you find it instantly without browsing folders manually.",
     ],
-    h_modes="5. Conversion modes",
+    h_selection="5. Selection and partial conversion",
+    selection_intro="You don't always have to convert the whole queue. Check the box on the left of each row to select only the files you want:",
+    selection_items=[
+        "<b>“Select All” / “Deselect All”</b> — buttons in the bottom bar, next to “Clear list”, to check/uncheck every file in the queue with one click.",
+        "With at least one file checked, the main button becomes <b>“Start (N)”</b> and converts ONLY the selected files, leaving the rest untouched in the queue.",
+        "With nothing checked, “Start” converts the whole queue, as before.",
+    ],
+    h_presets="6. Output presets",
+    presets_intro="A preset saves a complete format/codec combination so you don't have to pick it manually every time. Edit them from the “Presets” window:",
+    presets_steps=[
+        "Press “Edit” next to the preset picker in the sidebar.",
+        "Add a new preset (any name you like) or edit an existing one — pick the container, video codec, desired FPS, and the other options.",
+        "Save — the preset appears immediately in the sidebar list, ready to use for the next conversions.",
+    ],
+    h_watchfolders="7. Watch Folders — automatic folder conversion",
+    watchfolders_intro="A Watch Folder is a folder the app constantly monitors — any new video file that appears there (from a memory card, an automatic export, etc.) is added to the queue on its own:",
+    watchfolders_steps=[
+        "Press “Add folder” in the “Watch Folders” panel and pick the folder to watch.",
+        "If the folder already has files in it, the app asks whether you want to add those too, or only the ones that will appear from now on.",
+        "The toggle next to each folder temporarily enables/disables it without removing it from the list.",
+    ],
+    watchfolders_note="<b>Note:</b> a Watch Folder stays active only while the CG Convertor app is open.",
+    h_player="8. Real-time LUT/LOG preview",
+    player_intro="From a file's context menu (right-click on its row), “Open preview” launches a video player that plays the file with a 3D LUT (.cube) applied live, right on top of the original footage — useful to quickly check how a Log clip looks with a given viewing LUT, without waiting for the actual conversion.",
+    h_compare="9. Metadata comparison",
+    compare_intro="Select 2 or more files in the queue (Cmd+click or Shift+click on rows) and press the “Compare (N)” button — a full page opens in a browser tab, with ALL the technical metadata of the selected files laid out side by side:",
+    compare_steps=[
+        "Each column in the table shows a thumbnail of the clip above the filename, so you always know which file you're looking at.",
+        "The search field at the top instantly filters rows by the technical parameter name you're searching for.",
+    ],
+    compare_features=[
+        "“Highlight differences” — colors the rows where the files don't share the same value.",
+        "“Hide identical” — shows only the parameters that differ between files, useful when comparing dozens of parameters and you want to see just what doesn't match.",
+    ],
+    h_report="10. Generate report",
+    report_intro="The “Generate report” button in the bottom bar creates an HTML page summarizing the entire current queue — thumbnail, filename, basic metadata, and conversion status for each file — useful as proof/log of a conversion session, to send by email or keep as an archive.",
+    h_modes="11. Conversion modes",
     modes=[
         "<b>Rewrap</b> — fast, no re-encode, just swaps the container. Keeps the exact original quality and timecode.",
         "<b>Transcode</b> — full re-encode into ProRes 422/422 HQ/422 LT/4444 or DNxHD/DNxHR HQ, preserving timecode and the original audio bit depth.",
     ],
-    h_trial="6. License, Trial and Donation",
+    h_trial="12. License, Trial and Donation",
     trial_intro="The app offers full, unrestricted access for <b>15 days</b> from the first launch. After this Trial period expires, new conversions stop until you activate a license.",
     trial=[
         "Tap “Activate license” — opens a pre-filled WhatsApp message with your computer's unique ID already included.",
@@ -260,9 +362,9 @@ EN = dict(
     ],
     donation_note="<b>A donation, not a list price:</b> €23 — supports ongoing development of the app and the platform, after the 15-day free Trial. Not a sale — activation happens manually, over WhatsApp, based on the donation.",
     trial_note="<b>Important:</b> if you switch computers, message WhatsApp again — the code is regenerated for the new ID.",
-    h_uninstall="7. Uninstalling",
+    h_uninstall="13. Uninstalling",
     uninstall="Run <b>Dezinstalare_CGConvertor.command</b> from the downloaded archive — it removes the app and all data files.",
-    h_support="8. Support",
+    h_support="14. Support",
     support="For any question, message WhatsApp (button in the activation window) or open an Issue on GitHub.",
 )
 
@@ -317,12 +419,48 @@ ES = dict(
         "<b>“Abrir archivo”</b> — abre el archivo convertido directamente en la app de reproducción de vídeo predeterminada de tu ordenador (por ejemplo QuickTime Player, o DaVinci Resolve si está configurado como predeterminado).",
         "<b>“Mostrar en Finder”</b> — abre una ventana de Finder en la carpeta de destino, con el archivo convertido ya seleccionado (resaltado), para que lo encuentres al instante sin buscar manualmente en carpetas.",
     ],
-    h_modes="5. Modos de conversión",
+    h_selection="5. Selección y conversión parcial",
+    selection_intro="No siempre tienes que convertir toda la cola. Marca la casilla a la izquierda de cada fila para seleccionar solo los archivos que quieres:",
+    selection_items=[
+        "<b>“Seleccionar todo” / “Deseleccionar todo”</b> — botones en la barra inferior, junto a “Vaciar lista”, para marcar/desmarcar con un clic todos los archivos de la cola.",
+        "Con al menos un archivo marcado, el botón principal se convierte en <b>“Iniciar (N)”</b> y convierte SOLO los archivos seleccionados, dejando el resto intacto en la cola.",
+        "Sin nada marcado, “Iniciar” convierte toda la cola, como antes.",
+    ],
+    h_presets="6. Preajustes de salida",
+    presets_intro="Un preajuste guarda una combinación completa de formato/códec, para no tener que elegirla manualmente cada vez. Se edita desde la ventana “Preajustes”:",
+    presets_steps=[
+        "Pulsa “Editar” junto al selector de preajustes, en la barra lateral.",
+        "Añade un preajuste nuevo (nombre libre, el que quieras) o edita uno existente — elige el contenedor, el códec de vídeo, los FPS deseados y las demás opciones.",
+        "Guarda — el preajuste aparece de inmediato en la lista de la barra lateral, listo para usar en las próximas conversiones.",
+    ],
+    h_watchfolders="7. Watch Folders — conversión automática de carpeta",
+    watchfolders_intro="Un Watch Folder es una carpeta que la app vigila constantemente — cualquier archivo de vídeo nuevo que aparezca allí (de una tarjeta de memoria, una exportación automática, etc.) se añade solo a la cola:",
+    watchfolders_steps=[
+        "Pulsa “Añadir carpeta” en el panel “Watch Folders” y elige la carpeta a vigilar.",
+        "Si la carpeta ya tiene archivos, la app te pregunta si quieres añadir también esos, o solo los que aparezcan a partir de ahora.",
+        "El interruptor junto a cada carpeta la activa/desactiva temporalmente, sin eliminarla de la lista.",
+    ],
+    watchfolders_note="<b>Nota:</b> un Watch Folder permanece activo solo mientras la app CG Convertor esté abierta.",
+    h_player="8. Previsualización LUT/LOG en tiempo real",
+    player_intro="Desde el menú contextual de un archivo (clic derecho sobre su fila), “Abrir previsualización” inicia un reproductor de vídeo que reproduce el archivo con un LUT 3D (.cube) aplicado en directo, sobre la imagen original — útil para comprobar rápidamente cómo se ve un clip Log con un LUT de visualización concreto, sin esperar a la conversión real.",
+    h_compare="9. Comparación de metadatos",
+    compare_intro="Selecciona 2 o más archivos en la cola (Cmd+clic o Mayús+clic sobre las filas) y pulsa el botón “Comparar (N)” — se abre una página completa, en una pestaña del navegador, con TODOS los metadatos técnicos de los archivos seleccionados, uno junto a otro:",
+    compare_steps=[
+        "Cada columna de la tabla muestra una miniatura del clip encima del nombre del archivo, para que siempre sepas qué archivo estás viendo.",
+        "El campo de búsqueda de arriba filtra al instante las filas según el nombre del parámetro técnico buscado.",
+    ],
+    compare_features=[
+        "“Resaltar diferencias” — colorea las filas donde los archivos no comparten el mismo valor.",
+        "“Ocultar idénticos” — muestra solo los parámetros que difieren entre archivos, útil al comparar decenas de parámetros y querer ver rápido solo lo que no coincide.",
+    ],
+    h_report="10. Generar informe",
+    report_intro="El botón “Generar informe” de la barra inferior crea una página HTML con un resumen de toda la cola actual — miniatura, nombre de archivo, metadatos básicos y estado de conversión de cada archivo — útil como prueba/registro de una sesión de conversión, para enviar por correo o guardar como archivo.",
+    h_modes="11. Modos de conversión",
     modes=[
         "<b>Rewrap</b> — rápido, sin re-codificación, solo cambia el contenedor. Conserva exactamente la calidad y el timecode original.",
         "<b>Transcodificar</b> — re-codificación completa a ProRes 422/422 HQ/422 LT/4444 o DNxHD/DNxHR HQ, conservando el timecode y la profundidad de bits del audio original.",
     ],
-    h_trial="6. Licencia, Prueba y Donación",
+    h_trial="12. Licencia, Prueba y Donación",
     trial_intro="La app ofrece acceso completo y sin restricciones durante <b>15 días</b> desde el primer inicio. Al finalizar este período de prueba (Trial), las conversiones nuevas se detienen hasta que actives una licencia.",
     trial=[
         "Pulsa “Activar licencia” — se abre un mensaje de WhatsApp ya redactado, con el ID único de tu ordenador incluido.",
@@ -330,9 +468,9 @@ ES = dict(
     ],
     donation_note="<b>Una donación, no un precio de lista:</b> 23 € — apoya el desarrollo continuo de la app y la plataforma, tras los 15 días de prueba gratuita. No es una venta — la activación se hace manualmente, por WhatsApp, en base a la donación.",
     trial_note="<b>Importante:</b> si cambias de ordenador, escribe de nuevo por WhatsApp — el código se regenera para el nuevo ID.",
-    h_uninstall="7. Desinstalación",
+    h_uninstall="13. Desinstalación",
     uninstall="Ejecuta <b>Dezinstalare_CGConvertor.command</b> desde el archivo descargado — elimina la app y todos los archivos de datos.",
-    h_support="8. Soporte",
+    h_support="14. Soporte",
     support="Para cualquier pregunta, escribe por WhatsApp (botón en la ventana de activación) o abre un Issue en GitHub.",
 )
 
