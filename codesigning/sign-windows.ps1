@@ -55,14 +55,28 @@ try {
         exit 1
     }
 
+    # [FIX 2026-09-06] Esec real de CI: "signtool verify /pa" valideaza
+    # LANTUL COMPLET de incredere (pana la un certificat radacina de
+    # incredere pe MASINA care verifica) - pe runner-ul CI (o masina
+    # Windows noua, temporara), certificatul nostru self-signed NU e
+    # importat in Trusted Root (normal - doar Cristi si colaboratorii au
+    # facut asta local, vezi README-windows.md), deci verificarea de
+    # incredere esueaza mereu aici, chiar daca semnarea a reusit perfect.
+    # Fix: verificam DOAR ca fisierul are efectiv o semnatura Authenticode
+    # atasata (Get-AuthenticodeSignature, fara sa cerem lant de incredere)
+    # - asta prinde in continuare o semnare care esueaza silentios, fara
+    # sa ceara imposibilul (incredere OS pentru un cert self-signed pe o
+    # masina care nu l-a vazut niciodata).
     Write-Host "==> [codesigning] Verific semnatura ($TargetPath)..."
-    & $signtool verify /pa $TargetPath
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "==> [codesigning] signtool verify a esuat (cod $LASTEXITCODE) - semnatura invalida, opresc build-ul."
+    $sig = Get-AuthenticodeSignature -FilePath $TargetPath
+    if (-not $sig.SignerCertificate) {
+        Write-Error "==> [codesigning] Fisierul nu are nicio semnatura Authenticode atasata dupa signtool sign."
         exit 1
     }
+    Write-Host "==> [codesigning] Semnatura prezenta (Subject: $($sig.SignerCertificate.Subject))."
+    Write-Host "==> [codesigning] Status lant de incredere pe acest runner: $($sig.Status) - 'UnknownError'/'NotTrusted' e NORMAL aici (self-signed, CI nu are certificatul in Trusted Root); userii finali il au dupa import manual."
 
-    Write-Host "==> [codesigning] Gata: $TargetPath semnat si verificat."
+    Write-Host "==> [codesigning] Gata: $TargetPath semnat."
 }
 finally {
     # Fisierul .pfx temporar NU trebuie sa supravietuiasca dincolo de acest

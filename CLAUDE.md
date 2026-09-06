@@ -861,10 +861,17 @@ DOAR pentru etapa de testare.
   timestamp (`/tr .../td sha256`) ca semnătura să rămână validă și după
   expirarea certificatului, apoi ȘTERGE fișierul `.pfx` temporar de pe
   disc imediat după folosire.
-- **Verificare post-semnare obligatorie în CI**: `signtool verify /pa`
-  (sau echivalent) pe fiecare executabil semnat, ÎNAINTE ca pasul de
+- **Verificare post-semnare obligatorie în CI**: `Get-AuthenticodeSignature`
+  (confirmă DOAR că fișierul are efectiv o semnătură atașată — nu
+  `signtool verify /pa`, care validează lanțul de încredere complet și
+  eșuează mereu pe un runner CI proaspăt, unde certificatul self-signed
+  nu e importat în Trusted Root; asta e normal pentru testare internă,
+  nu un eșec real) pe fiecare executabil semnat, ÎNAINTE ca pasul de
   build să fie considerat trecut — o semnare care "reușește" silențios
   dar produce un binar nesemnat/corupt nu trebuie să treacă drept succes.
+  **[CORECȚIE 2026-09-06]**: prima implementare folosea `signtool verify
+  /pa`, care a picat CI-ul chiar și după o semnare reușită — descoperit
+  la primul test real, corectat imediat.
 - **Exportul `.cer` (public, fără cheie privată)** se publică alături de
   installer (asset de release sau folder `dist/`) — colaboratorii îl
   importă o SINGURĂ dată în Trusted Root, apoi orice build viitor semnat

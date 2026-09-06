@@ -60,8 +60,11 @@ versiunile următoare.
 - Dacă secretele SUNT setate: după ce `CGConvertor.exe` (PyInstaller) și
   installer-ul final (Inno Setup) există, ambele sunt semnate cu
   `signtool.exe` (localizat dinamic din Windows Kits, cu timestamp), apoi
-  verificate cu `signtool verify /pa` — un eșec de verificare oprește
-  build-ul (CI roșu), nu trece drept succes silențios.
+  verificate cu `Get-AuthenticodeSignature` — confirmă DOAR că semnătura
+  a fost atașată corect, fără să ceară lanț de încredere complet (asta ar
+  eșua mereu pe un runner CI proaspăt, care nu are certificatul în
+  Trusted Root — normal pentru self-signed, nu un bug). Un eșec real de
+  semnare (fișier fără nicio semnătură) tot oprește build-ul (CI roșu).
 
 ## Regenerarea certificatului (dacă expiră sau e compromis)
 
