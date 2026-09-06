@@ -47,7 +47,24 @@ extension MetadataCompareEngine {
             }
         }
 
-        let antetColoane = jobs.map { "<th>\(escapeHTML($0.numeFisier))</th>" }.joined()
+        // Thumbnail per coloana (2026-09-06, cerut de Cristi: "mi-ar fi
+        // placut sa apara acel thumbnail deasupra la fiecare clip... ca sa
+        // stie pe fiecare clip pe care sa se uite"). Reutilizeaza
+        // thumbnail-ul deja generat pentru coada (`caleThumbnail`) daca
+        // exista; altfel il genereaza pe loc (acelasi motor ca raportul).
+        func thumbnailData(_ job: VideoJob) -> String {
+            var cale = job.caleThumbnail
+            if cale == nil || !FileManager.default.fileExists(atPath: cale!) {
+                let iesire = MediaInspector.folderThumbnailuri().appendingPathComponent("compare_\(job.id.uuidString).jpg")
+                if MediaInspector.genereazaThumbnail(url: job.urlSursa, lutPath: nil, iesire: iesire) {
+                    cale = iesire.path
+                }
+            }
+            guard let cale, let data = FileManager.default.contents(atPath: cale) else { return "" }
+            return "<img class=\"thumb\" src=\"data:image/jpeg;base64,\(data.base64EncodedString())\">"
+        }
+
+        let antetColoane = jobs.map { "<th>\(thumbnailData($0))<div class=\"fname\">\(escapeHTML($0.numeFisier))</div></th>" }.joined()
 
         let html = """
         <!DOCTYPE html><html><head><meta charset="utf-8">
@@ -62,7 +79,9 @@ extension MetadataCompareEngine {
         label{font-size:13px;color:#C9CDD3;display:flex;align-items:center;gap:6px;cursor:pointer}
         table{border-collapse:collapse;width:100%;font-size:12.5px}
         th,td{border-bottom:1px solid #23262C;padding:8px 10px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
-        th{position:sticky;top:56px;background:#1A1D22;color:#EDEFF2;font-size:11.5px;z-index:2}
+        th{position:sticky;top:56px;background:#1A1D22;color:#EDEFF2;font-size:11.5px;z-index:2;white-space:normal;vertical-align:top}
+        th .thumb{display:block;width:100%;max-width:220px;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:6px;margin:0 0 6px;border:1px solid #2B2F36}
+        th .fname{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
         td.label{color:#9AA0A8;font-weight:500}
         tr.cat td{background:rgba(232,150,60,0.08);color:#E8963C;font-weight:700;font-size:10.5px;letter-spacing:.04em;position:sticky;left:0}
         tr.diferit.highlight td{background:rgba(232,150,60,0.10)}

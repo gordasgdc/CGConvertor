@@ -1069,7 +1069,8 @@ class CGConvertorApp(BASE_CLASS):
         # (vezi metadata_compare_view.py). Analiza (ffprobe/Sony XML) merge
         # pe thread separat ca sa nu inghete UI-ul pe fisiere multe/mari.
         from metadata_compare_view import open_comparison
-        cleaned = [{"path": j["path"], "name": os.path.basename(j["path"])} for j in jobs]
+        cleaned = [{"path": j["path"], "name": os.path.basename(j["path"]),
+                    "thumbnail_path": j.get("thumbnail_path")} for j in jobs]
 
         def worker():
             path = open_comparison(cleaned)

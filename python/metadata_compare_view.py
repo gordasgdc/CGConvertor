@@ -8,12 +8,31 @@ pop-up mic"). Fostul `MetadataCompareDialog` (Toplevel + ttk.Treeview,
 dependinte) si o deschidem cu vizualizatorul implicit, exact ca
 "Genereaza raport" (`media_inspector.generate_html_report`)."""
 
+import base64
 import html as html_lib
 import os
 import tempfile
 import time
 
+from media_inspector import generate_thumbnail, thumbnails_folder
 from metadata_compare import categories_for
+
+
+def _thumbnail_img_tag(job):
+    """Thumbnail per coloana (2026-09-06, cerut de Cristi, port 1:1 al
+    Mac): reutilizeaza thumbnail-ul deja generat pentru coada
+    (`job["thumbnail_path"]`) daca exista; altfel il genereaza pe loc."""
+    path = job.get("thumbnail_path")
+    if not path or not os.path.isfile(path):
+        path = os.path.join(thumbnails_folder(), f"compare_{os.path.basename(job['path'])}.jpg")
+        if not generate_thumbnail(job["path"], None, path):
+            return ""
+    try:
+        with open(path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("ascii")
+    except OSError:
+        return ""
+    return f'<img class="thumb" src="data:image/jpeg;base64,{b64}">'
 
 
 def _value(categories_per_path, path, category, label):
@@ -65,7 +84,10 @@ def open_comparison(jobs):
                 f'<tr class="{row_class}" data-search="{search}"><td class="label">{html_lib.escape(label)}</td>{cells}</tr>'
             )
 
-    header_cols = "".join(f"<th>{html_lib.escape(job['name'])}</th>" for job in jobs)
+    header_cols = "".join(
+        f'<th>{_thumbnail_img_tag(job)}<div class="fname">{html_lib.escape(job["name"])}</div></th>'
+        for job in jobs
+    )
 
     html_doc = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>Comparație metadate — CG Convertor</title>
@@ -79,7 +101,9 @@ input[type=text]{{background:#1A1D22;border:1px solid #2B2F36;color:#EDEFF2;bord
 label{{font-size:13px;color:#C9CDD3;display:flex;align-items:center;gap:6px;cursor:pointer}}
 table{{border-collapse:collapse;width:100%;font-size:12.5px}}
 th,td{{border-bottom:1px solid #23262C;padding:8px 10px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}}
-th{{position:sticky;top:56px;background:#1A1D22;color:#EDEFF2;font-size:11.5px;z-index:2}}
+th{{position:sticky;top:56px;background:#1A1D22;color:#EDEFF2;font-size:11.5px;z-index:2;white-space:normal;vertical-align:top}}
+th .thumb{{display:block;width:100%;max-width:220px;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:6px;margin:0 0 6px;border:1px solid #2B2F36}}
+th .fname{{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}}
 td.label{{color:#9AA0A8;font-weight:500}}
 tr.cat td{{background:rgba(232,150,60,0.08);color:#E8963C;font-weight:700;font-size:10.5px;letter-spacing:.04em;position:sticky;left:0}}
 tr.diferit.highlight td{{background:rgba(232,150,60,0.10)}}

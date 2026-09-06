@@ -2,6 +2,13 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.3 — Thumbnail per clip în comparația de metadate (Mac + Windows, 2026-09-06)
+
+Cerut de Cristi după ce a văzut comparația nouă: fiecare coloană din
+tabelul de comparație arată acum thumbnail-ul clipului deasupra numelui
+de fișier — reutilizează thumbnail-ul deja generat pentru coadă, sau îl
+generează pe loc dacă lipsește.
+
 ### v3.14.2 — Comparație metadate: din pop-up mic, în pagină HTML (Mac + Windows, 2026-09-06)
 
 Redimensionarea din v3.14.1 nu era suficientă — tot rămânea o fereastră
