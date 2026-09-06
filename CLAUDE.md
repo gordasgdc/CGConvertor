@@ -2890,3 +2890,44 @@ putut verifica REAL redarea pe Windows — Cristi confirma pe masina lui.
 
 Versiune 3.14.10 -> 3.14.11 (PATCH — fix izolat, fara arhitectura noua,
 Regula 14).
+
+## v3.14.12 (2026-09-06) — FIX real #2: ecran negru pe VM (flip-model DXGI)
+
+**Raportat de Cristi dupa testarea v3.14.11**: tot negru. De data asta,
+in loc sa presupun ("posibil e ceva cu masina virtuala" a sugerat chiar
+Cristi), am cerut jurnalul din nou - metoda care a functionat exact la
+v3.14.11. Jurnalul de aceasta data arata ceva neasteptat: **INIT COMPLET
+REUSIT** - `Device Name: Parallels Display Adapter (WDDM)`, D3D11
+feature level 11_1, swapchain configurat cu succes, `first video frame
+after restart shown`, `playback restart complete... video=playing` -
+NICIO eroare vizibila in jurnal, si totusi ecran negru pe masina reala a
+lui Cristi.
+
+**Cauza reala, identificata din jurnal**: linia `Using flip-model
+presentation` - DXGI "flip model" (modul de prezentare implicit pe D3D11
+modern) e un caz cunoscut, documentat chiar in optiunile oficiale mpv, ca
+NU se compune vizual corect pe multe drivere de placa grafica VIRTUALA
+(Parallels/VMware/RDP) - API-ul Windows raporteaza succes la fiecare pas
+(creare swapchain, prezentare cadre), dar driverul WDDM virtual nu poate
+face scanout-ul direct cerut de flip-model, deci nimic nu ajunge vizual
+pe ecran, desi mpv "crede" ca a randat corect.
+
+**Fix**: `--d3d11-flip=no` - optiune mpv documentata exact pentru acest
+scenariu, forteaza modelul vechi de prezentare (bitblt), compatibil cu
+drivere de VM care nu implementeaza corect flip-model. Adaugat alaturi
+de `--vo=gpu --hwdec=no` (neschimbate, ambele confirmate corecte din
+jurnalul anterior).
+
+**Lectie confirmata a doua oara**: jurnalul (`--log-file`, adaugat in
+v3.14.10) a dat raspunsul exact, de doua ori la rand, in locul unor
+presupuneri (inclusiv a uneia de-a lui Cristi, "posibil e virtual" - corecta
+ca directie, dar mecanismul exact tot a trebuit confirmat din jurnal, nu
+presupus). Regula practica ramane: la orice bug de randare fara eroare
+vizibila userului, jurnalul complet e primul pas, nu a treia sau a patra
+incercare.
+
+**Verificat**: `python3 -m py_compile lut_player.py` - 0 erori. NU s-a
+putut verifica REAL pe masina lui Cristi - confirmare asteptata.
+
+Versiune 3.14.11 -> 3.14.12 (PATCH — fix izolat, fara arhitectura noua,
+Regula 14).

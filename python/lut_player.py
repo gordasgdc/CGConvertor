@@ -60,8 +60,24 @@ from dependency_manager import find_mpv
 # hardware intr-un mediu necunoscut (VM sau nu) poate fi instabila, iar
 # fisierele de test sunt suficient de mici incat decodarea software e
 # oricum instantanee.
+#
+# CORECTIE 2 (2026-09-06, tot dovedita cu jurnal real, nu presupunere):
+# cu "--vo=gpu", jurnalul arata acum INIT COMPLET REUSIT - D3D11 pe
+# "Parallels Display Adapter (WDDM)" se initializeaza fara nicio eroare,
+# "first video frame after restart shown", audio+video pornesc amandoua
+# ("playback restart complete... video=playing") - DAR ecranul ramane
+# negru la Cristi. Jurnalul arata clar cauza: "Using flip-model
+# presentation" - modul de prezentare DXGI "flip model" (implicit pe
+# D3D11 modern) RAPORTEAZA succes la creare, dar pe multe drivere de
+# placa grafica VIRTUALA (Parallels/VMware/RDP - caz cunoscut, documentat
+# oficial in optiunile mpv) swapchain-ul NU se compune vizual pe ecranul
+# real, desi API-ul Windows confirma initializarea. Fix: "--d3d11-flip=no"
+# - forteaza mpv sa foloseasca modelul vechi de prezentare (bitblt), fara
+# flip-model, compatibil cu drivere de VM care nu implementeaza corect
+# scanout-ul direct cerut de flip-model.
 _WINDOWS_MPV_VIDEO_ARGS = [
     "--vo=gpu",
+    "--d3d11-flip=no",
     "--hwdec=no",
 ] if sys.platform.startswith("win") else []
 

@@ -2,6 +2,13 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.12 — FIX real: ecran negru Player LUT pe mașini virtuale (Windows) (2026-09-06)
+
+- Player-ul LUT rămânea negru pe mașini virtuale (Parallels/VMware/RDP)
+  chiar și după fix-ul din v3.14.11 — modul de prezentare grafică folosit
+  implicit de mpv raportează succes dar nu se afișează pe unele plăci
+  video virtuale. Forțat modul compatibil, confirmat cu jurnal real.
+
 ### v3.14.11 — FIX real: ecran negru la Player LUT (Windows) (2026-09-06)
 
 - Găsit, confirmat cu jurnal real: `--vo=gdi` (fix-ul din v3.14.9) nu mai
