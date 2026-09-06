@@ -34,20 +34,35 @@ from tkinter import filedialog, ttk
 
 from dependency_manager import find_mpv
 
-# Fix real (2026-09-06, raportat de Cristi, testat pe Windows real):
-# fara "--vo" explicit, mpv face auto-probe intre driverele de output
-# video disponibile — in contextul de embed printr-un HWND strain
-# (`--wid`, vezi mai jos), auto-probe-ul alege des un vo care nu poate
-# desena in fereastra Tkinter primita (ecran negru, audio se aude,
-# NICIUN control OSC vizibil fiindca OSC se randeaza peste suprafata
-# video, care nu exista). "--vo" accepta o LISTA prioritara separata
-# prin virgula (documentat oficial, man mpv) — mpv incearca in ordine
-# pana gaseste unul care porneste. d3d11/gpu-next sunt cele mai fiabile
-# pentru embed HWND pe Windows 10/11; "gpu"/"gdi" raman ca fallback.
+# Fix (2026-09-06, raportat de Cristi, testat pe Windows real): fara
+# "--vo" explicit, mpv face auto-probe intre driverele de output video
+# disponibile — in contextul de embed printr-un HWND strain (`--wid`,
+# vezi mai jos), auto-probe-ul alege des un vo care nu poate desena in
+# fereastra Tkinter primita (ecran negru, audio se aude, NICIUN control
+# OSC vizibil fiindca OSC se randeaza peste suprafata video, care nu
+# exista).
+#
+# Incercarea initiala (`--vo=gpu-next,gpu,direct3d11,gdi`) NU a rezolvat
+# complet - Cristi a semnalat corect cauza suplimentara: testeaza pe
+# Windows RULAT IN PARALLELS (deja mentionat in avertismentul de mai sus,
+# scris inainte sa apara acest bug), deci placa grafica e VIRTUALIZATA
+# (Parallels Display Adapter), cu suport partial/neconform pentru
+# compunere GPU D3D11/OpenGL - initializarea "reuseste" (mpv nu trece la
+# urmatoarea optiune din lista), dar randeaza gresit (dreptunghi gri
+# suprapus peste negru = cadru de compunere GPU corupt, simptom clasic
+# de driver grafic de VM). "--vo" accepta o LISTA prioritara separata
+# prin virgula (documentat oficial, man mpv), dar lista NU ajuta aici -
+# fix-ul e sa se sara direct la randorul care NU foloseste deloc
+# compunere GPU: "--vo=gdi" (blit direct GDI, exact ca desenul obisnuit
+# Win32 pe o fereastra - functioneaza identic pe hardware real si pe
+# orice placa virtuala de VM/RDP). Decodarea ramane software
+# ("--hwdec=no") din acelasi motiv - decodare hardware ar depinde tot de
+# driverul GPU (posibil virtualizat) al mediului de rulare; aplicarea
+# LUT-ului insasi (`lavfi=[lut3d=...]`) ruleaza deja pe CPU, prin
+# libavfilter, deci nu pierde nimic din calitate.
 _WINDOWS_MPV_VIDEO_ARGS = [
-    "--vo=gpu-next,gpu,direct3d11,gdi",
-    "--gpu-context=d3d11",
-    "--hwdec=auto-safe",
+    "--vo=gdi",
+    "--hwdec=no",
 ] if sys.platform.startswith("win") else []
 
 

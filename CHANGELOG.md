@@ -2,6 +2,16 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.9 — FIX Windows: "Security validation failure" la update + ecran negru pe plăci grafice virtuale/VM (2026-09-06)
+
+- Actualizarea automată (Caută actualizare → descarcă → lansează
+  instalatorul) nu mai eșuează cu „Security validation failure: parent
+  process has different executable!" — instalatorul e lansat acum la
+  fel ca la un dublu-click manual din Explorer.
+- Player-ul LUT nu mai afișează ecran negru/artefacte grafice pe mașini
+  cu placă grafică virtuală (Parallels, VMware, RDP) — randare fără
+  compunere GPU, identică pe hardware real și virtual.
+
 ### v3.14.8 — FIX Windows: ecran negru la Player LUT + buton „Compară metadatele" adăugat (2026-09-06)
 
 - Player-ul real-time cu LUT (Windows) nu mai afișa ecran negru fără

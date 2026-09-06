@@ -2677,3 +2677,59 @@ apare corect.
 
 Versiune 3.14.7 -> 3.14.8 (PATCH — fix-uri izolate, fara arhitectura
 noua, Regula 14).
+
+## v3.14.9 (2026-09-06) — FIX "Security validation failure" la auto-update (Windows)
+
+**Raportat de Cristi cu screenshot exact**: dupa "Cauta actualizare" ->
+gaseste v3.14.8 -> incepe descarcarea -> la lansarea installer-ului
+apare un popup nativ Windows: "Security validation failure: parent
+process has different executable!".
+
+**Investigatie**: cautat explicit online (JRSoftware changelog-uri 6.3/
+6.4/6.5, forumul Inno Setup) - NU exista documentatie oficiala publica
+pentru acest mesaj exact; nu s-a putut confirma 100% mecanismul intern.
+Onest, neconfirmat direct, dar cel mai plausibil scenariu, coroborat cu
+codul nostru: `self_updater.download_and_install()` lansa Setup.exe cu
+`subprocess.Popen([exe_path], creationflags=DETACHED_PROCESS,
+close_fds=True)` — un `CreateProcess` "brut". `installer.iss` cere
+`PrivilegesRequired=admin`, deci Setup.exe se auto-relanseaza intern,
+elevat, prin UAC (`ShellExecute` cu verb "runas" - mecanism intern Inno,
+nu al nostru). Un `CreateProcess` direct, detasat de consola, difera de
+calea NORMALA prin care orice user lanseaza un installer descarcat
+(dublu-click in Explorer = `ShellExecuteExW`) - exact calea pe care o
+"asteapta" o verificare anti-hijacking mai noua din Inno Setup (adaugata
+ca protectie impotriva DLL-preloading/proces-injection, documentata doar
+generic in changelog: "Changes to further help protect against
+potential DLL preloading attacks", 6.3.0).
+
+**Fix**: `os.startfile(exe_path)` in loc de `subprocess.Popen(...)` -
+foloseste `ShellExecuteExW`, IDENTIC mecanismului unui dublu-click din
+Explorer (calea pe care niciun user care descarca manual installer-ul nu
+a raportat vreodata aceasta eroare). Eliminat importul `subprocess`
+(nefolosit altundeva in fisier) si `sys` (folosit doar pentru flag-ul
+`DETACHED_PROCESS`, acum inutil).
+
+**Nu s-a putut verifica REAL fluxul de auto-update pe Windows** (Claude
+nu poate declansa un update real de pe Mac catre propriul sau release) -
+Cristi confirma manual ca "Cauta actualizare" -> descarcare -> lansare
+functioneaza fara eroare, pe un build anterior instalat.
+
+**Al doilea fix, in aceeasi versiune** — raportat de Cristi in aceeasi
+sesiune, pe acelasi build v3.14.8 confirmat inca defect: ecranul negru +
+dreptunghi gri la Player LUT persista si dupa fix-ul `--vo` din v3.14.8
+(`gpu-next,gpu,direct3d11,gdi`). Cristi a semnalat cauza reala: testeaza
+Windows RULAT IN PARALLELS (deja mentionat in avertismentul din
+docstring-ul `lut_player.py`, scris INAINTE sa apara bug-ul) - placa
+grafica e VIRTUALIZATA. Explicatie: lista de prioritate `--vo` nu ajuta
+aici fiindca mpv trece la urmatoarea optiune DOAR daca initializarea
+esueaza explicit - pe placa virtuala Parallels, `gpu-next`/`gpu` se
+INITIALIZEAZA cu succes, dar COMPUNE gresit cadrul (dreptunghiul gri =
+cadru de compunere GPU corupt, simptom clasic de driver de VM). Fix:
+sarit direct la `--vo=gdi` (blit direct Win32, FARA nicio compunere GPU)
++ `--hwdec=no` (decodare software - decodarea hardware ar depinde tot de
+driverul GPU, posibil virtualizat). Aplicarea LUT-ului (`lavfi=[lut3d=
+...]`) ruleaza deja pe CPU prin libavfilter, deci nu se pierde nimic din
+calitate fata de varianta cu compunere GPU.
+
+Versiune 3.14.8 -> 3.14.9 (PATCH — fix-uri izolate, fara arhitectura
+noua, Regula 14).
