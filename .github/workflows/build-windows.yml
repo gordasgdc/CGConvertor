@@ -75,6 +75,21 @@ jobs:
             exit 1
           }
 
+      # [CLAUDE.md Regula 34, 2026-09-06] Semnare Self-Signed, DOAR pentru
+      # testare interna/cerc restrans (NU elimina SmartScreen pentru
+      # publicul larg - vezi codesigning/README-windows.md). Ruleaza DOAR
+      # daca secretele exista (Cristi le incarca o singura data, direct de
+      # pe Windows real - certificatul nu trece niciodata prin conversatia
+      # cu Claude) - altfel build-ul continua NESEMNAT, exact ca inainte,
+      # fara nicio eroare (acelasi tipar ca semnarea Mac, APPLE_SIGN_IDENTITY_APP).
+      - name: Semneaza CGConvertor.exe (Self-Signed, test intern)
+        if: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 != '' }}
+        shell: pwsh
+        env:
+          WIN_SELFSIGN_PFX_BASE64: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 }}
+          WIN_SELFSIGN_PFX_PASSWORD: ${{ secrets.WIN_SELFSIGN_PFX_PASSWORD }}
+        run: ..\codesigning\sign-windows.ps1 -TargetPath "dist\CGConvertor.exe"
+
       - name: Sincronizeaza versiunea installer-ului cu config.py
         shell: pwsh
         run: |
@@ -92,6 +107,14 @@ jobs:
             Write-Error "Inno Setup nu a produs CGConvertorSetup.exe"
             exit 1
           }
+
+      - name: Semneaza installer-ul final (Self-Signed, test intern)
+        if: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 != '' }}
+        shell: pwsh
+        env:
+          WIN_SELFSIGN_PFX_BASE64: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 }}
+          WIN_SELFSIGN_PFX_PASSWORD: ${{ secrets.WIN_SELFSIGN_PFX_PASSWORD }}
+        run: ..\codesigning\sign-windows.ps1 -TargetPath "Output\CGConvertorSetup.exe"
 
       - name: Redenumeste artefactul
         run: Copy-Item Output\CGConvertorSetup.exe "$env:GITHUB_WORKSPACE\CGConvertor-Windows-Setup.exe"
