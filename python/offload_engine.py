@@ -182,26 +182,26 @@ class DestinationJob:
                     if self.model == "size_only":
                         dst_size = os.path.getsize(dst_path)
                         if dst_size == entry["size"]:
-                            row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": status_ok, "error": ""}
+                            row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": status_ok, "error": "", "dest_path": dst_path}
                             writer.writerow([entry["rel_path"], entry["size"], "", "", status_ok, ""])
                             rows.append(row)
                             if mhl:
                                 mhl.add(entry["rel_path"], entry["size"], "", datetime.now())
                             return "ok"
-                        row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": "NEPOTRIVIRE", "error": "marime diferita"}
+                        row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": "NEPOTRIVIRE", "error": "marime diferita", "dest_path": dst_path}
                         writer.writerow([entry["rel_path"], entry["size"], "", "", "NEPOTRIVIRE", "marime diferita"])
                         rows.append(row)
                         return "mismatch"
                     src_hash = hash_of_file(entry["full_path"], self.model, self.cancel_event, chunk_size)
                     dst_hash = hash_of_file(dst_path, self.model, self.cancel_event, chunk_size)
                     if src_hash == dst_hash:
-                        row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": status_ok, "error": ""}
+                        row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": status_ok, "error": "", "dest_path": dst_path}
                         writer.writerow([entry["rel_path"], entry["size"], src_hash, dst_hash, status_ok, ""])
                         rows.append(row)
                         if mhl:
                             mhl.add(entry["rel_path"], entry["size"], src_hash, datetime.now())
                         return "ok"
-                    row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": "NEPOTRIVIRE", "error": "hash diferit"}
+                    row = {"rel_path": entry["rel_path"], "size_bytes": entry["size"], "status": "NEPOTRIVIRE", "error": "hash diferit", "dest_path": dst_path}
                     writer.writerow([entry["rel_path"], entry["size"], src_hash, dst_hash, "NEPOTRIVIRE", "hash diferit"])
                     rows.append(row)
                     self.on_activity(("mismatch", entry["rel_path"]))

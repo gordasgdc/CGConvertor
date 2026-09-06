@@ -176,6 +176,10 @@ struct OffloadReportRow {
     let dstHash: String
     let status: String
     let error: String
+    /// Calea completă la destinație — adăugată pentru thumbnail-ul real
+    /// din raportul HTML (QLThumbnailGenerator, port din DataMover
+    /// v2.11.3). Gol la un rând de eroare unde fișierul nu a ajuns pe disc.
+    var destPath: String = ""
 }
 
 struct OffloadDestinationResult {
@@ -295,22 +299,22 @@ final class OffloadDestinationJob {
                 if model == .sizeOnly {
                     let dstSize = (try? fm.attributesOfItem(atPath: dstPath)[.size] as? UInt64) ?? 0
                     if dstSize == entry.size {
-                        logRow(OffloadReportRow(relPath: entry.relPath, sizeBytes: entry.size, srcHash: "", dstHash: "", status: statusOK, error: ""))
+                        logRow(OffloadReportRow(relPath: entry.relPath, sizeBytes: entry.size, srcHash: "", dstHash: "", status: statusOK, error: "", destPath: dstPath))
                         mhl?.add(relPath: entry.relPath, size: Int64(entry.size), modificationDate: nil, hashHex: "", hashedAt: Date())
                         return .ok
                     } else {
-                        logRow(OffloadReportRow(relPath: entry.relPath, sizeBytes: entry.size, srcHash: "", dstHash: "", status: "NEPOTRIVIRE", error: "marime diferita"))
+                        logRow(OffloadReportRow(relPath: entry.relPath, sizeBytes: entry.size, srcHash: "", dstHash: "", status: "NEPOTRIVIRE", error: "marime diferita", destPath: dstPath))
                         return .mismatch
                     }
                 } else {
                     let srcHash = try offloadHashOfFile(path: entry.fullPath, model: model, cancel: cancel, chunkSize: chunkSize)
                     let dstHash = try offloadHashOfFile(path: dstPath, model: model, cancel: cancel, chunkSize: chunkSize)
                     if srcHash == dstHash {
-                        logRow(OffloadReportRow(relPath: entry.relPath, sizeBytes: entry.size, srcHash: srcHash, dstHash: dstHash, status: statusOK, error: ""))
+                        logRow(OffloadReportRow(relPath: entry.relPath, sizeBytes: entry.size, srcHash: srcHash, dstHash: dstHash, status: statusOK, error: "", destPath: dstPath))
                         mhl?.add(relPath: entry.relPath, size: Int64(entry.size), modificationDate: nil, hashHex: srcHash, hashedAt: Date())
                         return .ok
                     } else {
-                        logRow(OffloadReportRow(relPath: entry.relPath, sizeBytes: entry.size, srcHash: srcHash, dstHash: dstHash, status: "NEPOTRIVIRE", error: "hash diferit"))
+                        logRow(OffloadReportRow(relPath: entry.relPath, sizeBytes: entry.size, srcHash: srcHash, dstHash: dstHash, status: "NEPOTRIVIRE", error: "hash diferit", destPath: dstPath))
                         onActivity(String(format: L.t("offload.log.mismatch"), entry.relPath))
                         return .mismatch
                     }

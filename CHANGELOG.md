@@ -2,6 +2,16 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.5 — Descarcă PDF din rapoarte + thumbnail-uri în raportul de offload (Mac + Windows, 2026-09-06)
+
+- Buton „Descarcă PDF” (imprimare nativă a browserului) în toate rapoartele
+  HTML: raportul de conversie, comparația de metadate, raportul de offload.
+- Raportul de offload arată acum un thumbnail real per fișier, la fel ca
+  raportul de conversie și comparația de metadate.
+- Fix: la mărirea preview-ului static cu LUT (Mac), bara de derulare
+  putea ieși sub marginea ecranului pe unele rezoluții — panoul se
+  încadrează acum și pe verticală, nu doar pe orizontală.
+
 ### v3.14.4 — Meniu Ajutor cu ghid PDF (Mac + Windows, 2026-09-06)
 
 Aplicația nu avea niciun meniu Ajutor/Help până acum. Adăugat pe ambele

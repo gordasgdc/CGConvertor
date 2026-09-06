@@ -87,6 +87,18 @@ extension MetadataCompareEngine {
         tr.diferit.highlight td{background:rgba(232,150,60,0.10)}
         tr.hide-identical.identic{display:none}
         td{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+        .pdf-btn{background:#E8963C;color:#14161A;border:none;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;margin-left:auto}
+        .pdf-btn:hover{opacity:.85}
+        @media print{
+          .toolbar{display:none}
+          body{background:#fff!important;color:#111!important;padding:12px}
+          h1,.subtitle{color:#000!important}
+          th{position:static!important;background:#f0f0f0!important;color:#000!important;border-bottom:2px solid #999!important}
+          tr.cat td{background:#eee!important;color:#000!important;position:static!important}
+          tr.diferit td{background:#fff3e0!important}
+          td.label{color:#333!important}
+          th .thumb{border-color:#ccc!important}
+        }
         </style></head><body>
         <h1>Comparație metadate</h1>
         <p class="subtitle">\(jobs.count) fișiere · generat \(dataCurenta())</p>
@@ -94,6 +106,7 @@ extension MetadataCompareEngine {
           <input type="text" id="search" placeholder="Caută…" oninput="filtreaza()">
           <label><input type="checkbox" id="highlight" checked onchange="filtreaza()"> Evidențiază diferențele</label>
           <label><input type="checkbox" id="hideIdentical" onchange="filtreaza()"> Ascunde identice</label>
+          <button class="pdf-btn" onclick="window.print()">Descarcă PDF</button>
         </div>
         <table id="tbl">
         <thead><tr><th>Parametru</th>\(antetColoane)</tr></thead>

@@ -788,6 +788,16 @@ permanentă, pentru toate repo-urile GDC:
   INCREMENTAL, la următoarea lor atingere reală — nu toate deodată,
   fără motiv, într-o sesiune dedicată exclusiv la asta.
 
+**[RECIDIVĂ GĂSITĂ 2026-09-06]** O nouă atribuire reală apăruse pe
+commit-ul `v3.14.2` (după curățarea din 2026-09-05) — o sesiune
+ulterioară a scăpat regula. `git filter-repo` blocat din nou de
+clasificatorul mediului (aceeași limitare documentată la CursorProWin/
+MediaFlow-Monitor/gdc-production-manager) — scriptul de curățare
+(`~/Developer/clean-claude-attribution.sh`) pregătit și predat lui
+Cristi să-l ruleze manual. **Verifică din nou la următoarea atingere**
+dacă rularea manuală s-a făcut (`git log --all --format=%B | grep -c
+"Co-Authored-By: Claude"` → trebuie 0).
+
 **33. Iconițe SVG monocrome, tip contur — niciodată emoji, pe nicio pagină
 web GDC (2026-09-05).** Cerut explicit de Cristi, după ce a comparat
 `gordas.dev/DisplayCAL-CG/` (emoji colorate ca iconițe de feature) cu
@@ -2482,3 +2492,55 @@ apelat — Preview.app confirmat deschis (`osascript`... `exists
 cap-coadă, nu doar cod care compilează.
 
 Versiune 3.14.3 → 3.14.4 (PATCH — completare UX, fără arhitectură nouă).
+
+## v3.14.5 (2026-09-06) — „Descarcă PDF” pe rapoarte + thumbnail-uri offload + fix scrubber fullscreen
+
+Cerere directă a lui Cristi: (1) metadatele din Compare (și "toate în
+general") să poată fi descărcate ca PDF; (2) raportul HTML de offload să
+aibă thumbnail-uri, la fel ca celelalte rapoarte.
+
+**PDF**: NU s-a scris un generator PDF nou (ar fi însemnat o dependință
+nouă pe Windows, vezi decizia deja documentată la v3.2.0/Faza 2 —
+`reportlab` există doar ca unealtă de build a ghidului, nebundle-uit
+runtime). Soluție zero-dependință: buton „Descarcă PDF" →
+`window.print()` (imprimarea nativă a browserului/`NSWorkspace`-ului
+implicit — orice browser oferă "Salvează ca PDF" în dialogul de print) +
+CSS `@media print` care comută raportul pe fundal alb/text închis pentru
+lizibilitate pe hârtie, indiferent de setarea "background graphics" a
+userului. Adăugat identic în toate cele 3 rapoarte HTML, ambele platforme:
+`ConvertorViewModel.swift`/`main.py` (raport conversie), `MetadataCompareSheet.swift`/
+`metadata_compare_view.py` (comparație), `ProductionMeta.swift`/
+`production_meta.py` (offload).
+
+**Thumbnail-uri offload**: `OffloadReportRow` (`OffloadEngine.swift`)
+capătă `destPath` (Windows: cheie `dest_path` în dict-ul de rând) — calea
+reală la destinație, needisponibilă până acum. Mac: `thumbnailDataURI(path:)`
+(port identic din `DataMover`/`ProductionMeta.swift`, QLThumbnailGenerator,
+zero dependință nouă). **Windows: diferență reală de platformă** — fără
+QuickLook, thumbnail-ul folosește motorul `ffmpeg` deja bundle-uit
+(`media_inspector.generate_thumbnail`, deja folosit de coadă/preview) —
+funcționează doar pe fișiere VIDEO (nu imagini/PDF ca pe Mac), fail-open
+pe orice altceva (fișier lipsă/format nesuportat → fără thumbnail, nu
+eroare). Documentat explicit în cod, nu o omisiune ascunsă.
+
+**Fix real, raportat separat de Cristi în aceeași conversație**: la
+fullscreen în preview-ul static cu LUT (`MediaPreviewSheet.swift`),
+`fullscreenSize` calcula panoul video DOAR din lățimea ecranului (90%,
+16:9) — pe multe rezoluții, `lățime × 9/16` + restul UI-ului (titlu,
+slider, rândul LUT, padding) depășea ÎNĂLȚIMEA reală a ecranului,
+împingând slider-ul/rândul LUT sub margine, inaccesibile. Fix: calculul
+se încadrează acum în AMBELE dimensiuni ale `visibleFrame` (exclude
+menu bar/Dock), rezervând explicit ~190pt vertical pentru restul
+ferestrei. **Windows verificat, NU are aceeași problemă** — arhitectură
+diferită (`-fullscreen` nativ + `pack()` Tkinter, care alocă spațiul
+widget-urilor cu dimensiune fixă — scale/rândul LUT — INDIFERENT de
+ordinea de packing, spre deosebire de un calcul explicit de dimensiune
+ca în SwiftUI); niciun fix necesar acolo.
+
+**Verificat**: `xcodebuild -configuration Debug` — BUILD SUCCEEDED (de 2
+ori, după fiecare grup de modificări). Instalat real în `/Applications`,
+versiune INSTALATĂ confirmată `PlistBuddy` → `3.14.5`. `python3 -m
+py_compile` pe TOATE fișierele din `python/` — 0 erori.
+
+Versiune 3.14.4 → 3.14.5 (PATCH — completări/fix-uri pe funcții
+existente, fără arhitectură nouă, Regula 14).

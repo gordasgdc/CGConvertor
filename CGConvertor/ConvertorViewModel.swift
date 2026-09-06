@@ -136,7 +136,17 @@ final class ConvertorViewModel: ObservableObject {
         table{border-collapse:collapse;width:100%}
         td,th{border-bottom:1px solid #2B2F36;padding:10px;text-align:left;vertical-align:middle}
         .muted{color:#5C6169}
+        .pdf-btn{position:fixed;top:16px;right:16px;background:#E8963C;color:#14161A;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;z-index:100}
+        .pdf-btn:hover{opacity:.85}
+        @media print{
+          .pdf-btn{display:none}
+          body{background:#fff!important;color:#111!important}
+          h1{color:#000!important}
+          td,th{border-bottom:1px solid #ccc!important}
+          .muted{color:#666!important}
+        }
         </style></head><body>
+        <button class="pdf-btn" onclick="window.print()">Descarcă PDF</button>
         <h1>Raport conversie — CG Convertor</h1>
         <p>\(joburi.count) fișiere · generat \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short))</p>
         <table><tr><th>Thumbnail</th><th>Fișier</th><th>Metadata</th><th>Status</th></tr>

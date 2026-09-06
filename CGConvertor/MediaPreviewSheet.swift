@@ -115,13 +115,30 @@ struct MediaPreviewSheet: View {
     }
 
     /// Dimensiunea panoului video în modul fullscreen — 90% din ecranul
-    /// curent (nu 100%, ca sheet-ul să rămână vizibil ca fereastră, cu
-    /// bara de titlu/controalele accesibile în jur), păstrând proporția
-    /// 16:9 a zonei de preview.
+    /// curent, păstrând 16:9, DAR încadrată și pe verticală, nu doar pe
+    /// orizontală.
+    ///
+    /// [FIX 2026-09-06] Bug real, raportat de Cristi: pe ecrane late (16:9
+    /// dar nu foarte înalte, sau orice ecran unde `latime * 9/16` depășește
+    /// înălțimea disponibilă), un panou calculat DOAR din lățime împingea
+    /// slider-ul + rândul LUT sub marginea de jos a ecranului — inaccesibile,
+    /// exact controalele de care ai nevoie ca să navighezi în clip. Fix:
+    /// `fullscreenSize` se încadrează acum în AMBELE dimensiuni ale
+    /// `visibleFrame` (exclude menu bar/Dock) — rezervă explicit spațiul
+    /// pentru restul ferestrei (titlu + slider + rândul LUT + padding),
+    /// apoi alege lățimea/înălțimea 16:9 care încape în ce rămâne.
     private var fullscreenSize: CGSize {
-        let ecran = NSScreen.main?.frame.size ?? CGSize(width: 1440, height: 900)
-        let latime = ecran.width * 0.9
-        return CGSize(width: latime, height: latime * 9 / 16)
+        let ecran = NSScreen.main?.visibleFrame.size ?? CGSize(width: 1440, height: 900)
+        let chromeVertical: CGFloat = 190
+        let latimeMax = ecran.width * 0.9
+        let inaltimeMax = max(160, ecran.height * 0.9 - chromeVertical)
+        var latime = latimeMax
+        var inaltime = latime * 9 / 16
+        if inaltime > inaltimeMax {
+            inaltime = inaltimeMax
+            latime = inaltime * 16 / 9
+        }
+        return CGSize(width: latime, height: inaltime)
     }
 
     /// Debounce simplu: anulează extracția anterioară dacă userul continuă

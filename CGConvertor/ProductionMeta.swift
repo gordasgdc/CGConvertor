@@ -1,4 +1,6 @@
 import Foundation
+import AppKit
+import QuickLookThumbnailing
 
 /// Metadatele producției, atașate unui offload — port din DataMover
 /// (`~/Developer/DataMover/mac-native/Sources/DataMoverMac/ProductionMeta.swift`),
@@ -70,10 +72,22 @@ enum OffloadHTMLReport {
         table { width:100%; border-collapse:collapse; margin-top:16px; font-size:12px; }
         th { text-align:left; color:#9AA3AE; font-weight:600; border-bottom:1px solid #2A2F36; padding:6px 8px; }
         td { padding:6px 8px; border-bottom:1px solid #20242A; word-break:break-all; }
+        td .thumb { display:block; width:64px; max-width:100%; height:36px; object-fit:cover; border-radius:4px; border:1px solid #2A2F36; }
         .s-ok { color:#4ADE80; } .s-fail { color:#F87171; } .s-mismatch { color:#D08C40; }
         footer { margin-top:24px; color:#6B737D; font-size:11px; }
+        .pdf-btn { position:fixed; top:16px; right:16px; background:#D08C40; color:#14161A; border:none; border-radius:6px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; z-index:100; }
+        .pdf-btn:hover { opacity:.85; }
         @media (max-width:700px){ body{padding:14px} table{font-size:11px} }
+        @media print{
+          .pdf-btn{display:none}
+          body{background:#fff!important;color:#111!important}
+          .card,.notes{background:#f5f5f5!important;color:#111!important;border-color:#ccc!important}
+          th{color:#333!important;border-bottom:1px solid #ccc!important}
+          td{border-bottom:1px solid #eee!important}
+          footer{color:#666!important}
+        }
         </style></head><body><div class="wrap">
+        <button class="pdf-btn" onclick="window.print()">Descarcă PDF</button>
         """
 
         html += "<header>"
@@ -105,10 +119,11 @@ enum OffloadHTMLReport {
             html += "<div class=\"notes\">\(escape(meta.notes))</div>"
         }
 
-        html += "<table><thead><tr><th>Fișier</th><th>Mărime</th><th>Status</th><th>Eroare</th></tr></thead><tbody>"
+        html += "<table><thead><tr><th></th><th>Fișier</th><th>Mărime</th><th>Status</th><th>Eroare</th></tr></thead><tbody>"
         for row in rows {
             let cls = row.status == "OK" ? "s-ok" : (row.status == "NEPOTRIVIRE" ? "s-mismatch" : "s-fail")
-            html += "<tr><td>\(escape(row.relPath))</td><td>\(formatBytes(Int64(row.sizeBytes)))</td>"
+            let thumbCell = thumbnailDataURI(path: row.destPath).map { "<img class=\"thumb\" src=\"\($0)\">" } ?? ""
+            html += "<tr><td>\(thumbCell)</td><td>\(escape(row.relPath))</td><td>\(formatBytes(Int64(row.sizeBytes)))</td>"
             html += "<td class=\"\(cls)\">\(escape(row.status))</td><td>\(escape(row.error))</td></tr>"
         }
         html += "</tbody></table>"
@@ -126,6 +141,32 @@ enum OffloadHTMLReport {
         } catch {
             return false
         }
+    }
+
+    /// Thumbnail real per fișier (port din DataMover, Etapa 2026-09-06)
+    /// — QLThumbnailGenerator (framework de sistem, ZERO dependință nouă),
+    /// generează o previzualizare reală a conținutului (cadru video/
+    /// imagine), nu doar iconița generică de tip fișier. Blocat scurt cu
+    /// un semafor (writeReports rulează deja pe fundal), plafon 3s per
+    /// fișier — un fișier corupt/blocat nu trebuie să înghețe raportul.
+    private static func thumbnailDataURI(path: String) -> String? {
+        guard !path.isEmpty, FileManager.default.fileExists(atPath: path) else { return nil }
+        let size = CGSize(width: 160, height: 90)
+        let request = QLThumbnailGenerator.Request(fileAt: URL(fileURLWithPath: path),
+                                                     size: size, scale: 2,
+                                                     representationTypes: .thumbnail)
+        let semaphore = DispatchSemaphore(value: 0)
+        var jpegData: Data?
+        QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { representation, _ in
+            defer { semaphore.signal() }
+            guard let representation else { return }
+            let image = NSImage(cgImage: representation.cgImage, size: size)
+            guard let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff) else { return }
+            jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.6])
+        }
+        _ = semaphore.wait(timeout: .now() + 3)
+        guard let jpegData else { return nil }
+        return "data:image/jpeg;base64,\(jpegData.base64EncodedString())"
     }
 
     private static func logoDataURI(_ path: String) -> String? {

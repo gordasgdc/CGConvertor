@@ -7,6 +7,10 @@ un DOCUMENT DE PREDARE, nu un log tehnic)."""
 import base64
 import html as html_module
 import os
+import tempfile
+import uuid
+
+import media_inspector
 
 
 class ProductionMeta:
@@ -49,6 +53,33 @@ def _esc(s):
     return html_module.escape(str(s), quote=True)
 
 
+def _thumbnail_data_uri(dest_path):
+    """Thumbnail real per fișier în raportul de offload (paritate cu
+    ProductionMeta.swift, Mac, 2026-09-06) — folosește ACELAȘI motor
+    ffmpeg deja bundle-uit (media_inspector), nicio dependință nouă.
+    Doar fișiere video (limitare reală, nu QuickLook ca pe Mac — ffmpeg
+    nu extrage un cadru dintr-o imagine/PDF); fail-open pe orice altceva
+    (fișier lipsă, format nesuportat, eroare ffmpeg) — un thumbnail lipsă
+    nu trebuie să oprească generarea raportului."""
+    if not dest_path or not os.path.isfile(dest_path):
+        return None
+    out_path = os.path.join(tempfile.gettempdir(), f"cgc_offload_thumb_{uuid.uuid4().hex}.png")
+    try:
+        ok = media_inspector.generate_thumbnail(dest_path, None, out_path, at_seconds=1.0, width=160)
+        if not ok or not os.path.isfile(out_path):
+            return None
+        with open(out_path, "rb") as f:
+            data = f.read()
+        return f"data:image/png;base64,{base64.b64encode(data).decode('ascii')}"
+    except OSError:
+        return None
+    finally:
+        try:
+            os.remove(out_path)
+        except OSError:
+            pass
+
+
 def write_html_report(path, destination, folder_name, rows, meta, started_at, finished_at,
                        ok_count, mismatch_count, error_count, verification_label, mhl_path,
                        app_version, truncated_note=None):
@@ -85,7 +116,9 @@ def write_html_report(path, destination, folder_name, rows, meta, started_at, fi
     for row in rows:
         status = row["status"]
         cls = "s-ok" if status.startswith("OK") else ("s-mismatch" if status == "NEPOTRIVIRE" else "s-fail")
-        rows_html += (f"<tr><td>{_esc(row['rel_path'])}</td><td>{_format_bytes(row['size_bytes'])}</td>"
+        thumb_uri = _thumbnail_data_uri(row.get("dest_path", ""))
+        thumb_cell = f'<img class="thumb" src="{thumb_uri}">' if thumb_uri else ""
+        rows_html += (f"<tr><td>{thumb_cell}</td><td>{_esc(row['rel_path'])}</td><td>{_format_bytes(row['size_bytes'])}</td>"
                       f"<td class=\"{cls}\">{_esc(status)}</td><td>{_esc(row.get('error', ''))}</td></tr>")
 
     truncated_html = f'<p class="sub">{_esc(truncated_note)}</p>' if truncated_note else ""
@@ -113,15 +146,27 @@ h1 {{ font-size:20px; margin:0 0 4px; }}
 table {{ width:100%; border-collapse:collapse; margin-top:16px; font-size:12px; }}
 th {{ text-align:left; color:#9AA3AE; font-weight:600; border-bottom:1px solid #2A2F36; padding:6px 8px; }}
 td {{ padding:6px 8px; border-bottom:1px solid #20242A; word-break:break-all; }}
+td .thumb {{ display:block; width:64px; max-width:100%; height:36px; object-fit:cover; border-radius:4px; border:1px solid #2A2F36; }}
 .s-ok {{ color:#4ADE80; }} .s-fail {{ color:#F87171; }} .s-mismatch {{ color:#D08C40; }}
 footer {{ margin-top:24px; color:#6B737D; font-size:11px; }}
+.pdf-btn {{ position:fixed; top:16px; right:16px; background:#D08C40; color:#14161A; border:none; border-radius:6px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; z-index:100; }}
+.pdf-btn:hover {{ opacity:.85; }}
 @media (max-width:700px){{ body{{padding:14px}} table{{font-size:11px}} }}
+@media print{{
+  .pdf-btn{{display:none}}
+  body{{background:#fff!important;color:#111!important}}
+  .card,.notes{{background:#f5f5f5!important;color:#111!important;border-color:#ccc!important}}
+  th{{color:#333!important;border-bottom:1px solid #ccc!important}}
+  td{{border-bottom:1px solid #eee!important}}
+  footer{{color:#666!important}}
+}}
 </style></head><body><div class="wrap">
+<button class="pdf-btn" onclick="window.print()">Descarcă PDF</button>
 {header_html}
 {meta_html}
 {cards_html}
 {notes_html}
-<table><thead><tr><th>Fișier</th><th>Mărime</th><th>Status</th><th>Eroare</th></tr></thead><tbody>
+<table><thead><tr><th></th><th>Fișier</th><th>Mărime</th><th>Status</th><th>Eroare</th></tr></thead><tbody>
 {rows_html}
 </tbody></table>
 {truncated_html}
