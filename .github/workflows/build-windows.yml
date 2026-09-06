@@ -47,8 +47,16 @@ jobs:
       # intentionat (PowerShell, nu Python).
       - name: Download mpv (standalone player)
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/mpv-player/mpv/releases/tags/git-release" -Headers @{ "User-Agent" = "CGConvertor-CI" }
+          # [FIX 2026-09-06] Esec real de CI: apel NEAUTENTIFICAT catre
+          # api.github.com a lovit rate-limit-ul per-IP (60/ora, partajat
+          # de multi runneri GitHub Actions pe acelasi range de IP-uri) -
+          # "API rate limit exceeded for <ip-runner>". GITHUB_TOKEN
+          # (automat, injectat de Actions) autentifica cererea CATRE ORICE
+          # repo public, nu doar al nostru - limita urca la 5000/ora.
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/mpv-player/mpv/releases/tags/git-release" -Headers @{ "User-Agent" = "CGConvertor-CI"; "Authorization" = "Bearer $env:GH_TOKEN" }
           $asset = $release.assets | Where-Object { $_.name -match "^mpv-.*-x86_64-pc-windows-msvc\.zip$" } | Select-Object -First 1
           if (-not $asset) { Write-Error "Nu s-a gasit asset-ul mpv (x86_64-msvc) in release-ul git-release."; exit 1 }
           Invoke-WebRequest -Uri $asset.browser_download_url -OutFile mpv.zip
