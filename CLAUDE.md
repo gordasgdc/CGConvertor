@@ -2577,3 +2577,54 @@ compileaza si se ambaleaza corect; Cristi confirma manual, o data,
 lansarea curata pe Windows real.
 
 Versiune 3.14.5 -> 3.14.6 (PATCH — fix critic izolat, Regula 14).
+
+## v3.14.7 (2026-09-06) — mpv bundle-uit in instalator (Windows)
+
+**Raportat de Cristi, tot cu screenshot**: panoul "Verificare &
+Dependinte Sistem" arata `[Errno 13] Permission denied:
+'...AppData\Roaming\CGConvertor\bin\mpv\mpv.exe'` la descarcarea
+automata a playerului mpv (folosit pentru preview live cu LUT).
+
+**Onest**: nu am putut reproduce/localiza in cod calea EXACTA din eroare
+(`bin\mpv.exe`, fara sub-folderul `mpv\`) — grep in tot
+`dependency_manager.py` gaseste doar calea imbricata `bin\mpv\mpv.exe`.
+Discrepanta ramane neexplicata 100%. In loc sa vanez o teorie
+neconfirmata, am aplicat solutia recomandata explicit de Cristi:
+eliminarea intregii clase de bug, nu doar a simptomului raportat.
+
+**Fix principal — bundling la build, nu descarcare la runtime**:
+`build-windows.spec` primeste `mpv/mpv.exe` in `binaries` (acelasi tipar
+ca `ffmpeg.exe`/`ffprobe.exe`, deja existent). CI
+(`.github/workflows/build-windows.yml`) descarca mpv de la sursa oficiala
+(`mpv-player/mpv`, tag-ul rulant "git-release", acelasi API si tipar de
+asset ca in Python — `MPV_ASSET_PATTERN`) INAINTE de pasul PyInstaller.
+`dependency_manager.find_mpv()` verifica ACUM INTAI calea bundle-uita
+(`sys._MEIPASS/mpv/mpv.exe`, doar cand `sys.frozen`) — marea majoritate a
+userilor nu mai ajung niciodata la codul de descarcare/scriere care
+producea eroarea.
+
+**Fix-uri secundare (defense-in-depth, pentru cazul rar cand descarcarea
+la runtime tot se declanseaza — instalari portabile/development)**:
+1. Calea de descarcare mutata din `%APPDATA%\Roaming` in `%LOCALAPPDATA%`
+   (`_mpv_download_dir()`) — Roaming poate fi sincronizat de OneDrive/
+   politici de domeniu, cauza tipica de PermissionError tranzitoriu pe
+   fisiere proaspat scrise; LOCALAPPDATA nu are aceasta problema.
+2. `_copy_with_retry()` — pana la 5 incercari cu backoff (0.6s) la copiere,
+   pentru blocaje tranzitorii de antivirus pe executabile noi descarcate.
+
+**Fix proactiv separat, gasit in acelasi fisier editat**: eliminat
+`generate_release_notes: true` din pasul `softprops/action-gh-release@v2`
+(`build-windows.yml`) — ar fi publicat automat, pe release PUBLIC, un
+rezumat generat de GitHub din mesajele de commit (Regula 29 — commit-urile
+de aici sunt jurnal tehnic intern, cu nume/cauze de debugging).
+
+**Nu s-a putut verifica REAL playback-ul cu mpv pe Windows** — la fel ca
+la v3.14.6, CI confirma doar ca build-ul si bundling-ul reusesc; Cristi
+confirma manual pe Windows real ca player-ul si controalele functioneaza.
+
+**Verificat**: `xcodebuild -configuration Debug` — BUILD SUCCEEDED dupa
+bump-ul de versiune. `python3 -m py_compile dependency_manager.py` — 0
+erori (verificat inainte de bump-ul final de versiune).
+
+Versiune 3.14.6 -> 3.14.7 (PATCH — fix izolat + hardening, fara
+arhitectura noua, Regula 14).

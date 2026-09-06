@@ -21,6 +21,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.request
 import urllib.error
 import zipfile
@@ -52,6 +53,42 @@ def _app_support_bin_dir():
         base = os.environ.get("APPDATA", os.path.expanduser("~"))
         return os.path.join(base, "CGConvertor", "bin")
     return os.path.expanduser("~/Library/Application Support/CGConvertor/bin")
+
+
+def _mpv_download_dir():
+    """[FIX REAL 2026-09-06] `PermissionError [Errno 13]` raportat de
+    Cristi la scrierea in `%APPDATA%\\CGConvertor\\bin\\mpv\\` — `%APPDATA%`
+    (Roaming) e sincronizat de politici de domeniu/OneDrive pe multe
+    instalari Windows si poate fi temporar blocat de indexare/sincronizare
+    exact cat un fisier nou e scris acolo. `%LOCALAPPDATA%` NU se
+    sincronizeaza niciodata (e explicit local per-masina) — e locul corect
+    pentru un binar executabil descarcat, nu pentru date de sincronizat
+    intre calculatoare. Foloseste DOAR pentru mpv (ffmpeg ramane pe calea
+    veche, neatinsa — nu s-a raportat nicio problema acolo)."""
+    if sys.platform == "win32":
+        base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA", os.path.expanduser("~"))
+        return os.path.join(base, "CGConvertor", "bin")
+    return _app_support_bin_dir()
+
+
+def _copy_with_retry(src, dst, attempts=5, delay_seconds=0.6):
+    """[FIX REAL 2026-09-06] Antivirusul de sistem (Windows Defender sau
+    orice alt AV real-time) scaneaza sincron orice `.exe` nou scris pe disc
+    — pe durata scanarii, orice a doua incercare de scriere/mutare a
+    ACELUIASI fisier poate primi `PermissionError [Errno 13]`, tranzitoriu
+    (dispare in cateva sute de ms, dupa ce scanarea se termina). O simpla
+    reincercare cu pauza scurta intre incercari rezolva marea majoritate a
+    acestor cazuri, fara sa ceara userului nimic."""
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            shutil.copy2(src, dst)
+            return
+        except PermissionError as e:
+            last_error = e
+            if attempt < attempts - 1:
+                time.sleep(delay_seconds)
+    raise last_error
 
 
 def _verify_runs(path):
@@ -93,20 +130,24 @@ def find_ffprobe():
 
 
 def find_mpv():
-    """La fel ca `_find_binary`, dar mpv.exe traieste intr-un subfolder
-    propriu (`bin/mpv/`), nu direct in `bin/` ca ffmpeg — arhiva descarcata
-    contine mai multe fisiere (mpv.exe + eventuale DLL-uri de care are
-    nevoie), nu un singur binar de mutat izolat."""
+    """[2026-09-06] De la acest build, mpv.exe e BUNDLE-UIT direct in
+    instalator (vezi build-windows.spec + .github/workflows/build-windows.yml)
+    — marea majoritate a userilor nu mai ajung NICIODATA la descarcarea de
+    mai jos, deci nici la bug-ul de permisiuni raportat pe ea. Cautarea
+    verifica DE-ACUM bundle-ul INTAI (motivul principal, mereu functional,
+    fara retea), apoi o copie descarcata anterior (fallback pentru userii
+    care au deja o instalare veche, ne-bundle-uita), apoi PATH-ul de sistem."""
     if sys.platform != "win32":
         return None
-    downloaded = os.path.join(_app_support_bin_dir(), "mpv", "mpv.exe")
-    if os.path.isfile(downloaded):
-        return downloaded
     if getattr(sys, "frozen", False):
         base_path = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
         bundled = os.path.join(base_path, "mpv", "mpv.exe")
         if os.path.isfile(bundled):
             return bundled
+    for base_dir in (_mpv_download_dir(), _app_support_bin_dir()):
+        downloaded = os.path.join(base_dir, "mpv", "mpv.exe")
+        if os.path.isfile(downloaded):
+            return downloaded
     return shutil.which("mpv")
 
 
@@ -253,7 +294,9 @@ class DependencyManager:
             if not asset:
                 raise RuntimeError("Nu s-a găsit un asset mpv.exe (x86_64, msvc) în release-ul GitHub.")
 
-            dest_dir = os.path.join(_app_support_bin_dir(), "mpv")
+            # [FIX REAL 2026-09-06] `%LOCALAPPDATA%`, nu `%APPDATA%` — vezi
+            # comentariul din `_mpv_download_dir()`.
+            dest_dir = os.path.join(_mpv_download_dir(), "mpv")
             os.makedirs(dest_dir, exist_ok=True)
 
             with tempfile.TemporaryDirectory() as tmp:
@@ -291,7 +334,7 @@ class DependencyManager:
                 for name in os.listdir(source_dir):
                     src = os.path.join(source_dir, name)
                     if os.path.isfile(src):
-                        shutil.copy2(src, os.path.join(dest_dir, name))
+                        _copy_with_retry(src, os.path.join(dest_dir, name))
 
             item = next((i for i in self.items if i.id == "mpv"), None)
             if item:

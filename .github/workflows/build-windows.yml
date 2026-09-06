@@ -38,6 +38,24 @@ jobs:
           Copy-Item "$($dir.FullName)\bin\ffmpeg.exe" ffmpeg\
           Copy-Item "$($dir.FullName)\bin\ffprobe.exe" ffmpeg\
 
+      # [2026-09-06] mpv bundle-uit direct in instalator - vezi comentariul
+      # din build-windows.spec pentru motiv (elimina bug-ul de permisiuni
+      # la descarcarea dinamica in %APPDATA%). Acelasi tag "git-release"
+      # (nemarcat "Latest") si acelasi tipar de asset dinamic (numele
+      # contine un hash de commit, se schimba la fiecare build al mpv) ca
+      # in dependency_manager.py - MPV_ASSET_PATTERN de acolo, duplicat aici
+      # intentionat (PowerShell, nu Python).
+      - name: Download mpv (standalone player)
+        shell: pwsh
+        run: |
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/mpv-player/mpv/releases/tags/git-release" -Headers @{ "User-Agent" = "CGConvertor-CI" }
+          $asset = $release.assets | Where-Object { $_.name -match "^mpv-.*-x86_64-pc-windows-msvc\.zip$" } | Select-Object -First 1
+          if (-not $asset) { Write-Error "Nu s-a gasit asset-ul mpv (x86_64-msvc) in release-ul git-release."; exit 1 }
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile mpv.zip
+          Expand-Archive mpv.zip -DestinationPath mpv_extracted
+          New-Item -ItemType Directory -Force -Path mpv
+          Copy-Item "mpv_extracted\mpv.exe" mpv\
+
       - name: Build .exe
         run: pyinstaller build-windows.spec
 
@@ -70,10 +88,16 @@ jobs:
       - name: Redenumeste artefactul
         run: Copy-Item Output\CGConvertorSetup.exe "$env:GITHUB_WORKSPACE\CGConvertor-Windows-Setup.exe"
 
+      # [FIX Regula 29, 2026-09-06] `generate_release_notes: true` ar fi
+      # publicat automat, pe un release PUBLIC, un rezumat generat de
+      # GitHub din mesajele de commit — riscant pentru acest repo, unde
+      # commit-urile sunt scrise ca jurnal tehnic intern (nume, cauze de
+      # debugging). Eliminat - actiunea creeaza/actualizeaza acum release-ul
+      # FARA note auto-generate (`gh release edit --notes` din sesiunea
+      # Claude ramane locul unde se scriu notele publice, curate).
       - name: Creeaza / actualizeaza Release
         uses: softprops/action-gh-release@v2
         with:
           files: CGConvertor-Windows-Setup.exe
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

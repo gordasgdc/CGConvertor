@@ -2,6 +2,12 @@
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
+### v3.14.7 — mpv (playerul LUT live) bundle-uit direct în instalator, Windows (2026-09-06)
+
+- Playerul real-time cu LUT nu mai descarcă `mpv.exe` la prima utilizare
+  (unde putea eșua cu „Permission denied” pe unele instalări Windows) —
+  vine deja inclus în instalator.
+
 ### v3.14.6 — FIX CRITIC: aplicația nu pornea pe Windows (2026-09-06)
 
 - Meniul „Ajutor" nou (v3.14.4) crăpa aplicația la lansare pe Windows

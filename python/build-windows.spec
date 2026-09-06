@@ -7,6 +7,16 @@ a = Analysis(
     binaries=[
         ('ffmpeg/ffmpeg.exe', '.'),
         ('ffmpeg/ffprobe.exe', '.'),
+        # [2026-09-06] mpv bundle-uit direct in instalator — inainte se
+        # descarca la runtime in %APPDATA%\CGConvertor\bin\mpv\, ceea ce
+        # putea produce PermissionError (Roaming sincronizat de OneDrive/
+        # politici de domeniu pe unele masini, sau blocaj tranzitoriu de
+        # antivirus). Cu bundling, marea majoritate a userilor nu mai
+        # ajung NICIODATA la acel cod - vezi dependency_manager.find_mpv(),
+        # care verifica bundle-ul INTAI. Descarcat de CI (vezi
+        # .github/workflows/build-windows.yml), exact acelasi tipar ca
+        # ffmpeg de mai sus.
+        ('mpv/mpv.exe', 'mpv'),
     ],
     # CGConvertor.ico e bundle-uit si ca DATA (nu doar ca --icon al exe-ului
     # insusi) - main.py._set_window_icon() il citeste la runtime din
