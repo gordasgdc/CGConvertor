@@ -64,6 +64,8 @@ struct CubeLUT {
 /// se reflecte instant pe cadrul urmator, fara sa reconstruim compozitia.
 final class LUTPlayerCoordinator: ObservableObject {
     @Published private(set) var lutFileName: String?
+    /// Motivul pentru care un LUT ales nu a putut fi aplicat.
+    @Published private(set) var eroareLUT: String?
 
     private let ciContext = CIContext()
     private var filter: CIFilter?
@@ -72,9 +74,20 @@ final class LUTPlayerCoordinator: ObservableObject {
         guard let url else {
             filter = nil
             lutFileName = nil
+            eroareLUT = nil
             return
         }
-        guard let lut = CubeLUT.load(from: url) else { return }
+        // [2026-09-11] Înainte ieșeam TĂCUT aici: dacă `.cube`-ul nu putea fi
+        // citit (fișier mutat, format neașteptat), nu se aplica nimic și
+        // eticheta rămânea „Fără LUT" — fără nicio explicație, exact ca și cum
+        // butonul n-ar fi făcut nimic.
+        guard let lut = CubeLUT.load(from: url) else {
+            filter = nil
+            lutFileName = nil
+            eroareLUT = String(format: L.t("lut.error.load"), url.lastPathComponent)
+            return
+        }
+        eroareLUT = nil
         let f = CIFilter(name: "CIColorCube")
         f?.setValue(lut.dimension, forKey: "inputCubeDimension")
         f?.setValue(Data(bytes: lut.rgbaData, count: lut.rgbaData.count * MemoryLayout<Float>.size), forKey: "inputCubeData")

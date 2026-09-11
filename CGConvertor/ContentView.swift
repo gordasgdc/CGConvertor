@@ -388,14 +388,22 @@ struct ContentView: View {
                 // singur meniu. Înainte, LUT-ul se alegea individual, din
                 // fereastra fiecărui clip — cerut explicit de Cristi: „să nu
                 // stau pe fiecare să tot dau aplică LUT".
-                if !selectedJobIDs.isEmpty {
+                // [CORECTAT 2026-09-11] Butonul era afișat DOAR când exista o
+                // selecție — Cristi l-a căutat și nu l-a găsit, fiindcă în mod
+                // normal nu ai nimic bifat când deschizi aplicația. O funcție
+                // pe care n-o poți descoperi practic nu există.
+                //
+                // Acum e mereu vizibil (cât timp există clipuri în coadă) și,
+                // dacă nu ai selectat nimic, se aplică pe TOATE — comportamentul
+                // firesc, și eticheta o spune explicit.
+                if !vm.joburi.isEmpty {
                     Menu {
                         if lutLibrary.memorate.isEmpty {
                             Text(L.t("lut.library.empty"))
                         } else {
                             ForEach(lutLibrary.memorate) { lut in
                                 Button {
-                                    lutLibrary.aplica(url: lut.url, pe: selectedJobIDs)
+                                    lutLibrary.aplica(url: lut.url, pe: jobTintaLUT)
                                 } label: {
                                     // Un LUT al cărui fișier a dispărut e
                                     // marcat, nu ascuns — altfel ar părea că
@@ -408,14 +416,16 @@ struct ContentView: View {
                             Divider()
                         }
                         Button(L.t("lut.library.choose")) { alegeLUTPentruSelectie() }
-                        if selectedJobIDs.contains(where: { lutLibrary.lutPerJob[$0] != nil }) {
+                        if jobTintaLUT.contains(where: { lutLibrary.lutPerJob[$0] != nil }) {
                             Divider()
                             Button(L.t("lut.library.clear"), role: .destructive) {
-                                lutLibrary.elimina(dePe: selectedJobIDs)
+                                lutLibrary.elimina(dePe: jobTintaLUT)
                             }
                         }
                     } label: {
-                        Label(String(format: L.t("lut.library.applyToSelected"), selectedJobIDs.count),
+                        Label(selectedJobIDs.isEmpty
+                              ? String(format: L.t("lut.library.applyToAll"), vm.joburi.count)
+                              : String(format: L.t("lut.library.applyToSelected"), selectedJobIDs.count),
                               systemImage: "swatchpalette.fill")
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 4)
@@ -575,6 +585,12 @@ struct ContentView: View {
         }
     }
 
+    /// Clipurile pe care se aplică LUT-ul: cele bifate, sau TOATE dacă nu e
+    /// bifat niciunul.
+    private var jobTintaLUT: [UUID] {
+        selectedJobIDs.isEmpty ? vm.joburi.map(\.id) : Array(selectedJobIDs)
+    }
+
     /// Alege un `.cube` din disc și îl aplică pe toate clipurile selectate,
     /// adăugându-l automat în bibliotecă pentru data viitoare.
     private func alegeLUTPentruSelectie() {
@@ -586,7 +602,7 @@ struct ContentView: View {
             panel.allowedContentTypes = [cubeType]
         }
         if panel.runModal() == .OK, let url = panel.url {
-            lutLibrary.aplica(url: url, pe: selectedJobIDs)
+            lutLibrary.aplica(url: url, pe: jobTintaLUT)
         }
     }
 }

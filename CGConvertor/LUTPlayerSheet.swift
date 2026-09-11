@@ -124,10 +124,20 @@ struct LUTPlayerSheet: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
             HStack {
-                Text(coordonator.lutFileName ?? L.t("preview.noLut"))
-                    .font(.system(size: 11))
-                    .foregroundStyle(Shift.muted)
-                    .lineLimit(1)
+                // Modificatorii se aplică pe FIECARE ramură: atașați după un
+                // `if/else` în SwiftUI nu au un singur `View` pe care să se
+                // aplice (de-asta a picat compilarea prima dată).
+                if let eroareLUT = coordonator.eroareLUT {
+                    Label(eroareLUT, systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.orange)
+                        .lineLimit(2)
+                } else {
+                    Text(coordonator.lutFileName ?? L.t("preview.noLut"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(Shift.muted)
+                        .lineLimit(1)
+                }
                 Spacer()
                 Button(L.t("preview.chooseLut")) { alegeLUT() }
                     .buttonStyle(ShiftGhostButtonStyle())

@@ -348,6 +348,14 @@ enum L {
         "lut.library.applyToSelected": [
             .ro: "Aplică LUT pe %d clipuri", .en: "Apply LUT to %d clips", .es: "Aplicar LUT a %d clips"
         ],
+        "lut.error.load": [
+            .ro: "LUT-ul „%@” nu a putut fi citit.",
+            .en: "The LUT “%@” could not be read.",
+            .es: "No se pudo leer el LUT «%@»."
+        ],
+        "lut.library.applyToAll": [
+            .ro: "Aplică LUT pe toate (%d)", .en: "Apply LUT to all (%d)", .es: "Aplicar LUT a todos (%d)"
+        ],
         "lut.library.choose": [
             .ro: "Alege alt LUT (.cube)…", .en: "Choose another LUT (.cube)…", .es: "Elegir otro LUT (.cube)…"
         ],
