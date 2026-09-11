@@ -1,5 +1,23 @@
 # Changelog
 
+## v3.16.0 (2026-09-11) — LUT-uri memorate, aplicate pe mai multe clipuri deodată
+
+### Added
+- **Aplică un LUT pe toate clipurile selectate, dintr-un singur meniu.** Nu mai
+  trebuie deschis fiecare clip în parte ca să i se aleagă LUT-ul.
+- **Bibliotecă de LUT-uri memorate.** Orice LUT folosit se reține automat și
+  apare în meniu data viitoare, la un click. Se păstrează între sesiuni.
+- **Clipurile cu LUT atribuit îl arată direct în listă**, cu numele lui.
+- **Previzualizarea și playerul pornesc direct cu LUT-ul atribuit** clipului.
+- Un LUT al cărui fișier a fost mutat sau șters apare marcat, nu dispare tăcut.
+
+### Fixed
+- **Playerul îți spune acum de ce nu poate reda un fișier**, în loc să rămână
+  negru fără explicație. Unele variante de ProRes și RAW nu sunt acceptate de
+  motorul de redare al sistemului — în acele cazuri, mesajul te trimite la
+  Previzualizare, care folosește alt motor și le acceptă. Conversia nu e
+  afectată în niciun fel.
+
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
 ### v3.15.0 — Offload: motor sincronizat cu Data Mover v2.14.0 (2026-09-06)

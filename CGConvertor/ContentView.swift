@@ -18,6 +18,8 @@ struct ContentView: View {
     @State private var showSettingsSheet = false
     @State private var mainMode: MainMode = .convert
     @State private var selectedJobIDs: Set<UUID> = []
+    /// Biblioteca de LUT-uri memorate (2026-09-11) — vezi LUTLibrary.swift.
+    @StateObject private var lutLibrary = LUTLibrary.shared
     @State private var showWatchFolderExistingSheet = false
     @State private var pendingWatchFolderPath = ""
     @State private var pendingWatchFolderFiles: [URL] = []
@@ -382,6 +384,46 @@ struct ContentView: View {
                     .font(.system(size: 13, weight: .semibold))
                 }
             } else {
+                // [2026-09-11] Aplicare de LUT pe TOATĂ selecția, dintr-un
+                // singur meniu. Înainte, LUT-ul se alegea individual, din
+                // fereastra fiecărui clip — cerut explicit de Cristi: „să nu
+                // stau pe fiecare să tot dau aplică LUT".
+                if !selectedJobIDs.isEmpty {
+                    Menu {
+                        if lutLibrary.memorate.isEmpty {
+                            Text(L.t("lut.library.empty"))
+                        } else {
+                            ForEach(lutLibrary.memorate) { lut in
+                                Button {
+                                    lutLibrary.aplica(url: lut.url, pe: selectedJobIDs)
+                                } label: {
+                                    // Un LUT al cărui fișier a dispărut e
+                                    // marcat, nu ascuns — altfel ar părea că
+                                    // l-am uitat noi.
+                                    Label(lut.numeAfisat + (lut.lipsesteFisierul ? " ⚠︎" : ""),
+                                          systemImage: "swatchpalette")
+                                }
+                                .disabled(lut.lipsesteFisierul)
+                            }
+                            Divider()
+                        }
+                        Button(L.t("lut.library.choose")) { alegeLUTPentruSelectie() }
+                        if selectedJobIDs.contains(where: { lutLibrary.lutPerJob[$0] != nil }) {
+                            Divider()
+                            Button(L.t("lut.library.clear"), role: .destructive) {
+                                lutLibrary.elimina(dePe: selectedJobIDs)
+                            }
+                        }
+                    } label: {
+                        Label(String(format: L.t("lut.library.applyToSelected"), selectedJobIDs.count),
+                              systemImage: "swatchpalette.fill")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .padding(.vertical, 4)
+                }
+
                 Button {
                     guard !revocation.isRevoked else { return }
                     guard license.isUnlocked else { showActivation = true; return }
@@ -532,6 +574,21 @@ struct ContentView: View {
             }
         }
     }
+
+    /// Alege un `.cube` din disc și îl aplică pe toate clipurile selectate,
+    /// adăugându-l automat în bibliotecă pentru data viitoare.
+    private func alegeLUTPentruSelectie() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        if let cubeType = UTType(filenameExtension: "cube") {
+            panel.allowedContentTypes = [cubeType]
+        }
+        if panel.runModal() == .OK, let url = panel.url {
+            lutLibrary.aplica(url: url, pe: selectedJobIDs)
+        }
+    }
 }
 
 // ── Stil de buton "ghost" (folosit peste tot in UI-ul Shift) ───────────────
@@ -550,6 +607,11 @@ struct ShiftGhostButtonStyle: ButtonStyle {
 
 // ── Rand individual pentru un job ───────────────────────────────────────────
 private struct RandJob: View {
+    /// [2026-09-11] OBLIGATORIU observat, nu citit prin `.shared` direct în
+    /// body: altfel badge-ul cu LUT-ul atribuit n-ar apărea decât la
+    /// următoarea redesenare întâmplătoare a rândului — ar părea că „aplică
+    /// LUT" n-a făcut nimic.
+    @ObservedObject private var lutLibrary = LUTLibrary.shared
     let job: VideoJob
     let seRuleazaCoada: Bool
     let esteSelectat: Bool
@@ -586,6 +648,17 @@ private struct RandJob: View {
                         Text(metaText)
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundStyle(Shift.faint)
+                    }
+
+                    // [2026-09-11] LUT-ul atribuit clipului, vizibil direct în
+                    // listă — altfel n-ai avea de unde ști ce s-a aplicat
+                    // decât deschizând fiecare clip în parte.
+                    if let numeLUT = lutLibrary.numeLUT(pentru: job.id) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "swatchpalette.fill").font(.system(size: 9))
+                            Text(numeLUT).font(.system(size: 10))
+                        }
+                        .foregroundStyle(Shift.accent)
                     }
 
                     switch job.stare {
@@ -707,8 +780,11 @@ private struct RandJob: View {
         ].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
+
+
 }
 
 #Preview {
     ContentView()
+
 }

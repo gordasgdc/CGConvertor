@@ -344,6 +344,41 @@ enum L {
         // TODO separat, discutie de scop viitoare)
 
         "player.open": [.ro: "Redă cu LUT (live)", .en: "Play with live LUT", .es: "Reproducir con LUT (en vivo)"],
+        // [2026-09-11] Bibliotecă de LUT-uri + aplicare pe selecție.
+        "lut.library.applyToSelected": [
+            .ro: "Aplică LUT pe %d clipuri", .en: "Apply LUT to %d clips", .es: "Aplicar LUT a %d clips"
+        ],
+        "lut.library.choose": [
+            .ro: "Alege alt LUT (.cube)…", .en: "Choose another LUT (.cube)…", .es: "Elegir otro LUT (.cube)…"
+        ],
+        "lut.library.clear": [
+            .ro: "Elimină LUT-ul de pe selecție", .en: "Remove LUT from selection", .es: "Quitar el LUT de la selección"
+        ],
+        "lut.library.empty": [
+            .ro: "Niciun LUT memorat încă", .en: "No saved LUTs yet", .es: "Aún no hay LUT guardados"
+        ],
+        "lut.library.missing": [
+            .ro: "Fișierul LUT nu mai există la calea salvată.",
+            .en: "The LUT file no longer exists at the saved path.",
+            .es: "El archivo LUT ya no existe en la ruta guardada."
+        ],
         "player.title": [.ro: "Player LUT — %@", .en: "LUT Player — %@", .es: "Reproductor LUT — %@"],
+        // [2026-09-11] Erori de redare — playerul folosește AVFoundation, mai
+        // restrictiv decât ffmpeg (care alimentează previzualizarea foto).
+        "player.error.notPlayable": [
+            .ro: "Acest fișier nu poate fi redat în player.",
+            .en: "This file cannot be played back here.",
+            .es: "Este archivo no se puede reproducir aquí."
+        ],
+        "player.error.noVideoTrack": [
+            .ro: "Fișierul nu conține o pistă video pe care playerul s-o poată citi.",
+            .en: "The file has no video track this player can read.",
+            .es: "El archivo no tiene una pista de vídeo que este reproductor pueda leer."
+        ],
+        "player.error.hint": [
+            .ro: "Playerul live folosește motorul de redare al sistemului, care nu acceptă toate variantele de ProRes și RAW. Folosește „Previzualizare” pentru acest fișier — acolo LUT-ul se aplică prin alt motor, care îl acceptă. Conversia în sine nu e afectată.",
+            .en: "The live player uses the system playback engine, which doesn't accept every ProRes and RAW variant. Use “Preview” for this file — there the LUT is applied through a different engine that accepts it. Conversion itself is unaffected.",
+            .es: "El reproductor en vivo usa el motor del sistema, que no admite todas las variantes de ProRes y RAW. Usa «Vista previa» para este archivo: allí el LUT se aplica con otro motor que sí lo admite. La conversión no se ve afectada."
+        ],
     ]
 }

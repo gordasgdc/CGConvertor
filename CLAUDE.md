@@ -3133,3 +3133,63 @@ instalat, separat de mediul de sistem):
 
 Versiune 3.14.13 -> 3.15.0 (MINOR — arhitectura noua a motorului de
 Offload, functionalitate vizibila noua in raport, Regula 14).
+
+## Etapa 2026-09-11 — Bibliotecă de LUT-uri + diagnostic de redare în player
+
+Două cereri distincte de la Cristi, în același mesaj.
+
+### 1. LUT-uri memorate, aplicate pe selecție
+
+*„Să selectez clipurile și să selectez de dinainte un anumit tip de LUT... să nu
+stau pe fiecare să tot dau aplică LUT."*
+
+`LUTLibrary.swift` (nou): bibliotecă persistentă + asociere LUT↔clip.
+`selectedJobIDs` exista deja (folosit la pornirea cozii și comparația de
+metadate), deci aplicarea pe selecție s-a putut construi peste infrastructura
+existentă, fără un mecanism nou de selecție.
+
+Decizii, cu motivele:
+- **Se persistă CĂI, nu conținut.** Un `.cube` poate avea zeci de MB, iar
+  userul își ține fișierele unde vrea. Un LUT mutat/șters e semnalat explicit
+  (`lipsesteFisierul` → marcaj ⚠︎ + intrare dezactivată), niciodată ascuns.
+- **Biblioteca persistă între sesiuni, atribuirile per clip NU.** Un `jobID` e
+  un `UUID` generat la adăugarea în coadă; la repornire, aceleași fișiere
+  primesc alte id-uri, deci o atribuire salvată s-ar lipi de clipul greșit —
+  mai rău decât să lipsească. Biblioteca (munca reală de organizare) rămâne.
+- Playerul (`LUTPlayerSheet`) și previzualizarea (`MediaPreviewSheet`) citesc
+  amândouă din aceeași sursă la deschidere, deci arată același lucru.
+
+**BUG EVITAT la scriere**: prima variantă citea `LUTLibrary.shared` direct în
+`body`-ul lui `RandJob`. SwiftUI n-ar fi observat schimbarea, deci badge-ul cu
+LUT-ul n-ar fi apărut decât la o redesenare întâmplătoare a rândului — ar fi
+părut că „Aplică LUT" nu face nimic. Corectat cu `@ObservedObject` înainte de
+build.
+
+### 2. ProRes de la RED nu se vedea în player
+
+Raportat: merge în previzualizarea foto, ecran negru în player. Canon/Sony merg.
+
+**Cauza, verificată în cod**: două căi de decodare complet diferite.
+`MediaPreviewSheet` extrage cadrul cu **ffmpeg** (decodează practic orice);
+`LUTPlayerSheet` folosește **AVFoundation** (`AVURLAsset` +
+`AVMutableVideoComposition`), mult mai restrictiv — anumite variante
+ProRes/RAW, spații de culoare sau containere nestandard nu-i sunt suportate.
+
+**Defectul real de UX**: `configureazaPlayer()` nu verifica NICIODATĂ dacă
+încărcarea a reușit. Construia playerul și dădea `play()`; dacă AVFoundation nu
+putea decoda, `item.status` devenea `.failed` și nimeni nu se uita. Rezultat:
+fereastră neagră, zero explicații.
+
+Adăugat: verificare `asset.load(.isPlayable)` + `loadTracks(withMediaType:)`
+ÎNAINTE de a construi playerul, plus observer pe `item.status` pentru eșecurile
+descoperite abia la primul cadru. Mesajul explică situația și trimite la
+Previzualizare — calea care funcționează pentru acel fișier.
+
+**NEREZOLVAT, declarat explicit**: fișierul tot nu se redă în player. Fixul de
+față elimină ecranul negru inexplicabil, nu limitarea AVFoundation. Dacă e
+ProRes RAW, singura soluție reală ar fi un player construit pe ffmpeg —
+schimbare de arhitectură, nu un fix. Așteptăm ieșirea `ffprobe` de la Cristi
+(codec_name/profile/pix_fmt) ca să știm care dintre cele două cazuri e.
+
+Versiune: 3.15.0 → **3.16.0** (MINOR). Regula 0: `build_app.sh` rulat,
+versiunea INSTALATĂ verificată cu PlistBuddy (3.16.0).

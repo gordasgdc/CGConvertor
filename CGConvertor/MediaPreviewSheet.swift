@@ -110,6 +110,12 @@ struct MediaPreviewSheet: View {
         .background(Shift.bg)
         .onAppear {
             pozitieSecunde = min(1, durata)
+            // [2026-09-11] Preia LUT-ul atribuit clipului din meniul de
+            // selecție — aceeași sursă ca la player, deci previzualizarea și
+            // redarea arată același lucru fără nicio alegere manuală.
+            if lutPath == nil, let lut = LUTLibrary.shared.lut(pentru: job.id) {
+                lutPath = lut.path
+            }
             programeazaExtractie()
         }
     }

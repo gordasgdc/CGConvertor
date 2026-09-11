@@ -56,6 +56,19 @@ struct LUTPlayerSheet: View {
 
     @StateObject private var coordonator = LUTPlayerCoordinator()
     @State private var player: AVPlayer?
+    /// [2026-09-11] Mesaj de eroare când AVFoundation nu poate reda fișierul.
+    /// Raportat de Cristi: un ProRes de la RED nu se vedea în player (ecran
+    /// gol), deși în previzualizarea foto apărea corect.
+    ///
+    /// CAUZA, verificată în cod: sunt DOUĂ căi de decodare complet diferite —
+    /// previzualizarea foto (`MediaPreviewSheet`) extrage cadrul cu **ffmpeg**,
+    /// care decodează practic orice; playerul acesta folosește **AVFoundation**,
+    /// care e mult mai restrictiv (anumite variante ProRes/RAW, spații de
+    /// culoare sau containere nestandard pur și simplu nu-i sunt suportate).
+    /// Codul nu verifica NICIODATĂ dacă încărcarea a reușit, deci eșecul era
+    /// complet tăcut: fereastră neagră, zero explicații.
+    @State private var eroarePlayer: String?
+    @State private var observerStatus: NSKeyValueObservation?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -76,7 +89,27 @@ struct LUTPlayerSheet: View {
 
             ZStack {
                 Rectangle().fill(Shift.elevated)
-                if let player {
+                if let eroarePlayer {
+                    // Nu lăsăm o fereastră neagră: spunem CE s-a întâmplat și,
+                    // mai important, care e calea care funcționează pentru
+                    // fișierul ăsta (previzualizarea foto merge prin ffmpeg).
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(.orange)
+                        Text(eroarePlayer)
+                            .multilineTextAlignment(.center)
+                            .font(.callout)
+                            .foregroundStyle(Shift.text)
+                            .frame(maxWidth: 460)
+                        Text(L.t("player.error.hint"))
+                            .multilineTextAlignment(.center)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: 460)
+                    }
+                    .padding(24)
+                } else if let player {
                     AVPlayerAppKitView(player: player)
                 } else {
                     ProgressView().controlSize(.small)
@@ -107,19 +140,60 @@ struct LUTPlayerSheet: View {
         .padding(20)
         .frame(minWidth: 560, idealWidth: 940)
         .background(Shift.bg)
-        .onAppear { configureazaPlayer() }
-        .onDisappear { player?.pause() }
+        .onAppear {
+            // [2026-09-11] Dacă acestui clip i s-a atribuit deja un LUT (din
+            // meniul „Aplică LUT pe N clipuri"), playerul pornește DIRECT cu
+            // el — fără să mai fie ales manual de fiecare dată.
+            if let lut = LUTLibrary.shared.lut(pentru: job.id) {
+                coordonator.setLUT(url: lut)
+            }
+            configureazaPlayer()
+        }
+        .onDisappear { player?.pause(); observerStatus?.invalidate() }
     }
 
     private func configureazaPlayer() {
+        eroarePlayer = nil
         let asset = AVURLAsset(url: job.urlSursa)
-        let item = AVPlayerItem(asset: asset)
-        item.videoComposition = AVMutableVideoComposition(asset: asset) { request in
-            coordonator.renderFrame(request)
+
+        Task { @MainActor in
+            // Verificăm ÎNAINTE de a construi playerul: `isPlayable` fals
+            // înseamnă că AVFoundation nu are cum să redea fișierul, oricât
+            // am insista — mai bine spunem asta clar decât să pornim un
+            // player care rămâne negru.
+            let playabil = (try? await asset.load(.isPlayable)) ?? false
+            let piste = (try? await asset.loadTracks(withMediaType: .video)) ?? []
+
+            guard playabil, !piste.isEmpty else {
+                eroarePlayer = piste.isEmpty
+                    ? L.t("player.error.noVideoTrack")
+                    : L.t("player.error.notPlayable")
+                return
+            }
+
+            let item = AVPlayerItem(asset: asset)
+            item.videoComposition = AVMutableVideoComposition(asset: asset) { request in
+                coordonator.renderFrame(request)
+            }
+
+            // Decodarea poate eșua și DUPĂ ce fișierul pare valid (codec
+            // nesuportat descoperit abia la primul cadru real). Observăm
+            // statusul ca să nu rămână iar o fereastră neagră fără explicație.
+            observerStatus = item.observe(\.status, options: [.new]) { observedItem, _ in
+                Task { @MainActor in
+                    if observedItem.status == .failed {
+                        let detaliu = observedItem.error?.localizedDescription ?? ""
+                        eroarePlayer = detaliu.isEmpty
+                            ? L.t("player.error.notPlayable")
+                            : L.t("player.error.notPlayable") + "\n\n" + detaliu
+                    }
+                }
+            }
+
+            let p = AVPlayer(playerItem: item)
+            player = p
+            p.play()
         }
-        let p = AVPlayer(playerItem: item)
-        player = p
-        p.play()
     }
 
     private func alegeLUT() {
