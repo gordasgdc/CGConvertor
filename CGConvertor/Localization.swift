@@ -375,10 +375,15 @@ enum L {
             .en: "The file has no video track this player can read.",
             .es: "El archivo no tiene una pista de vídeo que este reproductor pueda leer."
         ],
+        "player.error.codec": [
+            .ro: "macOS nu poate reda acest format: %@.",
+            .en: "macOS cannot play this format: %@.",
+            .es: "macOS no puede reproducir este formato: %@."
+        ],
         "player.error.hint": [
-            .ro: "Playerul live folosește motorul de redare al sistemului, care nu acceptă toate variantele de ProRes și RAW. Folosește „Previzualizare” pentru acest fișier — acolo LUT-ul se aplică prin alt motor, care îl acceptă. Conversia în sine nu e afectată.",
-            .en: "The live player uses the system playback engine, which doesn't accept every ProRes and RAW variant. Use “Preview” for this file — there the LUT is applied through a different engine that accepts it. Conversion itself is unaffected.",
-            .es: "El reproductor en vivo usa el motor del sistema, que no admite todas las variantes de ProRes y RAW. Usa «Vista previa» para este archivo: allí el LUT se aplica con otro motor que sí lo admite. La conversión no se ve afectada."
+            .ro: "Playerul live folosește motorul de redare al macOS, care acceptă ProRes, H.264 și H.265, dar nu și formate ca DNxHR/DNxHD. Folosește „Previzualizare” pentru acest fișier — acolo LUT-ul se aplică prin alt motor, care îl acceptă. Conversia în sine nu e afectată în niciun fel.",
+            .en: "The live player uses the macOS playback engine, which handles ProRes, H.264 and H.265 but not formats like DNxHR/DNxHD. Use “Preview” for this file — there the LUT is applied through a different engine that accepts it. Conversion itself is completely unaffected.",
+            .es: "El reproductor en vivo usa el motor de macOS, que admite ProRes, H.264 y H.265, pero no formatos como DNxHR/DNxHD. Usa «Vista previa» para este archivo: allí el LUT se aplica con otro motor que sí lo admite. La conversión no se ve afectada en absoluto."
         ],
     ]
 }

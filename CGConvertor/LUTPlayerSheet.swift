@@ -152,6 +152,25 @@ struct LUTPlayerSheet: View {
         .onDisappear { player?.pause(); observerStatus?.invalidate() }
     }
 
+    /// Codecul real al pistei, în forma pe care o recunoaște userul
+    /// („DNxHR", „ProRes", „H.264"), derivată din tag-ul de 4 litere al
+    /// formatului — aceeași convenție ca în orice unealtă de montaj.
+    private static func numeCodec(_ track: AVAssetTrack?) async -> String {
+        guard let track,
+              let formate = try? await track.load(.formatDescriptions),
+              let primul = formate.first else { return "" }
+        let subtype = CMFormatDescriptionGetMediaSubType(primul)
+        let tag = withUnsafeBytes(of: subtype.bigEndian) {
+            String(bytes: $0, encoding: .ascii) ?? ""
+        }.trimmingCharacters(in: .whitespaces)
+        switch tag {
+        case "AVdh", "AVdn": return "DNxHR / DNxHD (Avid)"
+        case "apch", "apcn", "apcs", "apco", "ap4h", "ap4x": return "ProRes"
+        case "aprh", "aprn": return "ProRes RAW"
+        default: return tag
+        }
+    }
+
     private func configureazaPlayer() {
         eroarePlayer = nil
         let asset = AVURLAsset(url: job.urlSursa)
@@ -165,9 +184,19 @@ struct LUTPlayerSheet: View {
             let piste = (try? await asset.loadTracks(withMediaType: .video)) ?? []
 
             guard playabil, !piste.isEmpty else {
-                eroarePlayer = piste.isEmpty
-                    ? L.t("player.error.noVideoTrack")
-                    : L.t("player.error.notPlayable")
+                if piste.isEmpty {
+                    eroarePlayer = L.t("player.error.noVideoTrack")
+                } else {
+                    // Numim codecul CONCRET, nu „un format nesuportat".
+                    // Verificat pe cazul real raportat de Cristi: fișierul lui
+                    // nu era ProRes (cum părea după nume), ci DNxHR 444 12-bit
+                    // — `isDecodable` fals, `AVdh`. Fără numele codecului,
+                    // userul n-are cum să-și dea seama ce are de făcut.
+                    let codec = await Self.numeCodec(piste.first)
+                    eroarePlayer = codec.isEmpty
+                        ? L.t("player.error.notPlayable")
+                        : String(format: L.t("player.error.codec"), codec)
+                }
                 return
             }
 

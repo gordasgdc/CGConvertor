@@ -3185,11 +3185,32 @@ Adăugat: verificare `asset.load(.isPlayable)` + `loadTracks(withMediaType:)`
 descoperite abia la primul cadru. Mesajul explică situația și trimite la
 Previzualizare — calea care funcționează pentru acel fișier.
 
-**NEREZOLVAT, declarat explicit**: fișierul tot nu se redă în player. Fixul de
-față elimină ecranul negru inexplicabil, nu limitarea AVFoundation. Dacă e
-ProRes RAW, singura soluție reală ar fi un player construit pe ffmpeg —
-schimbare de arhitectură, nu un fix. Așteptăm ieșirea `ffprobe` de la Cristi
-(codec_name/profile/pix_fmt) ca să știm care dintre cele două cazuri e.
+**CAUZA CONFIRMATĂ pe fișierul real al lui Cristi** (nu presupusă): fișierul NU
+era ProRes, în ciuda numelui („...LOG_6K.mov") și a presupunerii inițiale a
+amândurora. `ffprobe`: **DNxHR 444, 12-bit, 5760×3240, tag `AVdh`** — codec
+Avid, nu Apple, nu RED.
+
+Verificat direct cu AVFoundation pe acel fișier, printr-un mic executabil
+separat: `isPlayable: false`, `isDecodable: false`. **macOS nu decodează
+DNxHD/DNxHR deloc** — motorul de sistem acoperă ProRes, H.264, H.265. De-asta
+Canon/Sony mergeau (formate suportate) și acesta nu.
+
+Deci NU e un defect al aplicației, ci o limitare a platformei. Mesajul inițial
+scris de mine vorbea despre „ProRes și RAW" — greșit pentru cazul real;
+corectat să numească CODECUL CONCRET (`numeCodec`, mapare din tag-ul de 4
+litere: `AVdh`/`AVdn` → DNxHR/DNxHD, `ap4h` etc. → ProRes, `aprh` → ProRes RAW).
+Fără numele codecului, userul n-avea cum să înțeleagă ce are de făcut.
+
+**RĂMÂNE NEREZOLVAT, declarat explicit**: fișierul tot nu se redă în player.
+Singura soluție reală ar fi un player construit pe ffmpeg (decodare + sincron
+proprii) în locul celui de sistem — ar acoperi DNxHR, R3D, orice, dar e o
+schimbare de arhitectură, nu un fix. Prezentată lui Cristi ca decizie, în
+funcție de cât de des lucrează cu DNxHR.
+
+**Lecție**: numele fișierului și așteptarea userului („ProRes de la RED") au
+trimis diagnosticul într-o direcție greșită la început. `ffprobe` pe fișierul
+real a lămurit-o în câteva secunde — pentru probleme de format, fișierul e
+singura sursă de adevăr.
 
 Versiune: 3.15.0 → **3.16.0** (MINOR). Regula 0: `build_app.sh` rulat,
 versiunea INSTALATĂ verificată cu PlistBuddy (3.16.0).

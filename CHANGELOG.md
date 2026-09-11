@@ -12,11 +12,11 @@
 - Un LUT al cărui fișier a fost mutat sau șters apare marcat, nu dispare tăcut.
 
 ### Fixed
-- **Playerul îți spune acum de ce nu poate reda un fișier**, în loc să rămână
-  negru fără explicație. Unele variante de ProRes și RAW nu sunt acceptate de
-  motorul de redare al sistemului — în acele cazuri, mesajul te trimite la
-  Previzualizare, care folosește alt motor și le acceptă. Conversia nu e
-  afectată în niciun fel.
+- **Playerul îți spune acum de ce nu poate reda un fișier**, numind formatul
+  concret, în loc să rămână negru fără explicație. Motorul de redare al macOS
+  acceptă ProRes, H.264 și H.265, dar nu formate ca DNxHR/DNxHD — în acele
+  cazuri mesajul te trimite la Previzualizare, care folosește alt motor și le
+  acceptă. Conversia nu e afectată în niciun fel.
 
 Toate modificările notabile ale acestui proiect sunt documentate aici.
 
