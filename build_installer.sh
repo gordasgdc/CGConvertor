@@ -92,6 +92,20 @@ productbuild \
     --resources "$DIST_DIR" \
     "$FINAL_PKG"
 
+# --- DMG semnat + notarizat + stapled (Regula 45/K) — descarcarea de pe pagina ---
+DMG="$DIST_DIR/CGConvertor-$VERSION.dmg"
+DMG_STAGE="$DIST_DIR/dmg_stage"
+rm -rf "$DMG_STAGE" "$DMG"; mkdir -p "$DMG_STAGE"
+ditto "$PAYLOAD_ROOT/Applications/$APP_NAME" "$DMG_STAGE/$APP_NAME"
+ln -s /Applications "$DMG_STAGE/Applications"
+cp installer/Instructiuni_Utilizare.pdf "$DMG_STAGE/" 2>/dev/null || true
+hdiutil create -volname "CG Convertor $VERSION" -srcfolder "$DMG_STAGE" -fs HFS+ -format UDZO -ov "$DMG" >/dev/null
+rm -rf "$DMG_STAGE"
+if [ -n "${APPLE_SIGN_IDENTITY_APP:-}" ]; then
+    codesign --force --sign "$APPLE_SIGN_IDENTITY_APP" --timestamp "$DMG"
+    ./codesigning/sign-and-notarize.sh dmg "$DMG"
+fi
+
 rm -rf "$PAYLOAD_ROOT" "$COMPONENT_PKG"
 
 # Semnare + notarizare a .pkg-ului final, daca certificatul Installer e
@@ -100,25 +114,7 @@ rm -rf "$PAYLOAD_ROOT" "$COMPONENT_PKG"
 
 cp "$FINAL_PKG" "$DIST_DIR/CGConvertor.pkg"
 
-echo "==> Copying uninstaller (Dezinstalare_CGConvertor.command)…"
-cp "Dezinstalare_CGConvertor.command" "$DIST_DIR/Dezinstalare_CGConvertor.command"
-chmod +x "$DIST_DIR/Dezinstalare_CGConvertor.command"
-
-# Bundle .pkg + uninstaller + instructiuni intr-un zip curat. Pachetul e
-# semnat + notarizat + stapled, deci Gatekeeper il accepta nativ la
-# dublu-click - NU exista niciun launcher/script de bypass. Totul la
-# radacina arhivei, fara subfoldere - doar 3 fisiere, fara ambiguitate.
-echo "==> Building CGConvertor-Mac.zip (pkg + uninstaller + instructiuni)…"
-ZIP_STAGE="$DIST_DIR/zip_stage"
-rm -rf "$ZIP_STAGE"
-mkdir -p "$ZIP_STAGE"
-cp "$DIST_DIR/CGConvertor.pkg" "$ZIP_STAGE/"
-cp "installer/Instructiuni_Utilizare.pdf" "$ZIP_STAGE/" 2>/dev/null || true
-cp "$DIST_DIR/Dezinstalare_CGConvertor.command" "$ZIP_STAGE/"
-chmod +x "$ZIP_STAGE/Dezinstalare_CGConvertor.command"
-( cd "$ZIP_STAGE" && zip -q -r -y "../CGConvertor-Mac.zip" . )
-rm -rf "$ZIP_STAGE"
-
 echo "==> Done: $FINAL_PKG"
-echo "==> Also: $DIST_DIR/CGConvertor.pkg, $DIST_DIR/Dezinstalare_CGConvertor.command, $DIST_DIR/CGConvertor-Mac.zip"
-echo "    Upload CGConvertor-Mac.zip to the GitHub release (that's what the website links to)."
+echo "==> Also: $DMG (descarcarea de pe pagina), $DIST_DIR/CGConvertor.pkg (doar canalul Self-Updater)"
+echo "    Publica pe release: CGConvertor-$VERSION.dmg + CGConvertor.dmg (copie stabila) + CGConvertor.pkg + CGConvertor-$VERSION.pkg."
+cp "$DMG" "$DIST_DIR/CGConvertor.dmg"

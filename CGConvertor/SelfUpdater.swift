@@ -76,6 +76,11 @@ enum SelfUpdater {
         #!/bin/bash
         exec > "\(logPath.path)" 2>&1
         sleep 2
+        echo "Verific semnatura pachetului..."
+        if ! /usr/sbin/pkgutil --check-signature "\(pkgPath.path)" | grep -q "8AR6XP8MG7"; then
+            echo "Semnatura pachetului nu corespunde (Team ID GDC). Instalare anulata."
+            exit 3
+        fi
         echo "Instalez actualizarea..."
         installer -pkg "\(pkgPath.path)" -target /
         status=$?

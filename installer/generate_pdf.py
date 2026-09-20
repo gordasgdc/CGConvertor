@@ -160,7 +160,7 @@ RO = dict(
     subtitle="Instrucțiuni de instalare și utilizare — Română",
     h_install="1. Instalare",
     install=[
-        "Descarcă și dezarhivează <b>CGConvertor-Mac.zip</b> de pe pagina de descărcare sau din secțiunea Releases de pe GitHub.",
+        "Descarcă <b>CGConvertor-&lt;versiune&gt;.dmg</b> de pe pagina de descărcare, deschide-l și trage CGConvertor în Applications.",
         "Dublu-click pe <b>CGConvertor.pkg</b> — pachet semnat și notarizat oficial de Apple, se instalează direct în /Applications, fără avertismente Gatekeeper și fără să tragi manual nimic.",
         "Urmează pașii instalatorului. Va trebui să accepți Termenii și Condițiile pentru a continua.",
         "La prima pornire, deschide aplicația din Launchpad sau din folderul Applications.",
@@ -257,7 +257,7 @@ RO = dict(
     donation_note="<b>Donație:</b> 23 € — susține continuarea dezvoltării aplicației și a platformei, după cele 15 zile de Trial gratuit. Nu este o vânzare — activarea se face manual, prin WhatsApp, pe baza donației.",
     trial_note="<b>Important:</b> dacă schimbi calculatorul, scrie din nou pe WhatsApp — codul se regenerează pentru noul ID.",
     h_uninstall="13. Dezinstalare",
-    uninstall="Rulează <b>Dezinstalare_CGConvertor.command</b> din arhiva descărcată — șterge aplicația și toate fișierele de date.",
+    uninstall="Închide aplicația și mut-o din Applications în Coș. Datele rămân în <b>~/Library/Application Support/CGConvertor</b> și se pot șterge manual.",
     h_support="14. Suport",
     support="Pentru orice întrebare, scrie pe WhatsApp (buton în fereastra de activare) sau deschide un Issue pe GitHub.",
 )
@@ -266,7 +266,7 @@ EN = dict(
     subtitle="Installation and usage instructions — English",
     h_install="1. Installation",
     install=[
-        "Download and unzip <b>CGConvertor-Mac.zip</b> from the download page or the GitHub Releases section.",
+        "Download <b>CGConvertor-&lt;version&gt;.dmg</b> from the download page, open it and drag CGConvertor into Applications.",
         "Double-click <b>CGConvertor.pkg</b> — a package officially signed and notarized by Apple, installs directly into /Applications, no Gatekeeper warnings and nothing to drag manually.",
         "Follow the installer steps. You'll need to accept the Terms and Conditions to continue.",
         "On first launch, open the app from Launchpad or the Applications folder.",
@@ -363,7 +363,7 @@ EN = dict(
     donation_note="<b>A donation, not a list price:</b> €23 — supports ongoing development of the app and the platform, after the 15-day free Trial. Not a sale — activation happens manually, over WhatsApp, based on the donation.",
     trial_note="<b>Important:</b> if you switch computers, message WhatsApp again — the code is regenerated for the new ID.",
     h_uninstall="13. Uninstalling",
-    uninstall="Run <b>Dezinstalare_CGConvertor.command</b> from the downloaded archive — it removes the app and all data files.",
+    uninstall="Quit the app and move it from Applications to the Trash. Data stays in <b>~/Library/Application Support/CGConvertor</b> and can be deleted manually.",
     h_support="14. Support",
     support="For any question, message WhatsApp (button in the activation window) or open an Issue on GitHub.",
 )
@@ -372,7 +372,7 @@ ES = dict(
     subtitle="Instrucciones de instalación y uso — Español",
     h_install="1. Instalación",
     install=[
-        "Descarga y descomprime <b>CGConvertor-Mac.zip</b> desde la página de descarga o la sección Releases de GitHub.",
+        "Descarga <b>CGConvertor-&lt;versión&gt;.dmg</b> desde la página de descarga, ábrelo y arrastra CGConvertor a Applications.",
         "Doble clic en <b>CGConvertor.pkg</b> — paquete firmado y notarizado oficialmente por Apple, se instala directamente en /Applications, sin avisos de Gatekeeper y sin arrastrar nada manualmente.",
         "Sigue los pasos del instalador. Deberás aceptar los Términos y Condiciones para continuar.",
         "En el primer inicio, abre la app desde Launchpad o la carpeta Aplicaciones.",
@@ -469,7 +469,7 @@ ES = dict(
     donation_note="<b>Una donación, no un precio de lista:</b> 23 € — apoya el desarrollo continuo de la app y la plataforma, tras los 15 días de prueba gratuita. No es una venta — la activación se hace manualmente, por WhatsApp, en base a la donación.",
     trial_note="<b>Importante:</b> si cambias de ordenador, escribe de nuevo por WhatsApp — el código se regenera para el nuevo ID.",
     h_uninstall="13. Desinstalación",
-    uninstall="Ejecuta <b>Dezinstalare_CGConvertor.command</b> desde el archivo descargado — elimina la app y todos los archivos de datos.",
+    uninstall="Cierra la app y muévela de Applications a la Papelera. Los datos quedan en <b>~/Library/Application Support/CGConvertor</b> y se pueden borrar a mano.",
     h_support="14. Soporte",
     support="Para cualquier pregunta, escribe por WhatsApp (botón en la ventana de activación) o abre un Issue en GitHub.",
 )

@@ -19,8 +19,8 @@
 #   codesigning/sign-and-notarize.sh pkg   /path/to/MyInstaller.pkg
 set -euo pipefail
 
-KIND="${1:?Usage: sign-and-notarize.sh <app|pkg> <path>}"
-TARGET="${2:?Usage: sign-and-notarize.sh <app|pkg> <path>}"
+KIND="${1:?Usage: sign-and-notarize.sh <app|pkg|dmg> <path>}"
+TARGET="${2:?Usage: sign-and-notarize.sh <app|pkg|dmg> <path>}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ -z "${APPLE_SIGN_IDENTITY_APP:-}" ]; then
@@ -131,6 +131,9 @@ case "$KIND" in
         ;;
     pkg)
         sign_pkg "$TARGET"
+        notarize "$TARGET"
+        ;;
+    dmg)
         notarize "$TARGET"
         ;;
     *)

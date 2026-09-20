@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.16.1 (2026-09-20) — Descărcare DMG notarizat
+
+### Changed
+- **Mac: descărcarea e acum un `.dmg` semnat și notarizat** (deschizi, tragi aplicația în Applications), în loc de arhivă `.zip`.
+- Dezinstalarea e simplă: aplicația la Coș. Scriptul `.command` a dispărut.
+- Actualizarea automată verifică semnătura pachetului înainte să-l instaleze.
+
 ## v3.16.0 (2026-09-11) — LUT-uri memorate, aplicate pe mai multe clipuri deodată
 
 ### Added

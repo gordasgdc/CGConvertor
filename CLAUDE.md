@@ -2299,3 +2299,10 @@ confirmat.
   `codesigning/README-windows.md` din acel repo pentru pașii exacți pe
   care Cristi trebuie să-i ruleze o singură dată (generare cert + upload
   secret CI).
+
+
+- **2026-09-20 — v3.16.1. Distribuție DMG (Regula 45/K).** `build_installer.sh` produce `CGConvertor-<v>.dmg` (+ copie stabilă
+  `CGConvertor.dmg`) semnat Developer ID, notarizat, stapled; `sign-and-notarize.sh` are modul `dmg`. Eliminate: `CGConvertor-Mac.zip`
+  și `Dezinstalare_CGConvertor.command` (dezinstalare = aplicația la Coș). `.pkg` versionat + `CGConvertor.pkg` rămân DOAR canal
+  Self-Updater (UpdateChecker citește asset-ul `CGConvertor.pkg` din GitHub Releases); SelfUpdater verifică acum Team ID-ul pkg-ului.
+  Butonul site-ului → `releases/latest/download/CGConvertor.dmg`. NEverificat: instalare Self-Updater cu parolă admin, Mac curat.
