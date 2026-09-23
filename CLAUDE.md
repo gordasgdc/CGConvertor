@@ -2306,3 +2306,10 @@ confirmat.
   și `Dezinstalare_CGConvertor.command` (dezinstalare = aplicația la Coș). `.pkg` versionat + `CGConvertor.pkg` rămân DOAR canal
   Self-Updater (UpdateChecker citește asset-ul `CGConvertor.pkg` din GitHub Releases); SelfUpdater verifică acum Team ID-ul pkg-ului.
   Butonul site-ului → `releases/latest/download/CGConvertor.dmg`. NEverificat: instalare Self-Updater cu parolă admin, Mac curat.
+
+### Handoff — fișierul de stare (Regula 50, `~/Developer/CLAUDE.md`)
+
+- Fișierul de stare al acestui proiect: `PROJECT_STATE.md` (rădăcina repo-ului). La orice sesiune nouă se citește
+  ÎNTÂI el, apoi doar fragmentele strict necesare; se actualizează la milestone-uri și obligatoriu la final.
+  Dacă lipsește, se creează la prima sesiune care atinge proiectul. Repo PUBLIC: fișierul e intern, listat în `.gitignore` (doar local, Regula 29).
+- Restructurarea/ștergerea lui și orice modificare a acestui `CLAUDE.md`: doar cu diff-ul arătat și acordul lui Cristi.
