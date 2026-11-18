@@ -1,52 +1,75 @@
+<div align="center">
+
+<img src="docs/assets/icon.png" width="84" alt="">
+
 # CG Convertor
 
-[🇷🇴 Română](README.md) &middot; [🇬🇧 English](README.en.md) &middot; [🇪🇸 Español](README.es.md)
+**Transcodificación, copia verificada y metadatos para DaVinci Resolve, en Mac.**
 
-**Transcode y Rewrap para DaVinci Resolve** — Mac y Windows, totalmente independiente.
+[🇷🇴 Română](README.md) · [🇬🇧 English](README.en.md) · [🇪🇸 Español](README.es.md)
 
-**Página de presentación:** https://gordasgdc.github.io/CGConvertor/
+[**Página del producto**](https://gordas.dev/cgconvertor/) · [**Descargar (.dmg)**](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) · [Versiones](https://github.com/gordasgdc/CGConvertor/releases) · [Manual (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf)
 
-Creado por **Cristi Gordas** (GDC) — [YouTube](https://youtube.com/@cristigordas) &middot; [resolvemaster.training](https://resolvemaster.training)
+<br>
+
+<img src="docs/screenshots/o-es.jpg" width="900" alt="Offload verificado en CG Convertor: origen, dos destinos, verificación por relectura">
+
+</div>
+
+## Qué hace
+
+Convierte clips para DaVinci Resolve mientras el timecode y las pistas nativas de la cámara se quedan en el archivo cuando la imagen sigue en Log. Cada clip tiene un informe: qué se conservó, qué no y por qué.
+
+| Transcodificar | Metadatos |
+|:--:|:--:|
+| <img src="docs/screenshots/t-es.jpg" width="440" alt="Espacio Transcodificar: cuadrícula de clips e inspector"> | <img src="docs/screenshots/m-es.jpg" width="440" alt="Espacio Metadatos: gamut, curva, timecode y procedencia de cada valor"> |
+
+- **Transcodificar** — arrastra clips a la ventana, marca lo que se convierte y elige el preset (ProRes, DNxHD/DNxHR) en el inspector. Resumen y avisos antes de empezar; los resultados existentes no se sobrescriben.
+- **Offload** — copia a uno o más destinos, verificada por relectura y suma de control. «Copiado» no significa «verificado»: cada destino muestra su veredicto. Informes HTML, CSV, MHL y PDF; solo los archivos verificados pasan a transcodificar.
+- **Metadatos** — gamut y curva por separado, timecode con su tipo, fabricante, modelo, objetivo. Cada valor muestra su procedencia; lo desconocido sigue desconocido y el original nunca se modifica.
+
+## Requisitos e instalación
+
+- macOS 14 o posterior, **Mac con Apple Silicon** (no hay versión para Intel).
+- La app está firmada con Developer ID y notarizada.
+
+1. Descarga [`CGConvertor.dmg`](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) (o `CGConvertor.pkg`).
+2. Abre el paquete y sigue los pasos; la app queda en `Applications`.
+3. La prueba de 5 días empieza en el primer arranque. Elige idioma (RO / EN / ES) y tema (Sistema / Claro / Oscuro) en los ajustes.
+4. Primera operación: en **Offload** elige origen y destinos, inicia la transferencia y usa «Enviar a transcodificar».
+
+Windows: hay una versión independiente en [Versiones](https://github.com/gordasgdc/CGConvertor/releases); no incluye las mejoras de la 3.18.
+
+## Documentación
+
+- [Manual de uso (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf) — RO / EN / ES
+- [Novedades de la 3.18.0 (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor-Imbunatatiri-3.18.0.pdf)
+- [Historial de versiones](CHANGELOG.md) (en rumano)
+
+## Licencia
+
+Prueba de 5 días con acceso completo, luego licencia de 3, 6 o 12 meses o perpetua, ligada a tu ordenador. La app no usa donaciones. Las condiciones se comunican por el canal de contacto.
+
+## Límites importantes
+
+- Resolve asigna el perfil Log automáticamente solo en las cámaras probadas (verificado: Canon C50). En Sony A7 IV y Panasonic DC-S1 solo lee el timecode; otras marcas no se probaron.
+- Las pistas nativas no se conservan si eliges una etiqueta de color, cambias los fotogramas/s o el contenedor no es MOV.
+- Un archivo válido no es automáticamente completo: si falla la escritura de metadatos, el clip muestra una advertencia.
+- La instalación en un Mac limpio y el tema «Sistema» en ejecución no se verificaron por separado.
+
+Lista completa y explicaciones: [gordas.dev/cgconvertor](https://gordas.dev/cgconvertor/#limite).
+
+## Para desarrolladores
+
+Proyecto Xcode (SwiftUI) en la raíz del repositorio.
+
+```bash
+./build_app.sh        # compila e instala en local
+./build_installer.sh  # .pkg firmado y notarizado (requiere certificados Developer ID)
+```
+
+Los binarios `ffmpeg`, `ffprobe` y `gdc-metadata-core` se incluyen en la app; sus licencias: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). La variante Python heredada, usada para Windows, está en [`python/`](python/README.md). El código es público para consulta; el repositorio no declara una licencia de código aparte.
 
 ---
 
-## 📦 Descargar e instalar
-
-No necesitas instalar nada por separado — FFmpeg está incluido.
-
-| Plataforma | Archivo | Instalación |
-|---|---|---|
-| Mac | `CGConvertor-mac.pkg` | Doble clic → sigue el instalador |
-| Mac (alt.) | `CGConvertor-mac.zip` | Descomprime y mueve el `.app` a `/Applications` |
-| Windows | `CGConvertor-windows.exe` | Doble clic para ejecutar |
-
-Última versión: [Releases](https://github.com/gordasgdc/CGConvertor/releases/latest)
-
-> En Mac, primer inicio: clic derecho en la app → **Open** (la app no está firmada con una cuenta Apple Developer de pago). Alternativa: `xattr -cr /Applications/CGConvertor.app` en Terminal.
-
-## ✨ Características
-
-- Rewrap (rápido, sin re-codificación) y Transcode (re-codificación completa)
-- ProRes 422 / 422 HQ / 422 LT / 4444, DNxHD, DNxHR HQ
-- Interfaz drag-and-drop, procesamiento por lotes
-- Multilingüe: RO / EN / ES
-- Totalmente independiente — FFmpeg incluido
-
-## 🛠️ Desarrollo
-
-```bash
-pip install -r requirements.txt
-python main.py
-```
-
-Build local:
-```bash
-pyinstaller build-mac.spec       # o build-windows.spec en Windows
-```
-
-Los releases están automatizados — un `git tag vX.X.X` + `git push origin vX.X.X` dispara los builds para ambas plataformas via GitHub Actions.
-
-## 📄 Licencias
-
-Código de CGConvertor: MIT — ver [LICENSE](LICENSE).
-Dependencias incluidas (FFmpeg, etc.): ver [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Creado por **Cristi Gordaș** (GDC) · [YouTube](https://youtube.com/@cristigordas) · [gordas.dev](https://gordas.dev/)

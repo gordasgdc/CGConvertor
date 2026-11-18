@@ -1,65 +1,75 @@
+<div align="center">
+
+<img src="docs/assets/icon.png" width="84" alt="">
+
 # CG Convertor
 
-Transcode & rewrap rapid catre ProRes si DNxHD/DNxHR, construit pentru workflow-uri DaVinci Resolve.
+**Transcodare, copiere verificată și metadate pentru DaVinci Resolve, pe Mac.**
 
-**Pagina de prezentare:** https://gordasgdc.github.io/CGConvertor/
+[🇷🇴 Română](README.md) · [🇬🇧 English](README.en.md) · [🇪🇸 Español](README.es.md)
 
-Creat de **Cristi Gordas** (GDC) — [YouTube](https://youtube.com/@cristigordas) &middot; [GitHub](https://github.com/gordasgdc)
+[**Pagina produsului**](https://gordas.dev/cgconvertor/) · [**Descarcă (.dmg)**](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) · [Versiuni](https://github.com/gordasgdc/CGConvertor/releases) · [Manual (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf)
+
+<br>
+
+<img src="docs/screenshots/o-ro.jpg" width="900" alt="Offload verificat în CG Convertor: sursă, două destinații, verificare prin recitire">
+
+</div>
+
+## Ce face
+
+Convertești clipurile pentru DaVinci Resolve, iar timecode-ul și pistele native ale camerei rămân în fișier când imaginea rămâne Log. Fiecare clip are un raport: ce s-a păstrat, ce nu și de ce.
+
+| Transcodare | Metadate |
+|:--:|:--:|
+| <img src="docs/screenshots/t-ro.jpg" width="440" alt="Spațiul Transcodare: grilă de clipuri și inspector"> | <img src="docs/screenshots/m-ro.jpg" width="440" alt="Spațiul Metadate: gamut, curbă, timecode și proveniența valorilor"> |
+
+- **Transcodare** — tragi clipurile în fereastră, marchezi ce se convertește, alegi presetarea (ProRes, DNxHD/DNxHR) în inspector. Rezumat și avertismente înainte de pornire; rezultatele existente nu se suprascriu.
+- **Offload** — copiere pe una sau mai multe destinații, cu verificare prin recitire și sumă de control. „Copiat” nu înseamnă „verificat”: fiecare destinație își arată verdictul. Raport HTML, CSV, MHL și PDF; către transcodare merg doar fișierele verificate.
+- **Metadate** — gamut și curbă separate, timecode cu tipul lui, producător, model, obiectiv. Fiecare valoare își arată proveniența; necunoscutul rămâne necunoscut, iar originalul nu se modifică.
+
+## Cerințe și instalare
+
+- macOS 14 sau mai nou, **Mac cu Apple Silicon** (nu există versiune pentru Intel).
+- Aplicația este semnată Developer ID și notarizată.
+
+1. Descarcă [`CGConvertor.dmg`](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) (sau `CGConvertor.pkg`).
+2. Deschide pachetul și urmează pașii; aplicația ajunge în `Applications`.
+3. La prima pornire începe proba de 5 zile. Alege limba (RO / EN / ES) și tema (Sistem / Deschisă / Închisă) din setări.
+4. Prima operație: în **Offload** alege sursa și destinațiile, apoi pornește transferul; la final folosește „Trimite la transcodare”.
+
+Windows: există o versiune separată în [Versiuni](https://github.com/gordasgdc/CGConvertor/releases); nu are îmbunătățirile din 3.18.
+
+## Documentație
+
+- [Manual de utilizare (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf) — RO / EN / ES
+- [Îmbunătățiri în 3.18.0 (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor-Imbunatatiri-3.18.0.pdf)
+- [Istoricul versiunilor](CHANGELOG.md)
+
+## Licențiere
+
+Probă de 5 zile cu acces complet, apoi licență pe 3, 6 sau 12 luni ori perpetuă, legată de calculator. Aplicația nu folosește donații. Condițiile se comunică pe canalul de contact.
+
+## Limite importante
+
+- Resolve atribuie automat profilul Log doar la camerele testate (verificat: Canon C50). La Sony A7 IV și Panasonic DC-S1 citește doar timecode-ul; celelalte mărci nu au fost testate.
+- Pistele native nu se păstrează când alegi o etichetă de culoare, schimbi cadrele/s sau containerul nu e MOV.
+- Un fișier valid nu e automat complet: dacă scrierea metadatelor eșuează, clipul apare cu avertisment.
+- Instalarea pe un Mac curat și tema „Sistem” în timpul rulării nu au fost verificate separat.
+
+Lista completă și explicațiile: [gordas.dev/cgconvertor](https://gordas.dev/cgconvertor/#limite).
+
+## Pentru dezvoltatori
+
+Proiect Xcode (SwiftUI), în rădăcina depozitului.
+
+```bash
+./build_app.sh        # construiește și instalează local
+./build_installer.sh  # pachet .pkg semnat și notarizat (certificate Developer ID necesare)
+```
+
+Binarele `ffmpeg`, `ffprobe` și `gdc-metadata-core` sunt incluse în aplicație; licențele lor: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Varianta Python moștenită, folosită pentru Windows, e în [`python/`](python/README.md). Codul este public pentru consultare; depozitul nu declară o licență de cod separată.
 
 ---
 
-## 📦 Doua versiuni disponibile
-
-CG Convertor exista in doua variante independente. Poti instala oricare, sau ambele — nu se suprapun (nume de aplicatie diferite).
-
-| | **Swift (nativ)** | **Python (standalone)** |
-|---|---|---|
-| Platforme | macOS | macOS **si** Windows |
-| Interfata | SwiftUI, nativa 100% | Tkinter, multilingva (RO/EN/ES) |
-| FFmpeg | Necesita `brew install ffmpeg` | Inclus in pachet, nimic de instalat |
-| Cod sursa | rădăcina repo-ului (`CGConvertor.xcodeproj`) | `python/` |
-| Recomandat pentru | uz zilnic pe Mac, integrare nativa | echipe mixte Mac/Windows, zero setup |
-
-Ambele descarcari sunt pe aceeași pagina de [Releases](https://github.com/gordasgdc/CGConvertor/releases/latest).
-
-### Instalare — versiunea Swift (Mac)
-
-1. Descarcă `CGConvertor-X.X.X.pkg` din Releases
-2. Dublu-click → urmează instalatorul
-3. La prima rulare: click-dreapta pe aplicație → **Open** (nu e semnată cu cont Apple Developer plătit)
-   - Alternativ: `xattr -cr /Applications/CGConvertor.app`
-4. Instalezi FFmpeg o singură dată: `brew install ffmpeg`
-
-### Instalare — versiunea Python (Mac sau Windows)
-
-1. Descarcă `CGConvertor-standalone-mac.pkg` (Mac) sau `CGConvertor-standalone-windows.exe` (Windows) din Releases
-2. Rulezi installer-ul / executabilul — nimic altceva de instalat, FFmpeg e deja inclus
-3. Mac: click-dreapta → Open la prima rulare. Windows: „More info" → „Run anyway" dacă apare SmartScreen
-
-## ✨ Ce fac ambele versiuni
-
-- **Rewrap** — schimbare rapidă de container, fără re-encode
-- **Transcode** — re-encode complet
-- Codecuri: ProRes 422 / 422 HQ / 422 LT / 4444, DNxHD, DNxHR HQ
-- Păstrează timecode-ul și metadata originală
-- Drag & drop, procesare batch, progres per fișier
-
-## 🛠️ Dezvoltare
-
-**Swift:** deschizi `CGConvertor.xcodeproj` în Xcode și rulezi.
-
-**Python:**
-```bash
-cd python
-pip install -r requirements.txt
-python main.py
-```
-
-Detalii complete pentru varianta Python (inclusiv licențierea FFmpeg): [python/README.md](python/README.md).
-
-Release-urile pentru ambele versiuni sunt automatizate prin GitHub Actions (`.github/workflows/`): la fiecare `git tag vX.X.X` + `git push origin vX.X.X` se construiesc automat toate pachetele — `.zip`/`.pkg` Swift, `.zip`/`.pkg` Python-Mac, `.exe` Python-Windows — și se publică pe același Release.
-
-## 📄 Licență
-
-Codul CG Convertor: MIT — vezi [LICENSE](LICENSE).
-Dependințele versiunii Python (FFmpeg etc.): vezi [python/THIRD_PARTY_NOTICES.md](python/THIRD_PARTY_NOTICES.md).
+Creat de **Cristi Gordaș** (GDC) · [YouTube](https://youtube.com/@cristigordas) · [gordas.dev](https://gordas.dev/)
