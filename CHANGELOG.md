@@ -1,5 +1,34 @@
 # Changelog
 
+## v3.17.0 (2026-11-18) — Metadate păstrate, interval, diagnostic, licență fără donații
+
+### Added
+- **Metadatele sursei se păstrează în fișierul rezultat**: timecode (inclusiv drop-frame la Sony)
+  și, când imaginea rămâne Log, pistele native ale camerei (Canon „cndm”, Sony „rtmd”), copiate
+  fără modificare, tăiate exact la cadrele convertite și verificate. Comutator „Păstrează metadatele” în Setări.
+- **Raport per clip** (butonul „Raport”): detectat în sursă / încorporat și verificat / necesită aplicare
+  separată / necunoscut / nepăstrat, cu motivul fiecărei omisiuni. Un clip cu metadate incomplete apare cu
+  avertisment, nu ca succes complet.
+- **Sidecar „.gdc-metadata.json”** lângă rezultat, pentru ce Resolve nu citește din fișier.
+- **Extragere de interval** (pictograma foarfecă): limite pe cadre, imagine, sunet, timecode și piste native
+  rămân sincronizate cu intervalul ales. Disponibil la transcodare, nu la rewrap.
+- **Diagnostic**: Setări → „Exportă diagnosticul” (ZIP local, fără chei, tokenuri, media sau căi în clar),
+  jurnal local cu rotire, un singur rezultat final per conversie.
+- Ghid PDF actualizat (RO/EN/ES) și document separat „CGConvertor — Îmbunătățiri în versiunea 3.17.0” (RO).
+
+### Changed
+- **Licențiere**: proba nouă durează 5 zile; probele deja începute își păstrează durata inițială.
+  Licențe de 3, 6, 12 luni sau perpetue. Donațiile și sumele au fost scoase din aplicație.
+- Etichetele de culoare ale containerului nu mai afirmă Rec.709 când imaginea rămâne Log.
+- Interfață: carduri laterale cu aceeași lățime, butonul principal rămâne vizibil pe ferestre mici.
+
+### Limits
+- Resolve 21.2 citește automat pistele Canon (EOS C50) din ProRes; la Sony A7 IV și Panasonic DC-S1
+  testate citește doar timecode-ul (profilul se aplică prin sidecar sau punte). Rezultatul e pentru
+  camerele testate, nu pentru toată marca.
+- Decodarea hardware rămâne dezactivată (rezultat diferit pe un clip Panasonic H.264 4:2:2).
+- Paritate Windows: TODO (varianta Windows/Python nu a fost modificată).
+
 ## v3.16.1 (2026-09-20) — Descărcare DMG notarizat
 
 ### Changed

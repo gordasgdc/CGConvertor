@@ -28,7 +28,7 @@ enum L {
     }
 
     static func t(_ key: String) -> String {
-        table[key]?[current] ?? table[key]?[.ro] ?? key
+        table[key]?[current] ?? reportTable[key]?[current] ?? table[key]?[.ro] ?? reportTable[key]?[.ro] ?? key
     }
 
     private static let table: [String: [AppLanguage: String]] = [
@@ -175,9 +175,11 @@ enum L {
         "license.copy": [.ro: "Copiază", .en: "Copy", .es: "Copiar"],
         "license.copied": [.ro: "Copiat", .en: "Copied", .es: "Copiado"],
         "license.codePlaceholder": [.ro: "Cod de activare", .en: "Activation code", .es: "Código de activación"],
-        "license.note": [.ro: "Donație de 23 € pentru continuarea dezvoltării aplicației și a platformei — nu un preț de listă, nu o vânzare. Se activează după cele 15 zile de probă gratuită.",
-                          .en: "A €23 donation to support ongoing development of the app and the platform — not a list price, not a sale. Applies after the 15-day free trial.",
-                          .es: "Una donación de 23 € para apoyar el desarrollo continuo de la app y la plataforma — no un precio de lista, no una venta. Se activa tras los 15 días de prueba gratuita."],
+        "license.note": [.ro: "Licența se solicită; o emit eu și se activează cu un cod legat de ID-ul acestui calculator. Proba gratuită durează 5 zile de la prima pornire.",
+                          .en: "Licences are requested from me and activated with a code tied to this computer's ID. The free trial lasts 5 days from first launch.",
+                          .es: "La licencia se solicita y se activa con un código ligado al ID de este ordenador. La prueba gratuita dura 5 días desde el primer inicio."],
+        "license.durations": [.ro: "Durate: 3 luni · 6 luni · 12 luni · permanentă", .en: "Terms: 3 months · 6 months · 12 months · perpetual", .es: "Plazos: 3 meses · 6 meses · 12 meses · perpetua"],
+        "license.request.message": [.ro: "Bună, vreau o licență pentru CG Convertor. ID calculator:", .en: "Hello, I would like a licence for CG Convertor. Computer ID:", .es: "Hola, quiero una licencia para CG Convertor. ID del ordenador:"],
         "license.whatsapp": [.ro: "Scrie-mi pe WhatsApp", .en: "Message me on WhatsApp", .es: "Escríbeme por WhatsApp"],
         "license.cancel": [.ro: "Anulează", .en: "Cancel", .es: "Cancelar"],
         "license.activate": [.ro: "Activează", .en: "Activate", .es: "Activar"],

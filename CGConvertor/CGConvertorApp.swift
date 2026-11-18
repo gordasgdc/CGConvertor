@@ -3,6 +3,8 @@ import AppKit
 
 @main
 struct CGConvertorApp: App {
+    init() { SelfTest.runIfRequested() }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

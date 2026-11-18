@@ -1,8 +1,10 @@
 import Foundation
 import Combine
+import Security
 
-/// Deține starea de probă/licență a CG Convertor: pornește o probă de 15
-/// zile la prima lansare, persistă un cod activat odată introdus, și
+/// Deține starea de probă/licență a CG Convertor: pornește o probă de 5
+/// zile la prima lansare (utilizatori noi; probele deja începute își
+/// păstrează durata acordată inițială, 15 zile), persistă un cod activat odată introdus, și
 /// expune dacă aplicația ar trebui deblocată acum. Port 1:1 al
 /// `LicenseManager.swift` din GDCVault/DataMover — același `LicenseCore`/
 /// cheie de semnare, doar productID și durata diferite.
@@ -15,15 +17,23 @@ import Combine
 final class LicenseManager: ObservableObject {
     static let shared = LicenseManager()
     static let productID = "cgconvertor"
-    static let trialDurationDays = 15
+    /// Utilizatori noi: exact 5 zile.
+    static let newTrialDays = 5
+    /// Probele începute înainte de această versiune au primit 15 zile; nu se scurtează.
+    static let legacyTrialDays = 15
 
     @Published private(set) var isLicensed = false
     @Published private(set) var licenseExpiresAt: Int64 = 0 // 0 = perpetuu
     @Published private(set) var licenseMachineLocked = false
     @Published var activationError: String?
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private let trialStartKey = "cgconvertor_trial_start"
+    private let trialDaysKey = "cgconvertor_trial_days_granted"
+    private let markerService: String
+    private let now: () -> Date
+    /// Durata efectiv acordată acestei probe (5 la utilizatori noi, 15 la cele vechi).
+    private(set) var trialGrantedDays: Int
 
     private var activationFileURL: URL? {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
@@ -31,10 +41,38 @@ final class LicenseManager: ObservableObject {
             .appendingPathComponent("license.txt")
     }
 
-    private init() {
-        if defaults.object(forKey: trialStartKey) == nil {
-            defaults.set(Date().timeIntervalSince1970, forKey: trialStartKey)
+    private convenience init() {
+        self.init(defaults: .standard, markerService: "dev.gordas.CGConvertor.trial", now: Date.init)
+    }
+
+    /// `internal` doar pentru verificari izolate (suita de defaults + serviciu Keychain proprii).
+    ///
+    /// Inceputul probei si durata acordata se tin in DOUA locuri: UserDefaults si un
+    /// element Keychain. Stergerea preferintelor sau reinstalarea nu reporneste proba;
+    /// aceasta e o protectie LOCALA (un utilizator hotarat poate sterge si elementul
+    /// Keychain), nu o garantie. Prioritate: Keychain.
+    init(defaults: UserDefaults, markerService: String, now: @escaping () -> Date) {
+        self.defaults = defaults
+        self.markerService = markerService
+        self.now = now
+        let marker = TrialMarker.read(service: markerService)
+        var start: Double
+        var days: Int
+        if let m = marker {
+            start = m.start; days = m.days
+        } else if defaults.object(forKey: trialStartKey) != nil {
+            // proba inceputa inainte de aceasta versiune: pastreaza durata acordata initial
+            start = defaults.double(forKey: trialStartKey)
+            let saved = defaults.integer(forKey: trialDaysKey)
+            days = saved > 0 ? saved : Self.legacyTrialDays
+        } else {
+            start = now().timeIntervalSince1970
+            days = Self.newTrialDays
         }
+        defaults.set(start, forKey: trialStartKey)
+        defaults.set(days, forKey: trialDaysKey)
+        if marker == nil { TrialMarker.write(service: markerService, start: start, days: days) }
+        trialGrantedDays = days
         loadSavedLicense()
     }
 
@@ -44,12 +82,19 @@ final class LicenseManager: ObservableObject {
 
     /// Zile întregi rămase din probă, rotunjit în sus.
     var trialDaysRemaining: Int {
-        let elapsed = Date().timeIntervalSince(trialStartDate)
-        let remaining = Double(Self.trialDurationDays) * 86400 - elapsed
+        let elapsed = now().timeIntervalSince(trialStartDate)
+        let remaining = Double(trialGrantedDays) * 86400 - elapsed
         return max(0, Int(ceil(remaining / 86400)))
     }
 
     var isTrialActive: Bool { trialDaysRemaining > 0 }
+
+    /// Stare de acces pentru diagnostic: fără cod de licență, serial sau identificatori.
+    var diagnosticSummary: [String: String] {
+        ["mode": isLicensed ? "licensed" : (isTrialActive ? "trial" : "demo"),
+         "trialDaysRemaining": "\(trialDaysRemaining)", "trialGrantedDays": "\(trialGrantedDays)",
+         "unlocked": "\(isUnlocked)"]
+    }
 
     // Regula 12 — revocare online, fail-open (vezi RevocationCheck.swift):
     // o licenta deja activata local NU e blocata doar pentru ca userul e
@@ -65,9 +110,11 @@ final class LicenseManager: ObservableObject {
         case .success(let payload):
             saveLicense(code: trimmed)
             applyLicense(payload: payload)
+            StructuredLog.shared.log(.info, "license", "license.activate.ok", "Licenta activata")
             return true
         case .failure(let error):
             activationError = Self.message(for: error)
+            StructuredLog.shared.log(.warning, "license", "license.activate.fail", "Activare respinsa", fields: ["reason": "\(error)"])
             return false
         }
     }
@@ -109,5 +156,33 @@ final class LicenseManager: ObservableObject {
         case .wrongMachine: return L.t("license.error.wrongMachine")
         case .expired: return L.t("license.error.expired")
         }
+    }
+}
+
+/// Marcaj persistent al probei in Keychain (generic password), independent de preferinte.
+enum TrialMarker {
+    static func read(service: String) -> (start: Double, days: Int)? {
+        let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                kSecAttrService as String: service, kSecAttrAccount as String: "trial",
+                                kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+        var out: CFTypeRef?
+        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let d = out as? Data,
+              let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+              let s = j["start"] as? Double, let n = j["days"] as? Int else { return nil }
+        return (s, n)
+    }
+
+    static func write(service: String, start: Double, days: Int) {
+        guard let d = try? JSONSerialization.data(withJSONObject: ["start": start, "days": days]) else { return }
+        let base: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                   kSecAttrService as String: service, kSecAttrAccount as String: "trial"]
+        SecItemDelete(base as CFDictionary)
+        var add = base; add[kSecValueData as String] = d
+        SecItemAdd(add as CFDictionary, nil)
+    }
+
+    static func delete(service: String) {
+        SecItemDelete([kSecClass as String: kSecClassGenericPassword,
+                       kSecAttrService as String: service, kSecAttrAccount as String: "trial"] as CFDictionary)
     }
 }

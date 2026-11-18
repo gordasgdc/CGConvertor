@@ -33,6 +33,19 @@ furniza, la cerere.
 Codul sursă complet al FFmpeg este disponibil public la:
 https://github.com/FFmpeg/FFmpeg
 
+## GDC Metadata (nucleul `gdc-metadata-core`)
+
+Livrat ca binar alături de aplicație (versiunea 0.3.0, commit 65e07a8), apelat ca subproces
+pentru a citi fișa de metadate a sursei și a scrie fișierul sidecar. Licență: MIT.
+Dependențe Rust compilate în binar: `serde`, `serde_json` și dependențele lor tranzitive
+(licențe MIT sau Apache-2.0).
+
+## ExifTool (opțional, NEINCLUS)
+
+Dacă este instalat separat (de exemplu prin Homebrew), nucleul îl poate apela pentru mai
+multe câmpuri. CGConvertor nu îl include și nu îl redistribuie. ExifTool © Phil Harvey,
+licență Artistic License / GPL. https://exiftool.org
+
 ## tkinterdnd2
 
 Folosit pentru suport drag-and-drop în interfața Tkinter.

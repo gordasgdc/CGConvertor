@@ -21,6 +21,10 @@ final class AppSettings: ObservableObject {
     @Published var maxParallelJobs: Int {
         didSet { UserDefaults.standard.set(maxParallelJobs, forKey: Keys.maxParallelJobs) }
     }
+    /// Păstrează metadatele native (timecode, piste Canon/Sony) în fișierul rezultat.
+    @Published var preserveNativeMetadata: Bool {
+        didSet { UserDefaults.standard.set(preserveNativeMetadata, forKey: Keys.preserveMeta) }
+    }
     @Published var userName: String {
         didSet { UserDefaults.standard.set(userName, forKey: Keys.userName) }
     }
@@ -32,6 +36,7 @@ final class AppSettings: ObservableObject {
         static let theme = "cgconvertor_theme_pref"
         static let textScale = "cgconvertor_text_scale"
         static let maxParallelJobs = "cgconvertor_max_parallel_jobs"
+        static let preserveMeta = "cgconvertor_preserve_native_metadata"
         static let userName = "cgconvertor_user_name"
         static let userEmail = "cgconvertor_user_email"
     }
@@ -42,6 +47,7 @@ final class AppSettings: ObservableObject {
         textScale = defaults.string(forKey: Keys.textScale).flatMap(TextScale.init(rawValue:)) ?? .normal
         let savedJobs = defaults.integer(forKey: Keys.maxParallelJobs)
         maxParallelJobs = savedJobs > 0 ? savedJobs : 1
+        preserveNativeMetadata = defaults.object(forKey: Keys.preserveMeta) as? Bool ?? true
         userName = defaults.string(forKey: Keys.userName) ?? ""
         userEmail = defaults.string(forKey: Keys.userEmail) ?? ""
     }

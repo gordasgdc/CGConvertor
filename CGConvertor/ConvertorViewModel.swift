@@ -163,6 +163,12 @@ final class ConvertorViewModel: ObservableObject {
         }
     }
 
+    func seteazaInterval(_ job: VideoJob, start: Double?, end: Double?) {
+        guard let i = joburi.firstIndex(where: { $0.id == job.id }) else { return }
+        joburi[i].intervalStart = start
+        joburi[i].intervalEnd = end
+    }
+
     func stergeJob(_ job: VideoJob) {
         // Nu sterge jobul aflat efectiv in lucru — ar lasa procesul FFmpeg
         // sa scrie orfan, fara nimic in UI care sa-l reflecte. Foloseste
@@ -296,6 +302,7 @@ final class ConvertorViewModel: ObservableObject {
             job: job,
             preset: preset,
             destinatie: destinatie,
+            pastreazaMetadate: AppSettings.shared.preserveNativeMetadata,
             progresCallback: { [weak self] progres in
                 guard let self else { return }
                 guard let idx = self.joburi.firstIndex(where: { $0.id == job.id }) else { return }
@@ -309,8 +316,16 @@ final class ConvertorViewModel: ObservableObject {
                     return
                 }
                 switch rezultat {
-                case .success:
-                    self.joburi[idx].stare = self.verificaIntegritate(sursa: job.urlSursa, destinatie: destinatie)
+                case .success(let raport):
+                    self.joburi[idx].raport = raport
+                    // Interval: conducta a verificat deja numarul exact de cadre asteptate; durata sursei nu mai e termenul de comparatie.
+                    var stare = raport.interval != nil ? StareJob.finalizat : self.verificaIntegritate(sursa: job.urlSursa, destinatie: destinatie)
+                    // Esec de pastrare a metadatelor != succes complet.
+                    if stare == .finalizat, raport.metadata == .incomplete {
+                        let motiv = raport.metadataProblems.map { "\($0.key) \($0.arg)" }.joined(separator: "; ")
+                        stare = .finalizatCuAvertisment(mesaj: L.t("report.metadataIncomplete") + " " + motiv)
+                    }
+                    self.joburi[idx].stare = stare
                 case .failure(let eroare):
                     if case EroareFFmpeg.anulat = eroare {
                         self.joburi[idx].stare = .anulat

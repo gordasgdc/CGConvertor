@@ -1,0 +1,12 @@
+{
+  "version": "3.17.0",
+  "app_version": "3.17.0",
+  "release_date": "2026-11-18",
+  "changes": "Metadatele sursei se păstrează în fișierul rezultat (timecode și, pentru Log, pistele native ale camerei), cu raport per clip care arată ce s-a detectat, ce s-a încorporat și ce nu. Extragere de interval cu imagine, sunet și timecode sincronizate. Diagnostic exportabil local. Licențiere: probă de 5 zile și licențe de 3, 6, 12 luni sau perpetue. Limită: Resolve atribuie automat profilul doar pentru camerele testate (Canon C50); la restul se alege manual.",
+  "download_url": {
+    "mac": "https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.pkg",
+    "mac_dmg": "https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg"
+  },
+  "mandatory": false,
+  "min_version": "1.0.0"
+}

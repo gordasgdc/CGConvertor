@@ -56,6 +56,34 @@ struct ContentView: View {
         .foregroundStyle(Shift.text)
         .dynamicTypeSize(settings.textScale.dynamicTypeSize)
         .onAppear {
+            #if DEBUG
+            // Doar pentru verificari vizuale in build Debug: incarca fisiere in coada.
+            if let pre = ProcessInfo.processInfo.environment["CGC_PRELOAD"] {
+                let urls = pre.split(separator: "|").map { URL(fileURLWithPath: String($0)) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    vm.adaugaFisiere(urls)
+                    let env = ProcessInfo.processInfo.environment
+                    if let pid = env["CGC_PRESET"] { vm.presetSelectatID = pid }
+                    if let d = env["CGC_DEST"] { vm.folderDestinatie = URL(fileURLWithPath: d) }
+                    if let st = env["CGC_STOP_AFTER"].flatMap(Double.init) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3 + st) { vm.opresteCoada() }
+                    }
+                    if env["CGC_START"] == "1" {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                            if let iv = env["CGC_INTERVAL"]?.split(separator: ",").compactMap({ Double($0) }), iv.count == 2 {
+                                for j in vm.joburi { vm.seteazaInterval(j, start: iv[0], end: iv[1]) }
+                            }
+                            vm.pornesteCoada()
+                        }
+                    }
+                }
+            }
+            #endif
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["CGC_OPEN_SETTINGS"] == "1" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSettingsSheet = true }
+            }
+            #endif
             vm.verificaFFmpeg()
             deps.refreshAll()
             watchFolders.onNewFiles = { urls in vm.adaugaFisiere(urls) }
@@ -249,13 +277,17 @@ struct ContentView: View {
                         .foregroundStyle(Shift.faint)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Spacer(minLength: 0)
-
-                    actiuneButon
                 }
                 .padding(16)
             }
             .background(Shift.bg)
+
+            // Actiunea principala ramane vizibila indiferent de inaltimea ferestrei
+            // (frate al ScrollView-ului, Regula 24).
+            actiuneButon
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Shift.bg)
 
             // Sidebar Profil + Setari (Regula 12 — sidebar obligatoriu,
             // FRATE al ScrollView-ului de mai sus, nu safeAreaInset direct
@@ -471,6 +503,7 @@ struct ContentView: View {
                             RandJob(job: job, seRuleazaCoada: vm.seRuleazaCoada,
                                     esteSelectat: selectedJobIDs.contains(job.id),
                                     onSterge: { vm.stergeJob(job) },
+                                    onInterval: { a, b in vm.seteazaInterval(job, start: a, end: b) },
                                     onMutaSus: { vm.mutaJob(job, delta: -1) },
                                     onMutaJos: { vm.mutaJob(job, delta: 1) },
                                     onToggleSelectie: {
@@ -632,10 +665,13 @@ private struct RandJob: View {
     let seRuleazaCoada: Bool
     let esteSelectat: Bool
     let onSterge: () -> Void
+    let onInterval: (Double?, Double?) -> Void
     let onMutaSus: () -> Void
     let onMutaJos: () -> Void
     let onToggleSelectie: () -> Void
     @State private var showPreview = false
+    @State private var showReport = false
+    @State private var showInterval = false
     @State private var showLUTPlayer = false
 
     var body: some View {
@@ -701,6 +737,12 @@ private struct RandJob: View {
                                     .font(.system(size: 10.5, weight: .medium))
                                     .foregroundStyle(Shift.accent)
                             }
+                            if job.raport != nil {
+                                Button(L.t("report.open")) { showReport = true }
+                                    .buttonStyle(.plain)
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .foregroundStyle(Shift.accent)
+                            }
                         }
                     case .finalizatCuAvertisment(let mesaj):
                         HStack(spacing: 10) {
@@ -709,6 +751,12 @@ private struct RandJob: View {
                                 .foregroundStyle(.orange)
                             if let destinatie = job.urlDestinatie {
                                 Button(L.t("job.showInFinder")) { NSWorkspace.shared.activateFileViewerSelecting([destinatie]) }
+                                    .buttonStyle(.plain)
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .foregroundStyle(Shift.accent)
+                            }
+                            if job.raport != nil {
+                                Button(L.t("report.open")) { showReport = true }
                                     .buttonStyle(.plain)
                                     .font(.system(size: 10.5, weight: .medium))
                                     .foregroundStyle(Shift.accent)
@@ -748,6 +796,14 @@ private struct RandJob: View {
                     .help(L.t("player.open"))
                 }
 
+                if !seRuleazaCoada, job.stare == .astept || job.stare == .anulat {
+                    Button { showInterval = true } label: {
+                        Image(systemName: "scissors").foregroundStyle(job.areInterval ? Shift.accent : Shift.muted)
+                    }
+                    .buttonStyle(.plain)
+                    .help(L.t("interval.title"))
+                }
+
                 Button { onSterge() } label: {
                     Image(systemName: "trash")
                 }
@@ -759,6 +815,22 @@ private struct RandJob: View {
         .contextMenu {
             Button(L.t("queue.moveUp"), action: onMutaSus).disabled(seRuleazaCoada)
             Button(L.t("queue.moveDown"), action: onMutaJos).disabled(seRuleazaCoada)
+        }
+        .sheet(isPresented: $showInterval) {
+            IntervalSheet(job: job, isPresented: $showInterval, onApply: onInterval)
+        }
+        #if DEBUG
+        .onAppear {
+            if ProcessInfo.processInfo.environment["CGC_OPEN_INTERVAL"] == job.numeFisier {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showInterval = true }
+            }
+        }
+        .onChange(of: job.raport != nil) { _, has in
+            if has, ProcessInfo.processInfo.environment["CGC_SHOW_REPORT"] == job.numeFisier { showReport = true }
+        }
+        #endif
+        .sheet(isPresented: $showReport) {
+            if let r = job.raport { ReportSheet(fileName: job.numeFisier, report: r, isPresented: $showReport) }
         }
         .sheet(isPresented: $showPreview) {
             MediaPreviewSheet(job: job, isPresented: $showPreview)

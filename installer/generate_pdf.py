@@ -136,6 +136,14 @@ def page(d):
     flow.append(Paragraph(d["h_report"], h2_style))
     flow.append(Paragraph(d["report_intro"], body_style))
 
+    for kind, val in d.get("extra", []):
+        if kind == "h": flow.append(Paragraph(val, h2_style))
+        elif kind == "h3": flow.append(h3(val))
+        elif kind == "p": flow.append(Paragraph(val, body_style))
+        elif kind == "b": flow.append(bullets(val))
+        elif kind == "n": flow.append(numbered(val))
+        elif kind == "note": flow.append(note(val))
+
     flow.append(Paragraph(d["h_modes"], h2_style))
     flow.append(bullets(d["modes"]))
 
@@ -472,6 +480,204 @@ ES = dict(
     uninstall="Cierra la app y muévela de Applications a la Papelera. Los datos quedan en <b>~/Library/Application Support/CGConvertor</b> y se pueden borrar a mano.",
     h_support="14. Soporte",
     support="Para cualquier pregunta, escribe por WhatsApp (botón en la ventana de activación) o abre un Issue en GitHub.",
+)
+
+
+# ---- v3.17.0: metadate, interval, diagnostic, licențiere fără donații ----
+RO.update(
+    install=[
+        "Descarcă <b>CGConvertor-&lt;versiune&gt;.dmg</b> de pe pagina oficială, deschide-l și trage CGConvertor în folderul Applications. Pachetul este semnat Developer ID și notarizat de Apple.",
+        "La prima pornire, deschide aplicația din Launchpad sau din Applications.",
+        "Actualizările apar în aplicație (fereastră cu „Actualizează acum” / „Mai târziu”); instalarea o face aplicația, nu un browser.",
+    ],
+    extra=[
+        ("h", "10. Păstrarea metadatelor sursei"),
+        ("p", "Când convertești, CG Convertor încearcă să păstreze în fișierul rezultat ce poate fi recuperat din sursă, și îți spune exact ce s-a păstrat și ce nu. Comutatorul „Păstrează metadatele” este în Setări (implicit pornit)."),
+        ("h3", "Ce se păstrează"),
+        ("b", [
+            "<b>Timecode-ul</b>, inclusiv drop-frame (Sony), scris și apoi recitit din fișierul rezultat.",
+            "<b>Pistele native ale camerei</b> (Canon: date per cadru „cndm”; Sony: „rtmd”), copiate fără modificare în MOV-ul rezultat, tăiate exact la cadrele convertite și verificate prin sumă de control. Se păstrează DOAR când imaginea rămâne în Log.",
+            "<b>Etichetele de culoare ale containerului</b> nu afirmă Rec.709 când imaginea e Log: profilul real al capturii (gamut + curbă) se vede în raport și în sidecar, nu într-o etichetă falsă.",
+            "<b>Fișier sidecar</b> „.gdc-metadata.json” lângă rezultat, cu fișa sursei, pentru GDC Metadata sau puntea Resolve.",
+        ]),
+        ("h3", "Când NU se păstrează pistele native"),
+        ("b", [
+            "Ai ales o etichetă de culoare (Rec.709/Rec.2020): profilul camerei nu mai descrie imaginea declarată.",
+            "Ai schimbat cadrele/s: datele per cadru nu s-ar mai potrivi.",
+            "Containerul rezultat nu este MOV.",
+            "Raportul afișează motivul fiecărei omisiuni. Dacă scrierea sau verificarea eșuează, videoul rămâne valid, dar clipul apare cu avertisment, nu ca succes complet.",
+        ]),
+        ("h3", "Raportul per clip (butonul „Raport”)"),
+        ("b", [
+            "<b>Detectat în sursă</b> — citit din date native, etichetă a producătorului sau dedus dintr-o regulă (se spune care).",
+            "<b>Încorporat și verificat</b> — scris în fișier și recitit independent.",
+            "<b>Necesită aplicare separată</b> — există doar în sidecar (ex. obiectiv, expunere).",
+            "<b>Necunoscut</b> — nu s-a putut citi; nimic nu se presupune din model sau din numele fișierului.",
+            "<b>Nepăstrat</b> — cu motiv.",
+        ]),
+        ("h3", "Ce citește DaVinci Resolve (demonstrat pe probe)"),
+        ("b", [
+            "Testat în proiecte Resolve izolate (Resolve 21.2): pistele Canon (EOS C50) din ProRes sunt citite automat — metadate informative și, în proiecte Color Managed v2, Input Color Space.",
+            "Testat pe Sony A7 IV și Panasonic DC-S1: Resolve citește doar timecode-ul; pistele native păstrate nu sunt folosite de Resolve, deci profilul se aplică prin sidecar sau punte.",
+            "Aceste rezultate sunt pentru camerele testate, nu pentru toată marca și nu sunt o verificare a fiecărui clip.",
+        ]),
+        ("note", "<b>Opțional:</b> ExifTool (instalat prin Homebrew) poate completa mai multe câmpuri. Aplicația funcționează și fără el; ce nu poate fi citit apare ca „necunoscut” în raport."),
+        ("h", "11. Extragerea unui interval dintr-un clip"),
+        ("n", [
+            "Apasă pictograma foarfecă de pe rândul clipului (înainte de pornire).",
+            "Scrie începutul și sfârșitul: secunde („90”), „mm:ss” sau „hh:mm:ss.zecimale”. Sfârșit gol = până la capăt.",
+            "Apasă „Aplică”. Foarfeca devine colorată. „Clip întreg” anulează intervalul.",
+        ]),
+        ("b", [
+            "Limitele se aliniază la cadre. Intervalul funcționează la transcodare; rewrap-ul (fără re-encode) nu taie exact pe cadru și îl refuză cu mesaj.",
+            "Imaginea și sunetul rezultatului pornesc din punctul ales; timecode-ul = timecode-ul sursei + decalajul (calculat și pentru drop-frame); pistele native sunt tăiate la același interval.",
+            "Verificat pe Canon, Sony și Panasonic: numărul exact de cadre, timecode, primul și ultimul cadru față de sursă, iar la Canon sunetul PCM e identic bit cu bit cu sursa. Containerul poate avea sunetul cu până la o fracțiune de cadru (aprox. 8 ms) mai lung, din granularitatea audio.",
+        ]),
+        ("h", "12. Diagnostic și jurnal"),
+        ("b", [
+            "Jurnalul local e în <b>~/Library/Logs/CGConvertor/</b>, cu rotire la 5 MB; fiecare conversie are un ID și un singur rezultat final (terminat, eșuat sau anulat).",
+            "<b>Setări → „Exportă diagnosticul”</b> creează un ZIP local, fără chei de licență, tokenuri, fișiere media sau căi în clar (căile sunt anonimizate). Nu se trimite nimic automat; tu decizi dacă îl trimiți.",
+            "„Deschide folderul de loguri” și ID-ul sesiunii sunt în aceeași fereastră.",
+        ]),
+        ("note", "<b>Decodare hardware:</b> CG Convertor nu folosește decodarea hardware pentru surse. Într-un test, pe un clip Panasonic H.264 4:2:2 rezultatul diferă de decodarea software, deci rămâne dezactivată."),
+    ],
+    h_modes="13. Moduri de conversie",
+    h_trial="14. Licență și probă",
+    trial_intro="Aplicația oferă acces complet timp de <b>5 zile</b> de la prima pornire (probele deja începute își păstrează durata inițială, de exemplu 15 zile). După aceea, pornirea conversiilor cere o licență. Licențele sunt de 3, 6 sau 12 luni sau perpetue, legate de calculatorul tău, și rămân valide la actualizări.",
+    donation_note="<b>Licență:</b> aplicația nu folosește donații. Condițiile de obținere a licenței ți se comunică pe canalul de contact; nu sunt afișate sume în aplicație.",
+    trial_note="<b>Important:</b> dacă schimbi calculatorul, scrie din nou — licența se regenerează pentru noul calculator.",
+    h_uninstall="15. Dezinstalare",
+    h_support="16. Suport",
+)
+EN.update(
+    install=[
+        "Download <b>CGConvertor-&lt;version&gt;.dmg</b> from the official page, open it and drag CGConvertor to the Applications folder. The package is Developer ID signed and notarized by Apple.",
+        "On first launch, open the app from Launchpad or Applications.",
+        "Updates appear inside the app (“Update now” / “Later” dialog); the app installs them, not a browser.",
+    ],
+    extra=[
+        ("h", "10. Keeping the source metadata"),
+        ("p", "When you convert, CG Convertor tries to keep in the result whatever can be recovered from the source, and tells you exactly what was kept and what was not. The “Keep metadata” switch is in Settings (on by default)."),
+        ("h3", "What is kept"),
+        ("b", [
+            "<b>Timecode</b>, including drop-frame (Sony), written and then re-read from the result file.",
+            "<b>The camera's native tracks</b> (Canon: per-frame data “cndm”; Sony: “rtmd”), copied unchanged into the resulting MOV, cut to exactly the converted frames and verified by checksum. Kept ONLY while the image stays Log.",
+            "<b>Container colour tags</b> do not claim Rec.709 when the image is Log: the real capture profile (gamut + curve) is shown in the report and the sidecar, not in a false label.",
+            "<b>A “.gdc-metadata.json” sidecar</b> next to the result, with the source sheet, for GDC Metadata or the Resolve bridge.",
+        ]),
+        ("h3", "When native tracks are NOT kept"),
+        ("b", [
+            "You chose a colour label (Rec.709/Rec.2020): the camera profile no longer describes the declared image.",
+            "You changed the frame rate: per-frame data would no longer match.",
+            "The output container is not MOV.",
+            "The report states the reason for each omission. If writing or verification fails, the video is still valid but the clip shows a warning, not full success.",
+        ]),
+        ("h3", "The per-clip report (“Report” button)"),
+        ("b", [
+            "<b>Detected in source</b> — read from native data, a manufacturer label, or deduced from a rule (it says which).",
+            "<b>Embedded and verified</b> — written to the file and independently re-read.",
+            "<b>Needs separate application</b> — exists only in the sidecar (e.g. lens, exposure).",
+            "<b>Unknown</b> — could not be read; nothing is assumed from model or file name.",
+            "<b>Not kept</b> — with the reason.",
+        ]),
+        ("h3", "What DaVinci Resolve reads (demonstrated on probes)"),
+        ("b", [
+            "Tested in isolated Resolve projects (Resolve 21.2): Canon (EOS C50) tracks inside ProRes are read automatically — informative metadata and, in Color Managed v2 projects, Input Color Space.",
+            "Tested on Sony A7 IV and Panasonic DC-S1: Resolve reads only the timecode; the preserved native tracks are not used by Resolve, so the profile is applied through the sidecar or the bridge.",
+            "These results are for the cameras tested, not for a whole brand, and are not a per-clip verification.",
+        ]),
+        ("note", "<b>Optional:</b> ExifTool (installed via Homebrew) can fill in more fields. The app also works without it; whatever cannot be read shows as “unknown” in the report."),
+        ("h", "11. Extracting an interval from a clip"),
+        ("n", [
+            "Click the scissors icon on the clip's row (before starting).",
+            "Enter start and end: seconds (“90”), “mm:ss” or “hh:mm:ss.fraction”. Empty end = to the end.",
+            "Click “Apply”. The scissors turn coloured. “Whole clip” clears the interval.",
+        ]),
+        ("b", [
+            "Limits snap to frames. Intervals work when transcoding; rewrap (no re-encode) cannot cut frame-accurately and refuses with a message.",
+            "Picture and audio of the result start at the chosen point; timecode = source timecode + offset (also computed for drop-frame); native tracks are cut to the same interval.",
+            "Checked on Canon, Sony and Panasonic: exact frame count, timecode, first and last frame against the source, and on Canon the PCM audio is bit-identical to the source. The container's audio may be up to a fraction of a frame (about 8 ms) longer, from audio granularity.",
+        ]),
+        ("h", "12. Diagnostics and log"),
+        ("b", [
+            "The local log is in <b>~/Library/Logs/CGConvertor/</b>, rotating at 5 MB; every conversion has an ID and a single final outcome (finished, failed or cancelled).",
+            "<b>Settings → “Export diagnostics”</b> creates a local ZIP with no licence keys, tokens, media files or plain paths (paths are anonymised). Nothing is sent automatically; you decide whether to send it.",
+            "“Open log folder” and the session ID are in the same window.",
+        ]),
+        ("note", "<b>Hardware decoding:</b> CG Convertor does not use hardware decoding for sources. In one test, on a Panasonic H.264 4:2:2 clip the result differed from software decoding, so it stays disabled."),
+    ],
+    h_modes="13. Conversion modes",
+    h_trial="14. Licence and trial",
+    trial_intro="The app gives full access for <b>5 days</b> from first launch (trials already started keep their original length, e.g. 15 days). After that, starting conversions needs a licence. Licences are 3, 6 or 12 months or perpetual, tied to your computer, and stay valid across updates.",
+    donation_note="<b>Licence:</b> the app does not use donations. The terms for obtaining a licence are given on the contact channel; no amounts are shown in the app.",
+    trial_note="<b>Important:</b> if you change computer, write again — the licence is regenerated for the new computer.",
+    h_uninstall="15. Uninstall",
+    h_support="16. Support",
+)
+ES.update(
+    install=[
+        "Descarga <b>CGConvertor-&lt;versión&gt;.dmg</b> de la página oficial, ábrelo y arrastra CGConvertor a la carpeta Applications. El paquete está firmado con Developer ID y notarizado por Apple.",
+        "En el primer arranque, abre la app desde Launchpad o Applications.",
+        "Las actualizaciones aparecen dentro de la app (diálogo «Actualizar ahora» / «Más tarde»); las instala la app, no un navegador.",
+    ],
+    extra=[
+        ("h", "10. Conservación de los metadatos de origen"),
+        ("p", "Al convertir, CG Convertor intenta conservar en el resultado lo que se pueda recuperar del origen y te dice exactamente qué se conservó y qué no. El interruptor «Conservar metadatos» está en Ajustes (activado por defecto)."),
+        ("h3", "Qué se conserva"),
+        ("b", [
+            "<b>El timecode</b>, incluido drop-frame (Sony), escrito y vuelto a leer del archivo resultante.",
+            "<b>Las pistas nativas de la cámara</b> (Canon: datos por fotograma «cndm»; Sony: «rtmd»), copiadas sin cambios al MOV resultante, recortadas exactamente a los fotogramas convertidos y verificadas con suma de control. Solo se conservan MIENTRAS la imagen sigue en Log.",
+            "<b>Las etiquetas de color del contenedor</b> no afirman Rec.709 cuando la imagen es Log: el perfil real de captura (gamut + curva) aparece en el informe y el sidecar, no en una etiqueta falsa.",
+            "<b>Un sidecar «.gdc-metadata.json»</b> junto al resultado, con la ficha del origen, para GDC Metadata o el puente de Resolve.",
+        ]),
+        ("h3", "Cuándo NO se conservan las pistas nativas"),
+        ("b", [
+            "Elegiste una etiqueta de color (Rec.709/Rec.2020): el perfil de la cámara ya no describe la imagen declarada.",
+            "Cambiaste los fotogramas/s: los datos por fotograma ya no coincidirían.",
+            "El contenedor de salida no es MOV.",
+            "El informe indica el motivo de cada omisión. Si la escritura o la verificación fallan, el vídeo sigue siendo válido, pero el clip muestra una advertencia, no un éxito completo.",
+        ]),
+        ("h3", "El informe por clip (botón «Informe»)"),
+        ("b", [
+            "<b>Detectado en el origen</b> — leído de datos nativos, de una etiqueta del fabricante o deducido por una regla (se indica cuál).",
+            "<b>Incorporado y verificado</b> — escrito en el archivo y releído de forma independiente.",
+            "<b>Requiere aplicación aparte</b> — solo existe en el sidecar (p. ej. objetivo, exposición).",
+            "<b>Desconocido</b> — no se pudo leer; no se supone nada por el modelo ni por el nombre.",
+            "<b>No conservado</b> — con el motivo.",
+        ]),
+        ("h3", "Qué lee DaVinci Resolve (demostrado en pruebas)"),
+        ("b", [
+            "Probado en proyectos Resolve aislados (Resolve 21.2): las pistas Canon (EOS C50) dentro de ProRes se leen automáticamente — metadatos informativos y, en proyectos Color Managed v2, Input Color Space.",
+            "Probado en Sony A7 IV y Panasonic DC-S1: Resolve solo lee el timecode; las pistas nativas conservadas no las usa Resolve, así que el perfil se aplica mediante el sidecar o el puente.",
+            "Estos resultados son para las cámaras probadas, no para toda la marca, y no son una verificación clip a clip.",
+        ]),
+        ("note", "<b>Opcional:</b> ExifTool (instalado con Homebrew) puede completar más campos. La app también funciona sin él; lo que no se pueda leer aparece como «desconocido» en el informe."),
+        ("h", "11. Extraer un intervalo de un clip"),
+        ("n", [
+            "Pulsa el icono de tijeras en la fila del clip (antes de iniciar).",
+            "Escribe inicio y fin: segundos («90»), «mm:ss» o «hh:mm:ss.fracción». Fin vacío = hasta el final.",
+            "Pulsa «Aplicar». Las tijeras se colorean. «Clip completo» borra el intervalo.",
+        ]),
+        ("b", [
+            "Los límites se ajustan a fotogramas. Los intervalos funcionan al transcodificar; el rewrap (sin recodificar) no corta con precisión de fotograma y lo rechaza con un mensaje.",
+            "Imagen y audio del resultado empiezan en el punto elegido; timecode = timecode del origen + desfase (calculado también para drop-frame); las pistas nativas se recortan al mismo intervalo.",
+            "Verificado en Canon, Sony y Panasonic: número exacto de fotogramas, timecode, primer y último fotograma frente al origen y, en Canon, el audio PCM es idéntico bit a bit al origen. El audio del contenedor puede ser hasta una fracción de fotograma (unos 8 ms) más largo, por la granularidad del audio.",
+        ]),
+        ("h", "12. Diagnóstico y registro"),
+        ("b", [
+            "El registro local está en <b>~/Library/Logs/CGConvertor/</b>, con rotación a 5 MB; cada conversión tiene un ID y un único resultado final (terminada, fallida o cancelada).",
+            "<b>Ajustes → «Exportar diagnóstico»</b> crea un ZIP local sin claves de licencia, tokens, archivos multimedia ni rutas en claro (las rutas se anonimizan). No se envía nada automáticamente; tú decides si lo envías.",
+            "«Abrir carpeta de registros» y el ID de sesión están en la misma ventana.",
+        ]),
+        ("note", "<b>Decodificación por hardware:</b> CG Convertor no usa decodificación por hardware para los orígenes. En una prueba, con un clip Panasonic H.264 4:2:2 el resultado difería de la decodificación por software, por lo que permanece desactivada."),
+    ],
+    h_modes="13. Modos de conversión",
+    h_trial="14. Licencia y prueba",
+    trial_intro="La app ofrece acceso completo durante <b>5 días</b> desde el primer arranque (las pruebas ya iniciadas conservan su duración original, p. ej. 15 días). Después, iniciar conversiones requiere una licencia. Las licencias son de 3, 6 o 12 meses o perpetuas, ligadas a tu ordenador y siguen válidas tras las actualizaciones.",
+    donation_note="<b>Licencia:</b> la app no usa donaciones. Las condiciones para obtener una licencia se comunican por el canal de contacto; la app no muestra importes.",
+    trial_note="<b>Importante:</b> si cambias de ordenador, escribe de nuevo — la licencia se regenera para el nuevo ordenador.",
+    h_uninstall="15. Desinstalar",
+    h_support="16. Soporte",
 )
 
 doc = SimpleDocTemplate(

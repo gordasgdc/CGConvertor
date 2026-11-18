@@ -90,6 +90,7 @@ struct ShiftCard<Content: View>: View {
     var body: some View {
         content
             .padding(padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(Shift.panel)
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Shift.border, lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: 10))

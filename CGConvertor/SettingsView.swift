@@ -29,6 +29,22 @@ struct SettingsSheet: View {
                 Text("\(L.t("settings.parallelJobs")): \(settings.maxParallelJobs)")
             }
 
+            Toggle(isOn: $settings.preserveNativeMetadata) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L.t("settings.keepMetadata"))
+                    Text(L.t("settings.keepMetadata.help")).font(.caption).foregroundStyle(Shift.muted)
+                }
+            }
+
+            Divider().overlay(Shift.border)
+
+            HStack {
+                Button(L.t("settings.exportDiagnostics")) { DiagnosticsActions.exportAndReveal() }
+                Button(L.t("settings.openLogs")) { DiagnosticsActions.openLogFolder() }
+            }
+            Text("\(L.t("settings.sessionID")): \(StructuredLog.shared.sessionID)")
+                .font(.caption).foregroundStyle(Shift.muted).textSelection(.enabled)
+
             Divider().overlay(Shift.border)
 
             TextField(L.t("settings.userName"), text: $settings.userName)
@@ -43,7 +59,7 @@ struct SettingsSheet: View {
             }
         }
         .padding(20)
-        .frame(width: 380)
+        .frame(width: 420)
         .background(Shift.bg)
         .foregroundStyle(Shift.text)
     }

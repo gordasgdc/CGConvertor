@@ -31,6 +31,12 @@ struct VideoJob: Identifiable, Equatable {
     // și MediaInspector.swift). `nil` până se termină analiza (sau dacă a eșuat).
     var metadataMedia: MediaMetadata?
     var caleThumbnail: String?
+    /// Raport complet al ultimei conversii (imagine/audio/timecode/metadate).
+    var raport: ConversionReport?
+    /// Interval ales din sursă (secunde, linia de timp a clipului); nil = clipul întreg.
+    var intervalStart: Double?
+    var intervalEnd: Double?
+    var areInterval: Bool { intervalStart != nil || intervalEnd != nil }
 
     var numeFisier: String {
         urlSursa.lastPathComponent
