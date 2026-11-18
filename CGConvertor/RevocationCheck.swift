@@ -49,6 +49,10 @@ final class RevocationCheck: ObservableObject {
     }
 
     private func checkOnce() async {
+        #if DEBUG
+        // Build de test izolat: nu trimite identitatea mașinii către serviciul real de revocare.
+        if ProcessInfo.processInfo.environment["CGC_NO_KEYCHAIN"] == "1" { return }
+        #endif
         guard let url = URL(string: Self.supabaseURL)?.appendingPathComponent("rest/v1/rpc/is_license_revoked") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"

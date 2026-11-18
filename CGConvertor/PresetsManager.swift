@@ -131,7 +131,7 @@ enum FrameRateOption {
 enum PresetsManager {
     private static var fileURL: URL? {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("CGConvertor", isDirectory: true)
+            .appendingPathComponent(AppIsolation.folderName, isDirectory: true)
             .appendingPathComponent("presets.json")
     }
 
@@ -143,7 +143,7 @@ enum PresetsManager {
                          targetApp: .davinci, profileID: "prores422hq", fileSuffix: "_proresHQ", isBuiltin: true),
             OutputPreset(id: "builtin_dnxhrhq", label: "DNxHR HQ (Mezzanine Avid/Premiere)",
                          targetApp: .avid, profileID: "dnxhrhq", fileSuffix: "_dnxhr", isBuiltin: true),
-            OutputPreset(id: "builtin_h264_web", label: "H.264 1080p (YouTube/Web)",
+            OutputPreset(id: "builtin_h264_web", label: "H.264 (YouTube/Web, rezoluția sursei)",
                          targetApp: .web, profileID: "h264", audioMode: .aac, channelLayout: .stereo,
                          fileSuffix: "_web", isBuiltin: true),
             OutputPreset(id: "builtin_hevc_master", label: "HEVC 10-bit (Master Delivery)",
@@ -168,7 +168,14 @@ enum PresetsManager {
             save(defaults)
             return defaults
         }
-        return decoded
+        // Migrare 3.18.0: eticheta veche promitea 1080p, dar presetarea nu redimensionează.
+        var migrated = decoded
+        var changed = false
+        for i in migrated.indices where migrated[i].id == "builtin_h264_web" && migrated[i].label == "H.264 1080p (YouTube/Web)" {
+            migrated[i].label = "H.264 (YouTube/Web, rezoluția sursei)"; changed = true
+        }
+        if changed { save(migrated) }
+        return migrated
     }
 
     static func save(_ presets: [OutputPreset]) {

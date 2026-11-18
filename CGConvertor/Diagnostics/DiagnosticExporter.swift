@@ -113,7 +113,7 @@ struct DiagnosticExporter {
     }
 
     static var defaultFolder: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/CGConvertor/Exports", isDirectory: true)
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/\(AppIsolation.folderName)/Exports", isDirectory: true)
     }
 
     private static func stamp(_ d: Date) -> String {

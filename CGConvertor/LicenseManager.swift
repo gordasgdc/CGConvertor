@@ -37,7 +37,7 @@ final class LicenseManager: ObservableObject {
 
     private var activationFileURL: URL? {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("CGConvertor", isDirectory: true)
+            .appendingPathComponent(AppIsolation.folderName, isDirectory: true)
             .appendingPathComponent("license.txt")
     }
 
@@ -161,7 +161,15 @@ final class LicenseManager: ObservableObject {
 
 /// Marcaj persistent al probei in Keychain (generic password), independent de preferinte.
 enum TrialMarker {
+    #if DEBUG
+    /// Doar DEBUG: cu `CGC_NO_KEYCHAIN=1` marcajul se tine in memorie si Keychain-ul real nu e atins.
+    private static let inMemoryOnly = ProcessInfo.processInfo.environment["CGC_NO_KEYCHAIN"] == "1"
+    private static var memory: [String: (start: Double, days: Int)] = [:]
+    #endif
     static func read(service: String) -> (start: Double, days: Int)? {
+        #if DEBUG
+        if inMemoryOnly { return memory[service] }
+        #endif
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                 kSecAttrService as String: service, kSecAttrAccount as String: "trial",
                                 kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
@@ -173,6 +181,9 @@ enum TrialMarker {
     }
 
     static func write(service: String, start: Double, days: Int) {
+        #if DEBUG
+        if inMemoryOnly { memory[service] = (start, days); return }
+        #endif
         guard let d = try? JSONSerialization.data(withJSONObject: ["start": start, "days": days]) else { return }
         let base: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                    kSecAttrService as String: service, kSecAttrAccount as String: "trial"]
@@ -182,6 +193,9 @@ enum TrialMarker {
     }
 
     static func delete(service: String) {
+        #if DEBUG
+        if inMemoryOnly { memory[service] = nil; return }
+        #endif
         SecItemDelete([kSecClass as String: kSecClassGenericPassword,
                        kSecAttrService as String: service, kSecAttrAccount as String: "trial"] as CFDictionary)
     }

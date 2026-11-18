@@ -26,7 +26,7 @@ final class HistoryStore: ObservableObject {
 
     private init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("CGConvertor", isDirectory: true)
+            .appendingPathComponent(AppIsolation.folderName, isDirectory: true)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         fileURL = base.appendingPathComponent("offload_history.json")
         load()

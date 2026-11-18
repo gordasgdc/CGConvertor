@@ -60,7 +60,7 @@ final class DependencyManager: ObservableObject {
 
     private var downloadDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("CGConvertor", isDirectory: true)
+            .appendingPathComponent(AppIsolation.folderName, isDirectory: true)
             .appendingPathComponent("bin", isDirectory: true)
     }
 

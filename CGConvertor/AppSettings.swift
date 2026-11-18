@@ -56,6 +56,14 @@ final class AppSettings: ObservableObject {
 enum ThemePreference: String, CaseIterable, Identifiable {
     case system, dark, light
     var id: String { rawValue }
+    /// nil = urmează sistemul; altfel forțează aspectul nativ al controalelor.
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .dark: return .dark
+        case .light: return .light
+        }
+    }
     var label: String {
         switch self {
         case .system: return L.t("settings.theme.system")

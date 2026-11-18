@@ -45,7 +45,7 @@ final class MotorFFmpeg {
     static func gasesteBinar() -> String? {
         // 1. Descarcat prin Managerul de Dependinte (~/Library/Application Support/CGConvertor/bin/)
         if let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-            let caleDescarcata = support.appendingPathComponent("CGConvertor/bin/ffmpeg").path
+            let caleDescarcata = support.appendingPathComponent("\(AppIsolation.folderName)/bin/ffmpeg").path
             if FileManager.default.isExecutableFile(atPath: caleDescarcata) {
                 return caleDescarcata
             }

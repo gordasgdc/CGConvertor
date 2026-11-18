@@ -1,5 +1,25 @@
 # Changelog
 
+## v3.18.0 (2026-11-19) — Reproiectare: trei spații de lucru
+
+### Added
+- **Cadru unic cu trei spații de lucru**: Transcodare, Offload (copiere verificată) și Metadate, cu inspector în dreapta.
+- **Transcodare**: import prin Drag & Drop, grilă sau listă, marcare și selecție separate, previzualizare cu redare,
+  setări per clip cu bannerul „Se aplică la…” și „Valori diferite”, rezumat și avertismente înainte de pornire,
+  progres total, viteză și timp rămas când pot fi estimate. Rezultatele existente nu se suprascriu (_2, _3…).
+- **Offload**: „Trimite la transcodare” adaugă doar fișierele verificate prin sumă de control; nu pornește automat conversia.
+- **Offload — coadă de operații** (una câte una, păstrată între lansări, anularea oprește coada), opțiunea **„Extrage metadatele”**
+  (fișe .gdc-metadata.json lângă copiile verificate, separat de verdictul copierii), **raport PDF** al copierii și verificării,
+  viteze măsurate separat (scriere / citire la verificare), anulare cu fișierele terminate dar neverificate numite separat,
+  adaptare la ferestre mici (1000×652). Capacitate de disc necunoscută nu mai blochează pornirea.
+- **Metadate**: spațiu dedicat cu căutare, gamut și curbă separate, timecode și tip, proveniența fiecărei valori,
+  conflicte, valori manuale (originalul nu se modifică), câmpuri brute, comparare.
+- Temă Sistem / Deschisă / Închisă; interfața în română, engleză și spaniolă.
+- Manuale PDF actualizate (RO/EN/ES) cu capturi reale și un PDF separat cu îmbunătățirile versiunii.
+
+### Notes
+- Windows: neschimbat (TODO paritate Windows/Mac).
+
 ## v3.17.0 (2026-11-18) — Metadate păstrate, interval, diagnostic, licență fără donații
 
 ### Added

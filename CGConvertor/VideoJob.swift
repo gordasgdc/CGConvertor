@@ -38,11 +38,30 @@ struct VideoJob: Identifiable, Equatable {
     var intervalEnd: Double?
     var areInterval: Bool { intervalStart != nil || intervalEnd != nil }
 
+    // Configurare per clip (spațiul Transcodare). nil = se folosește valoarea implicită din inspector.
+    /// Preset ales explicit pentru acest clip.
+    var presetOverrideID: String?
+    /// Folder de destinație ales explicit pentru acest clip.
+    var destinatieOverride: URL?
+    /// Sufix de denumire ales explicit pentru acest clip.
+    var sufixOverride: String?
+    /// Marcat pentru procesare (butonul principal convertește clipurile marcate).
+    var marcat = true
+    /// Profil citit prin nucleul GDC Metadata (spațiul Metadate), pe cerere.
+    var profilSursa: SourceProfile?
+    var scanTerminat = false
+
     var numeFisier: String {
         urlSursa.lastPathComponent
     }
 
     static func == (lhs: VideoJob, rhs: VideoJob) -> Bool {
-        lhs.id == rhs.id
+        // Compară și starea vizibilă: altfel SwiftUI nu redesenează rândurile când se schimbă progresul, profilul etc.
+        lhs.id == rhs.id && lhs.stare == rhs.stare && lhs.caleThumbnail == rhs.caleThumbnail
+            && lhs.metadataMedia == rhs.metadataMedia && lhs.profilSursa == rhs.profilSursa && lhs.scanTerminat == rhs.scanTerminat
+            && lhs.raport == rhs.raport && lhs.urlDestinatie == rhs.urlDestinatie
+            && lhs.intervalStart == rhs.intervalStart && lhs.intervalEnd == rhs.intervalEnd
+            && lhs.presetOverrideID == rhs.presetOverrideID && lhs.destinatieOverride == rhs.destinatieOverride
+            && lhs.sufixOverride == rhs.sufixOverride && lhs.marcat == rhs.marcat
     }
 }

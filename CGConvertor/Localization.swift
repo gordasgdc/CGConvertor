@@ -28,7 +28,7 @@ enum L {
     }
 
     static func t(_ key: String) -> String {
-        table[key]?[current] ?? reportTable[key]?[current] ?? table[key]?[.ro] ?? reportTable[key]?[.ro] ?? key
+        table[key]?[current] ?? reportTable[key]?[current] ?? shellTable[key]?[current] ?? routeTable[key]?[current] ?? offloadTable[key]?[current] ?? offload2Table[key]?[current] ?? table[key]?[.ro] ?? reportTable[key]?[.ro] ?? shellTable[key]?[.ro] ?? routeTable[key]?[.ro] ?? offloadTable[key]?[.ro] ?? offload2Table[key]?[.ro] ?? key
     }
 
     private static let table: [String: [AppLanguage: String]] = [

@@ -16,6 +16,10 @@ enum UpdateChecker {
     /// nimic nou. Dismissal per-versiune, ca update-ul deja văzut să nu
     /// reapară la fiecare pornire.
     static func checkSilentlyOnLaunch(onNewVersion: @escaping (String, URL) -> Void) {
+        #if DEBUG
+        // Build de test izolat (CGC_NO_KEYCHAIN=1): nicio apelare automată către servicii externe.
+        if ProcessInfo.processInfo.environment["CGC_NO_KEYCHAIN"] == "1" { return }
+        #endif
         Task {
             if case .newVersion(let version, let pkgURL) = await fetchLatestTag() {
                 let dismissedKey = "cgconvertor_dismissed_update_version"

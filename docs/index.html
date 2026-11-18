@@ -53,6 +53,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px}
 <header>
   <a class="brand" href="#"><img src="assets/icon.png" alt="" width="30" height="30"><span>CG Convertor</span></a>
   <nav>
+    <a href="#spatii" data-i18n="nav.ws">Spații</a>
     <a href="#metadate" data-i18n="nav.meta">Metadate</a>
     <a href="#interval" data-i18n="nav.interval">Interval</a>
     <a href="#resolve" data-i18n="nav.resolve">Resolve</a>
@@ -64,13 +65,54 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px}
 <main>
 <div class="hero">
   <div>
-    <span class="label" data-i18n="hero.label">PENTRU MAC · v3.17.0</span>
+    <span class="label" data-i18n="hero.label">PENTRU MAC · v3.18.0</span>
     <h1 data-i18n="hero.h1">Transcode și rewrap, cu metadatele sursei la locul lor.</h1>
     <p data-i18n="hero.p">Convertești clipurile pentru DaVinci Resolve, iar timecode-ul și pistele native ale camerei rămân în fișier când imaginea rămâne Log. Fiecare clip are un raport: ce s-a păstrat, ce nu și de ce.</p>
     <a class="pill" href="#acces"><span data-i18n="hero.cta">Vezi cum se obține</span><span>→</span></a><a class="ghost" href="#limite" data-i18n="hero.limits">Ce demonstrăm și ce nu</a>
   </div>
   <img class="shot" src="assets/app-queue.jpg" width="1800" height="1108" alt="Coada de conversie din CG Convertor, cu clipuri terminate și un fișier eronat marcat clar" data-i18n-alt="hero.alt">
 </div>
+
+<section id="spatii"><div class="wrap">
+  <span class="label" data-i18n="ws.label">TREI SPAȚII DE LUCRU</span>
+  <h2 data-i18n="ws.h2">O singură aplicație: transcodezi, copiezi verificat, citești metadatele.</h2>
+  <p class="lead" data-i18n="ws.lead">Aceleași clipuri și aceleași setări în toate trei, cu un inspector în dreapta, temă deschisă, închisă sau a sistemului, în română, engleză și spaniolă.</p>
+  <div class="split">
+    <div class="txt">
+      <h3 data-i18n="ws.t.h">Transcodare</h3>
+      <ul>
+        <li data-i18n="ws.t.l1">Tragi clipurile în fereastră; grilă sau listă; marchezi ce se convertește.</li>
+        <li data-i18n="ws.t.l2">Inspector cu previzualizare, presetare, audio, timp și cadre, destinație și denumire cu exemplu.</li>
+        <li data-i18n="ws.t.l3">Valorile diferite dintre clipuri se văd ca atare; nimic nu se suprascrie pe tăcute.</li>
+        <li data-i18n="ws.t.l4">Rezumat și avertismente înainte de pornire; progres, viteză și timp rămas când pot fi estimate.</li>
+      </ul>
+    </div>
+    <img class="shot" data-shot="t" src="assets/ws-t-ro.jpg" width="1600" height="975" alt="Spațiul Transcodare cu grilă de clipuri și inspector" data-i18n-alt="ws.t.alt" loading="lazy">
+  </div>
+  <div class="split">
+    <div class="txt">
+      <h3 data-i18n="ws.o.h">Offload — copiere verificată</h3>
+      <ul>
+        <li data-i18n="ws.o.l1">Una sau mai multe destinații, raport cu MHL; originalele rămân neatinse și nimic nu se șterge automat.</li>
+        <li data-i18n="ws.o.l2">„Copiat” nu înseamnă „verificat”; eșecurile se văd pe fiecare destinație.</li>
+        <li data-i18n="ws.o.l3">Către transcodare se trimit doar fișierele verificate prin sumă de control, fără pornire automată.</li>
+        <li data-i18n="ws.o.l4">Coadă de operații, extragerea metadatelor lângă copiile verificate și raport PDF cu sursele și copiile verificate.</li>
+      </ul>
+    </div>
+    <img class="shot" data-shot="o" src="assets/ws-o-ro.jpg" width="1600" height="975" alt="Spațiul Offload" data-i18n-alt="ws.o.alt" loading="lazy">
+  </div>
+  <div class="split">
+    <div class="txt">
+      <h3 data-i18n="ws.m.h">Metadate</h3>
+      <ul>
+        <li data-i18n="ws.m.l1">Gamut și curbă separate, timecode cu tipul lui, producător, model, obiectiv.</li>
+        <li data-i18n="ws.m.l2">Fiecare valoare spune de unde vine; necunoscutul rămâne necunoscut.</li>
+        <li data-i18n="ws.m.l3">Valorile manuale rămân în aplicație și în fișa exportată; originalul nu se modifică.</li>
+      </ul>
+    </div>
+    <img class="shot" data-shot="m" src="assets/ws-m-ro.jpg" width="1600" height="975" alt="Spațiul Metadate" data-i18n-alt="ws.m.alt" loading="lazy">
+  </div>
+</div></section>
 
 <section id="metadate"><div class="wrap">
   <span class="label" data-i18n="meta.label">METADATE</span>
@@ -150,6 +192,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px}
 
 <footer><div class="wrap">
   <a href="https://github.com/gordasgdc/CGConvertor" data-i18n="f.src">Cod sursă</a>
+  <a href="CGConvertor-Imbunatatiri-3.18.0.pdf" data-i18n="f.imp">Îmbunătățiri în 3.18.0 (PDF)</a>
   <a href="https://gordas.dev/termeni">Termeni și condiții</a>
   <a href="https://gordas.dev/confidentialitate">Confidențialitate</a>
   <a href="https://gordas.dev/cookie">Cookie-uri</a>
@@ -159,8 +202,12 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px}
 <script>
 const T={
 en:{
+"nav.ws":"Workspaces","ws.label":"THREE WORKSPACES","ws.h2":"One app: transcode, copy with verification, read the metadata.","ws.lead":"The same clips and settings in all three, with an inspector on the right, light, dark or system theme, in Romanian, English and Spanish.",
+"ws.t.h":"Transcode","ws.t.l1":"Drag clips into the window; grid or list; mark what gets converted.","ws.t.l2":"Inspector with preview, preset, audio, timing and frames, destination and naming with an example.","ws.t.l3":"Differing values between clips are shown as such; nothing is silently overwritten.","ws.t.l4":"Summary and warnings before starting; progress, speed and time left when they can be estimated.","ws.t.alt":"The Transcode workspace with a clip grid and the inspector",
+"ws.o.h":"Offload — verified copy","ws.o.l1":"One or more destinations, report with MHL; originals stay untouched and nothing is deleted automatically.","ws.o.l2":"“Copied” does not mean “verified”; failures are shown per destination.","ws.o.l3":"Only files verified by checksum are sent to transcode, with no automatic start.","ws.o.l4":"Operation queue, metadata extraction next to the verified copies and a PDF report of the sources and verified copies.","ws.o.alt":"The Offload workspace",
+"ws.m.h":"Metadata","ws.m.l1":"Gamut and curve separately, timecode with its type, make, model, lens.","ws.m.l2":"Every value shows where it comes from; unknown stays unknown.","ws.m.l3":"Manual values stay in the app and in the exported sheet; the original is never modified.","ws.m.alt":"The Metadata workspace",
 "nav.meta":"Metadata","nav.interval":"Interval","nav.resolve":"Resolve","nav.get":"Get it",
-"hero.label":"FOR MAC · v3.17.0","hero.h1":"Transcode and rewrap, with the source metadata kept in place.",
+"hero.label":"FOR MAC · v3.18.0","hero.h1":"Transcode and rewrap, with the source metadata kept in place.",
 "hero.p":"Convert clips for DaVinci Resolve while timecode and the camera's native tracks stay in the file when the image stays Log. Every clip has a report: what was kept, what was not, and why.",
 "hero.cta":"See how to get it","hero.limits":"What we demonstrate and what we don't","hero.alt":"The CG Convertor queue, with finished clips and a failed file clearly marked",
 "meta.label":"METADATA","meta.h2":"What is kept, verified in the output file.","meta.lead":"The app writes, then re-reads independently. It does not declare Rec.709 just because a matrix is bt709, and it never assumes the profile from the camera model or file name.",
@@ -170,10 +217,14 @@ en:{
 "res.label":"DAVINCI RESOLVE","res.h2":"Compatibility demonstrated on probes.","res.lead":"Results from isolated Resolve projects (Resolve 21.2), on the cameras tested. They do not apply to a whole brand and do not verify every clip.",
 "t.cam":"Camera tested","t.read":"What Resolve reads from the converted file","t.how":"How the profile reaches Resolve","t.canon":"Informative metadata and, in Color Managed v2 projects, Input Color Space — automatically.","t.canon2":"From the preserved native track.","t.sony":"Timecode only.","t.sony2":"Through the sidecar or the bridge (separate application).","t.pana":"Timecode only.","t.pana2":"Through the sidecar or the bridge (separate application).",
 "lim.label":"LIMITS","lim.h2":"What it does not do, stated plainly.","l1.h":"Native tracks are not kept","l1.p":"when you choose a colour label, change the frame rate, or the container is not MOV. The report states the reason.","l2.h":"A valid file is not automatically complete","l2.p":"if writing the metadata fails, the clip shows a warning, not full success.","l4.h":"Log profile is not assigned automatically in Resolve for every camera","l4.p":"Verified: Canon C50. On Sony A7 IV and Panasonic DC-S1 Resolve reads only the timecode; other brands were not tested. You pick the profile manually in Resolve; CGConvertor does not alter the image and never labels Log as Rec.709.","l3.h":"Hardware decoding is off","l3.p":"on one Panasonic H.264 4:2:2 clip the result differed from software decoding; it stays disabled.","lim.note":"Originals are never modified. ExifTool is optional and not included; without it, unread fields show as “unknown”.",
-"acc.label":"ACCESS","acc.h2":"A 5-day trial, then a licence.","a1.h":"Trial","a1.p":"5 days of full access from first launch. Trials already started keep their original length.","a2.h":"Licence","a2.p":"3, 6 or 12 months, or perpetual, tied to your computer. The app does not use donations. Terms are given on the contact channel.","a3.h":"Requirements","a3.p":"macOS on Mac (Developer ID signed and notarized). The Windows version is separate and did not change in 3.17.0.","acc.cta":"Published versions","f.src":"Source code","f.note":"Independent project, provided “as is”."},
+"acc.label":"ACCESS","acc.h2":"A 5-day trial, then a licence.","a1.h":"Trial","a1.p":"5 days of full access from first launch. Trials already started keep their original length.","a2.h":"Licence","a2.p":"3, 6 or 12 months, or perpetual, tied to your computer. The app does not use donations. Terms are given on the contact channel.","a3.h":"Requirements","a3.p":"macOS on Mac (Developer ID signed and notarized). The Windows version is separate and did not change in 3.17.0.","acc.cta":"Published versions","f.src":"Source code","f.imp":"What’s new in 3.18.0 (PDF)","f.note":"Independent project, provided “as is”."},
 es:{
+"nav.ws":"Espacios","ws.label":"TRES ESPACIOS DE TRABAJO","ws.h2":"Una sola app: transcodifica, copia con verificación, lee los metadatos.","ws.lead":"Los mismos clips y ajustes en los tres, con un inspector a la derecha, tema claro, oscuro o del sistema, en rumano, inglés y español.",
+"ws.t.h":"Transcodificar","ws.t.l1":"Arrastra clips a la ventana; cuadrícula o lista; marca lo que se convierte.","ws.t.l2":"Inspector con vista previa, preset, audio, tiempo y fotogramas, destino y nombre con ejemplo.","ws.t.l3":"Los valores distintos entre clips se muestran como tales; nada se sobrescribe en silencio.","ws.t.l4":"Resumen y avisos antes de empezar; progreso, velocidad y tiempo restante cuando se pueden estimar.","ws.t.alt":"El espacio Transcodificar con cuadrícula de clips e inspector",
+"ws.o.h":"Offload — copia verificada","ws.o.l1":"Uno o más destinos, informe con MHL; los originales quedan intactos y nada se borra automáticamente.","ws.o.l2":"«Copiado» no significa «verificado»; los fallos se muestran por destino.","ws.o.l3":"Solo los archivos verificados por suma de control se envían a transcodificar, sin inicio automático.","ws.o.l4":"Cola de operaciones, extracción de metadatos junto a las copias verificadas e informe PDF de los orígenes y las copias verificadas.","ws.o.alt":"El espacio Offload",
+"ws.m.h":"Metadatos","ws.m.l1":"Gamut y curva por separado, timecode con su tipo, fabricante, modelo, objetivo.","ws.m.l2":"Cada valor muestra su procedencia; lo desconocido sigue desconocido.","ws.m.l3":"Los valores manuales quedan en la app y en la ficha exportada; el original nunca se modifica.","ws.m.alt":"El espacio Metadatos",
 "nav.meta":"Metadatos","nav.interval":"Intervalo","nav.resolve":"Resolve","nav.get":"Obtener",
-"hero.label":"PARA MAC · v3.17.0","hero.h1":"Transcodifica y rehace el contenedor, con los metadatos del origen en su sitio.",
+"hero.label":"PARA MAC · v3.18.0","hero.h1":"Transcodifica y rehace el contenedor, con los metadatos del origen en su sitio.",
 "hero.p":"Convierte clips para DaVinci Resolve mientras el timecode y las pistas nativas de la cámara se quedan en el archivo cuando la imagen sigue en Log. Cada clip tiene un informe: qué se conservó, qué no y por qué.",
 "hero.cta":"Cómo obtenerlo","hero.limits":"Qué demostramos y qué no","hero.alt":"La cola de CG Convertor, con clips terminados y un archivo fallido claramente marcado",
 "meta.label":"METADATOS","meta.h2":"Qué se conserva, verificado en el archivo resultante.","meta.lead":"La app escribe y luego vuelve a leer de forma independiente. No declara Rec.709 solo porque una matriz sea bt709, y nunca supone el perfil por el modelo de cámara o el nombre del archivo.",
@@ -183,7 +234,7 @@ es:{
 "res.label":"DAVINCI RESOLVE","res.h2":"Compatibilidad demostrada en pruebas.","res.lead":"Resultados de proyectos Resolve aislados (Resolve 21.2), en las cámaras probadas. No valen para toda la marca ni verifican cada clip.",
 "t.cam":"Cámara probada","t.read":"Qué lee Resolve del archivo convertido","t.how":"Cómo llega el perfil a Resolve","t.canon":"Metadatos informativos y, en proyectos Color Managed v2, Input Color Space — automáticamente.","t.canon2":"De la pista nativa conservada.","t.sony":"Solo timecode.","t.sony2":"Mediante el sidecar o el puente (aplicación aparte).","t.pana":"Solo timecode.","t.pana2":"Mediante el sidecar o el puente (aplicación aparte).",
 "lim.label":"LÍMITES","lim.h2":"Lo que no hace, dicho claro.","l1.h":"Las pistas nativas no se conservan","l1.p":"cuando eliges una etiqueta de color, cambias los fotogramas/s o el contenedor no es MOV. El informe indica el motivo.","l2.h":"Un archivo válido no es automáticamente completo","l2.p":"si falla la escritura de metadatos, el clip muestra una advertencia, no un éxito completo.","l4.h":"El perfil Log no se asigna automáticamente en Resolve en todas las cámaras","l4.p":"Verificado: Canon C50. En Sony A7 IV y Panasonic DC-S1 Resolve solo lee el timecode; otras marcas no se probaron. Eliges el perfil manualmente en Resolve; CGConvertor no altera la imagen y nunca etiqueta Log como Rec.709.","l3.h":"Decodificación por hardware desactivada","l3.p":"en un clip Panasonic H.264 4:2:2 el resultado difería de la decodificación por software; sigue desactivada.","lim.note":"Los originales nunca se modifican. ExifTool es opcional y no se incluye; sin él, los campos no leídos aparecen como «desconocido».",
-"acc.label":"ACCESO","acc.h2":"Prueba de 5 días, luego licencia.","a1.h":"Prueba","a1.p":"5 días de acceso completo desde el primer arranque. Las pruebas ya iniciadas conservan su duración original.","a2.h":"Licencia","a2.p":"3, 6 o 12 meses, o perpetua, ligada a tu ordenador. La app no usa donaciones. Las condiciones se comunican por el canal de contacto.","a3.h":"Requisitos","a3.p":"macOS en Mac (firmada con Developer ID y notarizada). La versión de Windows es independiente y no cambió en 3.17.0.","acc.cta":"Versiones publicadas","f.src":"Código fuente","f.note":"Proyecto independiente, ofrecido «tal cual»."}
+"acc.label":"ACCESO","acc.h2":"Prueba de 5 días, luego licencia.","a1.h":"Prueba","a1.p":"5 días de acceso completo desde el primer arranque. Las pruebas ya iniciadas conservan su duración original.","a2.h":"Licencia","a2.p":"3, 6 o 12 meses, o perpetua, ligada a tu ordenador. La app no usa donaciones. Las condiciones se comunican por el canal de contacto.","a3.h":"Requisitos","a3.p":"macOS en Mac (firmada con Developer ID y notarizada). La versión de Windows es independiente y no cambió en 3.17.0.","acc.cta":"Versiones publicadas","f.src":"Código fuente","f.imp":"Novedades de la 3.18.0 (PDF)","f.note":"Proyecto independiente, ofrecido «tal cual»."}
 };
 const base={};
 document.querySelectorAll('[data-i18n]').forEach(e=>base[e.dataset.i18n]=e.textContent);
@@ -192,6 +243,7 @@ function setLang(l){
   document.documentElement.lang=l;
   document.querySelectorAll('[data-i18n]').forEach(e=>{const v=l==='ro'?base[e.dataset.i18n]:T[l][e.dataset.i18n];if(v)e.textContent=v});
   document.querySelectorAll('[data-i18n-alt]').forEach(e=>{const v=l==='ro'?base[e.dataset.i18nAlt]:T[l][e.dataset.i18nAlt];if(v)e.alt=v});
+  document.querySelectorAll('[data-shot]').forEach(e=>{e.src='assets/ws-'+e.dataset.shot+'-'+l+'.jpg'});
   document.querySelectorAll('.lang button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lang===l));
   try{localStorage.setItem('lang',l)}catch(e){}
 }

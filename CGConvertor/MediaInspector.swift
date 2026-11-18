@@ -27,7 +27,7 @@ struct MediaMetadata: Equatable {
     }
 }
 
-enum MediaInspector {
+nonisolated enum MediaInspector {
     /// Rulează `ffprobe -show_format -show_streams` și parsează JSON-ul
     /// brut manual (nu Codable pe structura ffprobe direct — câmpurile ei
     /// variază mult între containere/codecuri, un parsing tolerant e mai

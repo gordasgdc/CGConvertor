@@ -8,7 +8,7 @@ struct CGConvertorApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .frame(minWidth: 900, minHeight: 580)
+                .frame(minWidth: 1000, minHeight: 620)
         }
         .windowResizability(.contentSize)
         .commands {

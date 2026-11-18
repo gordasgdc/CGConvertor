@@ -51,7 +51,7 @@ final class StructuredLog: @unchecked Sendable {
     /// Instanța aplicației. Testele o înlocuiesc cu una într-un folder temporar
     /// (niciun test nu scrie în `~/Library/Logs`).
     nonisolated(unsafe) static var shared = StructuredLog(config: Config(directory: FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Logs/CGConvertor", isDirectory: true)))
+        .appendingPathComponent("Library/Logs/\(AppIsolation.folderName)", isDirectory: true)))
 
     let config: Config
     let sessionID: String

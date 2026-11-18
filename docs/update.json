@@ -1,8 +1,8 @@
 {
-  "version": "3.17.0",
-  "app_version": "3.17.0",
-  "release_date": "2026-11-18",
-  "changes": "Metadatele sursei se păstrează în fișierul rezultat (timecode și, pentru Log, pistele native ale camerei), cu raport per clip care arată ce s-a detectat, ce s-a încorporat și ce nu. Extragere de interval cu imagine, sunet și timecode sincronizate. Diagnostic exportabil local. Licențiere: probă de 5 zile și licențe de 3, 6, 12 luni sau perpetue. Limită: Resolve atribuie automat profilul doar pentru camerele testate (Canon C50); la restul se alege manual.",
+  "version": "3.18.0",
+  "app_version": "3.18.0",
+  "release_date": "2026-11-19",
+  "changes": "Aplicație reproiectată cu trei spații de lucru: Transcodare (grilă sau listă, marcare, inspector cu previzualizare, rezumat și avertismente, fără suprascriere), Offload (copiere verificată pe mai multe destinații, coadă de operații, extragerea metadatelor, raport PDF; către transcodare merg doar fișierele verificate prin sumă de control) și Metadate (gamut și curbă separate, timecode, proveniența fiecărei valori). Temă deschisă, închisă sau a sistemului, în română, engleză și spaniolă. Manuale actualizate. Limite: Resolve atribuie automat profilul doar pentru camerele testate (Canon C50); versiunea Windows nu are aceste îmbunătățiri.",
   "download_url": {
     "mac": "https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.pkg",
     "mac_dmg": "https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg"

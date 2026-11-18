@@ -11,6 +11,18 @@ enum SelfTest {
         if let k = a.firstIndex(of: "--selftest-diag"), a.count > k + 1 {
             runDiagChecks(folder: URL(fileURLWithPath: a[k + 1]))
         }
+        if let k = a.firstIndex(of: "--selftest-offload"), a.count > k + 2 {
+            // Copiere verificată fără UI: tipărește câte fișiere sunt «verificate» (cu sumă de control) pentru trimiterea la transcodare.
+            let src = a[k + 1], dst = a[k + 2]
+            for model in [VerificationModel.xxhash64, .sizeOnly] {
+                let files = offloadListAllFiles(root: src)
+                let job = OffloadDestinationJob(destination: dst, folderName: "selftest_\(model.rawValue)", files: files, sourceRoot: src, model: model,
+                                                meta: ProductionMeta(), cancel: CancelToken(), pause: PauseToken(), onFileDone: { _, _, _ in }, onActivity: { _ in })
+                let r = job.run()
+                print("\(model.rawValue): ok=\(r.okCount) mismatch=\(r.mismatchCount) err=\(r.errorCount) verifiedFiles=\(r.verifiedFiles.count)")
+            }
+            exit(0)
+        }
         if a.contains("--selftest-tc") {
             let f = 30000.0 / 1001.0
             let cases: [(String, Int, Double, String)] = [

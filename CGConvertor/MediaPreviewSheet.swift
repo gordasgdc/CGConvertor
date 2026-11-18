@@ -160,7 +160,8 @@ struct MediaPreviewSheet: View {
             try? await Task.sleep(nanoseconds: 150_000_000)
             if Task.isCancelled { return }
             let iesire = MediaInspector.folderThumbnailuri().appendingPathComponent("preview_\(job.id.uuidString).jpg")
-            let ok = MediaInspector.genereazaThumbnail(url: job.urlSursa, lutPath: lut, iesire: iesire, laSecunda: secunda, laLatime: latime)
+            let src = job.urlSursa
+            let ok = await BackgroundWork.async { MediaInspector.genereazaThumbnail(url: src, lutPath: lut, iesire: iesire, laSecunda: secunda, laLatime: latime) }
             if Task.isCancelled { return }
             await MainActor.run {
                 if ok, let img = NSImage(contentsOfFile: iesire.path) {

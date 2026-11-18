@@ -42,7 +42,7 @@ subtitle_style = ParagraphStyle("Subtitle", parent=styles["Normal"], fontName="A
                                  fontSize=11, textColor=MUTED, spaceAfter=20)
 h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Arial-Bold",
                            fontSize=13, textColor=ACCENT, spaceBefore=16, spaceAfter=6)
-h3_style = ParagraphStyle("H3", parent=styles["Heading3"], fontName="Arial-Bold",
+h3_style = ParagraphStyle("H3", parent=styles["Heading3"], keepWithNext=1, fontName="Arial-Bold",
                            fontSize=10.8, textColor=colors.HexColor("#1a1a1a"), spaceBefore=8, spaceAfter=3)
 body_style = ParagraphStyle("Body", parent=styles["Normal"], fontName="Arial",
                              fontSize=10.5, leading=15, textColor=colors.HexColor("#1a1a1a"), spaceAfter=6)
@@ -76,11 +76,31 @@ def h3(text):
     return Paragraph(text, h3_style)
 
 
+def shot(path):
+    from reportlab.platypus import Image
+    full = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manual_img", path)
+    from PIL import Image as PI
+    w, h = PI.open(full).size
+    width = 16.6 * cm
+    img = Image(full, width=width, height=width * h / w)
+    return img
+
+
 def page(d):
     flow = [Paragraph("CG Convertor", title_style), Paragraph(d["subtitle"], subtitle_style)]
 
     flow.append(Paragraph(d["h_install"], h2_style))
     flow.append(numbered(d["install"]))
+
+    # --- v3.18.0: cele trei spatii de lucru (cu capturi reale) -------------
+    for kind, val in d.get("ws_block", []):
+        if kind == "h": flow.append(Paragraph(val, h2_style))
+        elif kind == "h3": flow.append(h3(val))
+        elif kind == "p": flow.append(Paragraph(val, body_style))
+        elif kind == "b": flow.append(bullets(val))
+        elif kind == "n": flow.append(numbered(val))
+        elif kind == "note": flow.append(note(val))
+        elif kind == "img": flow.append(shot(val))
 
     # --- 1. Panoul de Dependinte (rosu/verde) ---------------------------
     flow.append(Paragraph(d["h_deps"], h2_style))
@@ -175,9 +195,9 @@ RO = dict(
     ],
     h_deps="2. Panoul de Dependințe (indicatorul roșu/verde)",
     deps_intro="În partea de sus a ferestrei aplicației vezi un mic punct colorat, urmat de un text scurt. Acesta îți spune dacă aplicația este gata de lucru sau mai are nevoie de o componentă tehnică (FFmpeg) ca să poată converti fișiere video.",
-    deps_red_label="🔴 Punct roșu — „Dependențe lipsă”",
+    deps_red_label="<font color='#c0392b'>●</font> Punct roșu — „Dependențe lipsă”",
     deps_red_text="Înseamnă că FFmpeg (motorul intern folosit pentru conversie) nu a fost găsit sau nu funcționează pe acest calculator. Butonul „Pornește conversia” rămâne dezactivat până rezolvi acest lucru — nu e nimic stricat, aplicația doar așteaptă instalarea automată descrisă mai jos.",
-    deps_green_label="🟢 Punct verde — „Sistem pregătit”",
+    deps_green_label="<font color='#2e8b57'>●</font> Punct verde — „Sistem pregătit”",
     deps_green_text="Înseamnă că FFmpeg este instalat corect și funcțional. Poți adăuga fișiere și porni conversia normal, fără niciun pas suplimentar.",
     deps_howto_label="Ce faci exact când vezi punctul roșu:",
     deps_howto=[
@@ -281,9 +301,9 @@ EN = dict(
     ],
     h_deps="2. Dependency Panel (the red/green indicator)",
     deps_intro="At the top of the app window you'll see a small colored dot followed by a short label. It tells you whether the app is ready to work, or still needs one technical component (FFmpeg) before it can convert video files.",
-    deps_red_label="🔴 Red dot — “Missing dependencies”",
+    deps_red_label="<font color='#c0392b'>●</font> Red dot — “Missing dependencies”",
     deps_red_text="Means FFmpeg (the internal engine used for conversion) was not found or isn't working on this computer. The “Start conversion” button stays disabled until this is resolved — nothing is broken, the app is just waiting for the automatic install described below.",
-    deps_green_label="🟢 Green dot — “System ready”",
+    deps_green_label="<font color='#2e8b57'>●</font> Green dot — “System ready”",
     deps_green_text="Means FFmpeg is installed correctly and working. You can add files and start converting normally, no extra steps needed.",
     deps_howto_label="Exactly what to do when you see the red dot:",
     deps_howto=[
@@ -387,9 +407,9 @@ ES = dict(
     ],
     h_deps="2. Panel de Dependencias (el indicador rojo/verde)",
     deps_intro="En la parte superior de la ventana de la app verás un pequeño punto de color seguido de un texto breve. Te indica si la app está lista para funcionar o si todavía necesita un componente técnico (FFmpeg) para poder convertir archivos de vídeo.",
-    deps_red_label="🔴 Punto rojo — “Dependencias faltantes”",
+    deps_red_label="<font color='#c0392b'>●</font> Punto rojo — “Dependencias faltantes”",
     deps_red_text="Significa que FFmpeg (el motor interno usado para la conversión) no se encontró o no funciona en este ordenador. El botón “Iniciar conversión” permanece desactivado hasta resolver esto — no hay ningún fallo, la app solo espera la instalación automática descrita a continuación.",
-    deps_green_label="🟢 Punto verde — “Sistema listo”",
+    deps_green_label="<font color='#2e8b57'>●</font> Punto verde — “Sistema listo”",
     deps_green_text="Significa que FFmpeg está instalado correctamente y funciona. Puedes añadir archivos e iniciar la conversión con normalidad, sin pasos adicionales.",
     deps_howto_label="Qué hacer exactamente cuando ves el punto rojo:",
     deps_howto=[
@@ -678,6 +698,212 @@ ES.update(
     trial_note="<b>Importante:</b> si cambias de ordenador, escribe de nuevo — la licencia se regenera para el nuevo ordenador.",
     h_uninstall="15. Desinstalar",
     h_support="16. Soporte",
+)
+
+
+# ---- v3.18.0: spatii de lucru Transcodare / Offload / Metadate ----
+RO.update(
+    h_usage="4. Transcodare: fluxul de conversie",
+    usage_intro="În spațiul „Transcodare” aduci clipuri, alegi ieșirea în inspectorul din dreapta și pornești conversia:",
+    usage_add=[
+        "Alege „Transcodare” din selectorul de sus.",
+        "Trage fișierele video peste fereastră (Drag & Drop) sau apasă „Adaugă fișiere…”. Poți comuta între grilă cu miniaturi și listă.",
+        "În inspector, fila „Ieșire”, alege presetul. Dacă ai clipuri selectate, alegerea se aplică doar lor; altfel e valoarea implicită.",
+        "Apasă „Convertește marcate (N)”. Săgeata de lângă buton permite și „Convertește selecția” sau „Convertește tot”.",
+    ],
+    usage=[
+        "<b>⌘O</b> — adaugă fișiere · <b>⌘⏎</b> — pornește conversia · <b>⌘K</b> — golește lista · <b>⌘A</b> — selectează tot.",
+        "Înainte de pornire, bara de jos arată ce se va produce (câte clipuri, ce preset). Dacă rezultatul ar exista deja sau spațiul pare insuficient, primești un avertisment; <b>nimic nu se suprascrie</b>: un nume ocupat primește _2, _3…",
+        "În timpul conversiei vezi progresul fiecărui clip și pe cel total; viteza (de câte ori timpul real) și timpul rămas apar doar când pot fi calculate credibil.",
+        "<b>Pauză / Oprește</b> — Oprește anulează conversia în curs; clipurile neprocesate rămân în listă.",
+    ],
+    h_selection="5. Marcare, selecție și valori diferite",
+    selection_intro="Sunt două lucruri diferite, ca în orice aplicație de transcodare:",
+    selection_items=[
+        "<b>Marcat</b> — căsuța de pe fiecare clip. Butonul principal convertește clipurile marcate (implicit toate sunt marcate).",
+        "<b>Selectat</b> — clipul evidențiat (click, Cmd+click, Shift+click). Inspectorul arată și modifică exact clipurile selectate; bannerul de sus spune câte sunt.",
+        "Dacă selecția are valori diferite (de exemplu presetări diferite), vezi „Valori diferite”. Alegerea unei valori o aplică tuturor clipurilor selectate; nicio setare individuală nu se suprascrie fără să fi ales tu.",
+        "Fără nicio selecție, inspectorul editează valorile implicite, valabile pentru clipurile fără setare proprie.",
+    ],
+    presets_steps=[
+        "În inspector, fila „Ieșire”, apasă „Editează presets…”.",
+        "Adaugă o presetare nouă sau editează una existentă: container, codec video, cadre/s, audio.",
+        "Salvează — presetarea apare imediat în lista din inspector.",
+    ],
+    watchfolders_steps=[
+        "În inspector, fila „Ieșire”, la secțiunea „Foldere monitorizate”, apasă „Adaugă folder”.",
+        "Dacă folderul are deja fișiere, aplicația te întreabă dacă le adaugă și pe acelea, sau doar pe cele noi.",
+        "Comutatorul de lângă fiecare folder îl activează/dezactivează temporar.",
+    ],
+    player_intro="Previzualizarea din inspector redă clipul direct (cu deplasare pe bara de timp) când macOS poate reda formatul; altfel folosește „Previzualizare cadre”. În fila „Clip”, butonul „LUT” deschide playerul cu un LUT 3D (.cube) aplicat peste imaginea originală.",
+    compare_intro="În spațiul „Metadate”, selectează 2 sau mai multe clipuri și apasă „Compară (N)” — se deschide o pagină cu metadatele tehnice puse unele lângă altele:",
+    report_intro="Butonul „Generează raport” din bara de sus a spațiului Transcodare creează o pagină HTML cu miniatură, nume, metadate de bază și starea fiecărui clip.",
+    ws_block=[
+        ("h", "Cele trei spații de lucru"),
+        ("p", "Sus, în toolbar, alegi spațiul: <b>Transcodare</b>, <b>Offload</b> sau <b>Metadate</b>. Sunt funcții integrate în aceeași aplicație, cu aceleași clipuri și aceleași setări. Tot în toolbar: tema (Sistem, Deschisă, Închisă), limba, actualizările, Ajutorul și Setările."),
+        ("h3", "Transcodare"),
+        ("img", "man_t_ro.jpg"),
+        ("b", [
+            "Centru: clipurile, în grilă sau listă. Dreapta: previzualizare cu redare și filele <b>Ieșire</b>, <b>Clip</b>, <b>Metadate</b>.",
+            "<b>Ieșire</b> grupează: preset, video (codec, container), audio, timp și cadre, culoare/LUT, destinație, denumire (cu exemplu de nume rezultat), interval, păstrarea metadatelor, foldere monitorizate. Se afișează doar ce motorul poate executa.",
+            "<b>Cadre/s și viteză:</b> conversia ratei de cadre repetă sau omite cadre; durata și sunetul rămân la fel. Schimbarea vitezei (clip mai lent sau mai rapid) nu este disponibilă în această versiune.",
+        ]),
+        ("h3", "Offload (copiere verificată)"),
+        ("img", "man_o_ro.jpg"),
+        ("b", [
+            "Alegi sursa (cardul), una sau mai multe destinații, șablonul de denumire și metoda de verificare; vezi progresul și raportul final (inclusiv MHL).",
+            "Originalele rămân neatinse; aplicația nu șterge nimic din card sau din sursă. Un fișier „copiat” nu este același lucru cu „verificat”: raportul le distinge, iar eșecurile sunt arătate pe fiecare destinație.",
+            "După copiere, „Trimite la transcodare” adaugă în coadă doar fișierele verificate prin sumă de control. Fișierele care au eșuat sau au fost verificate doar prin mărime nu se trimit, iar transcodarea nu pornește automat. Transcodarea poate fi folosită și fără offload.",
+            "<b>Coadă de operații:</b> „Adaugă operația curentă” pune mai multe copieri într-o coadă (așteaptă, rulează, terminat, cu probleme, eșuat, anulat). Rulează una câte una; o anulare oprește coada. Coada se păstrează între lansări; o operație întreruptă de o închidere neașteptată apare ca „întreruptă”.",
+            "<b>Extrage metadatele:</b> după copiere, din originale (citite fără modificare) se scrie lângă fiecare copie verificată o fișă „.gdc-metadata.json”. Nu intră în MHL și nu se numără ca fișier copiat; o eroare de extragere nu schimbă verdictul copierii.",
+            "<b>Raport PDF:</b> butonul „Raport PDF” exportă fișierele sursă și copiile verificate pe fiecare destinație (de exemplu 3 fișiere sursă și 6 copii verificate pe două destinații). La anulare, fișierele terminate pe disc dar neverificate sunt numite separat de copiile verificate.",
+            "<b>Viteze:</b> se afișează separat viteza măsurată de scriere și cea de citire la verificare, doar când există activitate de acel fel; liniile de pe traseu se mișcă după transferul real.",
+        ]),
+        ("h3", "Metadate"),
+        ("img", "man_m_ro.jpg"),
+        ("b", [
+            "Lista clipurilor în stânga, detalii în dreapta, cu căutare. Secțiuni: fișier, video, audio, producător și model, profil de culoare (gamut și curbă separat), timecode și tipul lui, obiectiv și captură, câmpuri brute (avansat).",
+            "Fiecare valoare își arată proveniența: detectat din date native, declarat de producător, dedus sau introdus manual. Conflictele (de exemplu etichetă de container diferită de profilul detectat) sunt marcate. Valorile necunoscute rămân „necunoscute”; nu se completează prin presupunere.",
+            "„Valori introduse manual” se păstrează doar în CGConvertor și în fișa exportată (.json). Fișierul sursă nu se modifică niciodată, iar DaVinci Resolve nu citește aceste valori.",
+        ]),
+        ("note", "<b>Limită:</b> metadatele afișate nu garantează că DaVinci Resolve atribuie automat profilul de culoare. Verificat: Canon C50. La Sony A7 IV și Panasonic DC-S1 Resolve a citit doar timecode-ul; celelalte mărci nu au fost testate."),
+    ],
+)
+
+EN.update(
+    h_usage="4. Transcode: the conversion flow",
+    usage_intro="In the “Transcode” workspace you bring clips in, choose the output in the inspector on the right and start the conversion:",
+    usage_add=[
+        "Choose “Transcode” in the selector at the top.",
+        "Drag video files onto the window (Drag & Drop) or press “Add files…”. You can switch between a thumbnail grid and a list.",
+        "In the inspector, “Output” tab, choose the preset. If clips are selected, the choice applies only to them; otherwise it is the default.",
+        "Press “Convert marked (N)”. The arrow next to it also offers “Convert selection” and “Convert all”.",
+    ],
+    usage=[
+        "<b>⌘O</b> — add files · <b>⌘⏎</b> — start · <b>⌘K</b> — clear the list · <b>⌘A</b> — select all.",
+        "Before starting, the bottom bar shows what will be produced (how many clips, which preset). If a result already exists or space looks insufficient you get a warning; <b>nothing is overwritten</b>: a taken name gets _2, _3…",
+        "While converting you see each clip’s progress and the total; speed (times real time) and time left appear only when they can be computed credibly.",
+        "<b>Pause / Stop</b> — Stop cancels the running conversion; unprocessed clips stay in the list.",
+    ],
+    h_selection="5. Marked, selected and mixed values",
+    selection_intro="These are two different things, as in any transcoding app:",
+    selection_items=[
+        "<b>Marked</b> — the checkbox on each clip. The main button converts the marked clips (all are marked by default).",
+        "<b>Selected</b> — the highlighted clip (click, Cmd+click, Shift+click). The inspector shows and edits exactly the selected clips; the banner at its top says how many.",
+        "If the selection has different values (for example different presets) you see “Mixed values”. Choosing a value applies it to all selected clips; no individual setting is overwritten unless you chose it.",
+        "With nothing selected, the inspector edits the defaults, used by clips without their own setting.",
+    ],
+    presets_steps=[
+        "In the inspector, “Output” tab, press “Edit presets…”.",
+        "Add a new preset or edit an existing one: container, video codec, frame rate, audio.",
+        "Save — the preset appears at once in the inspector list.",
+    ],
+    watchfolders_steps=[
+        "In the inspector, “Output” tab, in the “Watch Folders” section, press “Add folder”.",
+        "If the folder already has files, the app asks whether to add those too or only new ones.",
+        "The switch next to each folder turns it on/off temporarily.",
+    ],
+    player_intro="The inspector preview plays the clip directly (with a timeline scrubber) when macOS can play the format; otherwise it offers “Frame preview”. In the “Clip” tab, the “LUT” button opens the player with a 3D LUT (.cube) applied over the original picture.",
+    compare_intro="In the “Metadata” workspace, select 2 or more clips and press “Compare (N)” — a page opens with their technical metadata side by side:",
+    report_intro="The “Generate report” button in the top bar of the Transcode workspace creates an HTML page with thumbnail, name, basic metadata and status of each clip.",
+    ws_block=[
+        ("h", "The three workspaces"),
+        ("p", "At the top, in the toolbar, you pick the workspace: <b>Transcode</b>, <b>Offload</b> or <b>Metadata</b>. They are integrated functions of the same app, sharing clips and settings. Also in the toolbar: theme (System, Light, Dark), language, updates, Help and Settings."),
+        ("h3", "Transcode"),
+        ("img", "man_t_en.jpg"),
+        ("b", [
+            "Centre: the clips, as a grid or list. Right: a preview with playback and the <b>Output</b>, <b>Clip</b> and <b>Metadata</b> tabs.",
+            "<b>Output</b> groups: preset, video (codec, container), audio, timing and frames, colour/LUT, destination, naming (with an example of the resulting name), range, metadata policy, watch folders. Only what the engine can execute is shown.",
+            "<b>Frame rate vs speed:</b> frame-rate conversion repeats or drops frames; duration and sound stay the same. Changing speed (slower or faster clip) is not available in this version.",
+        ]),
+        ("h3", "Offload (verified copy)"),
+        ("img", "man_o_en.jpg"),
+        ("b", [
+            "Choose the source (card), one or more destinations, the naming template and the verification method; you see progress and the final report (including MHL).",
+            "Originals stay untouched; the app deletes nothing from the card or source. A “copied” file is not the same as a “verified” one: the report tells them apart, and failures are shown per destination.",
+            "After copying, “Send to transcode” adds to the queue only the files verified by checksum. Files that failed or were verified by size only are not sent, and transcoding does not start by itself. Transcoding can also be used without offload.",
+            "<b>Operation queue:</b> “Add current operation” puts several copies in a queue (waiting, running, done, with issues, failed, cancelled). They run one at a time; cancelling stops the queue. The queue persists across launches; an operation cut short by an unexpected quit shows as “interrupted”.",
+            "<b>Extract metadata:</b> after copying, a “.gdc-metadata.json” sheet is written next to each verified copy from the originals (read without modification). It is not part of the MHL and is not counted as a copied file; an extraction error does not change the copy verdict.",
+            "<b>PDF report:</b> the “PDF report” button exports the source files and the verified copies on each destination (for example 3 source files and 6 verified copies on two destinations). On cancel, files finished on disk but not verified are named separately from verified copies.",
+            "<b>Speeds:</b> measured write speed and verification read speed are shown separately, only when that kind of activity exists; the route lines move according to the real transfer.",
+        ]),
+        ("h3", "Metadata"),
+        ("img", "man_m_en.jpg"),
+        ("b", [
+            "Clip list on the left, details on the right, with search. Sections: file, video, audio, make and model, colour profile (gamut and curve separately), timecode and its type, lens and capture, raw fields (advanced).",
+            "Each value shows where it comes from: detected from native data, declared by the maker, derived or entered manually. Conflicts (for example a container label that differs from the detected profile) are flagged. Unknown values stay “unknown”; nothing is filled in by assumption.",
+            "“Manually entered values” are kept only in CGConvertor and in the exported sheet (.json). The source file is never modified, and DaVinci Resolve does not read these values.",
+        ]),
+        ("note", "<b>Limit:</b> displayed metadata does not guarantee that DaVinci Resolve assigns the colour profile automatically. Verified: Canon C50. With the Sony A7 IV and Panasonic DC-S1 Resolve read only the timecode; other brands were not tested."),
+    ],
+)
+
+ES.update(
+    h_usage="4. Transcodificar: el flujo de conversión",
+    usage_intro="En el espacio «Transcodificar» traes clips, eliges la salida en el inspector de la derecha y empiezas la conversión:",
+    usage_add=[
+        "Elige «Transcodificar» en el selector superior.",
+        "Arrastra los archivos de vídeo sobre la ventana (Drag & Drop) o pulsa «Añadir archivos…». Puedes alternar entre cuadrícula con miniaturas y lista.",
+        "En el inspector, pestaña «Salida», elige el preset. Si hay clips seleccionados, la elección se aplica solo a ellos; si no, es el valor por defecto.",
+        "Pulsa «Convertir marcados (N)». La flecha junto al botón ofrece también «Convertir selección» y «Convertir todo».",
+    ],
+    usage=[
+        "<b>⌘O</b> — añadir archivos · <b>⌘⏎</b> — iniciar · <b>⌘K</b> — vaciar la lista · <b>⌘A</b> — seleccionar todo.",
+        "Antes de iniciar, la barra inferior muestra lo que se producirá (cuántos clips, qué preset). Si un resultado ya existe o el espacio parece insuficiente recibes un aviso; <b>nada se sobrescribe</b>: un nombre ocupado recibe _2, _3…",
+        "Durante la conversión ves el progreso de cada clip y el total; la velocidad (veces el tiempo real) y el tiempo restante aparecen solo cuando se pueden calcular con fiabilidad.",
+        "<b>Pausa / Detener</b> — Detener cancela la conversión en curso; los clips sin procesar quedan en la lista.",
+    ],
+    h_selection="5. Marcados, seleccionados y valores distintos",
+    selection_intro="Son dos cosas distintas, como en cualquier app de transcodificación:",
+    selection_items=[
+        "<b>Marcado</b> — la casilla de cada clip. El botón principal convierte los clips marcados (por defecto todos).",
+        "<b>Seleccionado</b> — el clip resaltado (clic, Cmd+clic, Mayús+clic). El inspector muestra y edita exactamente los clips seleccionados; el aviso superior indica cuántos.",
+        "Si la selección tiene valores distintos (por ejemplo presets distintos) ves «Valores distintos». Elegir un valor lo aplica a todos los seleccionados; ningún ajuste individual se sobrescribe sin que lo elijas.",
+        "Sin selección, el inspector edita los valores por defecto, usados por los clips sin ajuste propio.",
+    ],
+    presets_steps=[
+        "En el inspector, pestaña «Salida», pulsa «Editar presets…».",
+        "Añade un preset nuevo o edita uno existente: contenedor, códec de vídeo, fotogramas/s, audio.",
+        "Guarda — el preset aparece de inmediato en la lista del inspector.",
+    ],
+    watchfolders_steps=[
+        "En el inspector, pestaña «Salida», en la sección «Watch Folders», pulsa «Añadir carpeta».",
+        "Si la carpeta ya tiene archivos, la app pregunta si añadirlos también o solo los nuevos.",
+        "El interruptor junto a cada carpeta la activa o desactiva temporalmente.",
+    ],
+    player_intro="La previsualización del inspector reproduce el clip directamente (con barra de tiempo) cuando macOS puede reproducir el formato; si no, ofrece «Vista previa de fotogramas». En la pestaña «Clip», el botón «LUT» abre el reproductor con un LUT 3D (.cube) aplicado sobre la imagen original.",
+    compare_intro="En el espacio «Metadatos», selecciona 2 o más clips y pulsa «Comparar (N)» — se abre una página con sus metadatos técnicos lado a lado:",
+    report_intro="El botón «Generar informe» de la barra superior del espacio Transcodificar crea una página HTML con miniatura, nombre, metadatos básicos y estado de cada clip.",
+    ws_block=[
+        ("h", "Los tres espacios de trabajo"),
+        ("p", "Arriba, en la barra de herramientas, eliges el espacio: <b>Transcodificar</b>, <b>Offload</b> o <b>Metadatos</b>. Son funciones integradas de la misma app, con los mismos clips y ajustes. También en la barra: tema (Sistema, Claro, Oscuro), idioma, actualizaciones, Ayuda y Ajustes."),
+        ("h3", "Transcodificar"),
+        ("img", "man_t_es.jpg"),
+        ("b", [
+            "Centro: los clips, en cuadrícula o lista. Derecha: vista previa con reproducción y las pestañas <b>Salida</b>, <b>Clip</b> y <b>Metadatos</b>.",
+            "<b>Salida</b> agrupa: preset, vídeo (códec, contenedor), audio, tiempo y fotogramas, color/LUT, destino, nombre (con ejemplo del nombre resultante), intervalo, conservación de metadatos, carpetas vigiladas. Solo se muestra lo que el motor puede ejecutar.",
+            "<b>Fotogramas/s y velocidad:</b> la conversión de fotogramas repite u omite fotogramas; duración y sonido no cambian. Cambiar la velocidad (clip más lento o más rápido) no está disponible en esta versión.",
+        ]),
+        ("h3", "Offload (copia verificada)"),
+        ("img", "man_o_es.jpg"),
+        ("b", [
+            "Eliges el origen (tarjeta), uno o más destinos, la plantilla de nombre y el método de verificación; ves el progreso y el informe final (incluido MHL).",
+            "Los originales quedan intactos; la app no borra nada de la tarjeta ni del origen. Un archivo «copiado» no es lo mismo que «verificado»: el informe los distingue y los fallos se muestran por destino.",
+            "Tras copiar, «Enviar a transcodificar» añade a la cola solo los archivos verificados por suma de control. Los que fallaron o se verificaron solo por tamaño no se envían, y la transcodificación no empieza sola. Se puede transcodificar también sin offload.",
+            "<b>Cola de operaciones:</b> «Añadir la operación actual» pone varias copias en una cola (en espera, en curso, terminada, con problemas, fallida, cancelada). Se ejecutan una a una; cancelar detiene la cola. La cola se conserva entre sesiones; una operación cortada por un cierre inesperado aparece como «interrumpida».",
+            "<b>Extraer metadatos:</b> tras copiar, junto a cada copia verificada se escribe una ficha «.gdc-metadata.json» a partir de los originales (leídos sin modificar). No entra en el MHL ni cuenta como archivo copiado; un error de extracción no cambia el veredicto de la copia.",
+            "<b>Informe PDF:</b> el botón «Informe PDF» exporta los archivos de origen y las copias verificadas en cada destino (por ejemplo 3 archivos de origen y 6 copias verificadas en dos destinos). Al cancelar, los archivos terminados en disco pero sin verificar se nombran aparte de las copias verificadas.",
+            "<b>Velocidades:</b> se muestran por separado la velocidad medida de escritura y la de lectura en la verificación, solo cuando hay actividad de ese tipo; las líneas de la ruta se mueven según la transferencia real.",
+        ]),
+        ("h3", "Metadatos"),
+        ("img", "man_m_es.jpg"),
+        ("b", [
+            "Lista de clips a la izquierda, detalles a la derecha, con búsqueda. Secciones: archivo, vídeo, audio, fabricante y modelo, perfil de color (gamut y curva por separado), timecode y su tipo, objetivo y captura, campos sin procesar (avanzado).",
+            "Cada valor muestra su procedencia: detectado de datos nativos, declarado por el fabricante, deducido o introducido manualmente. Los conflictos (por ejemplo una etiqueta de contenedor distinta del perfil detectado) se marcan. Los valores desconocidos siguen «desconocidos»; nada se rellena por suposición.",
+            "Los «Valores introducidos manualmente» se guardan solo en CGConvertor y en la ficha exportada (.json). El archivo de origen nunca se modifica y DaVinci Resolve no lee estos valores.",
+        ]),
+        ("note", "<b>Límite:</b> los metadatos mostrados no garantizan que DaVinci Resolve asigne el perfil de color automáticamente. Verificado: Canon C50. Con Sony A7 IV y Panasonic DC-S1 Resolve leyó solo el timecode; otras marcas no se probaron."),
+    ],
 )
 
 doc = SimpleDocTemplate(

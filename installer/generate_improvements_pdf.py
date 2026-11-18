@@ -1,4 +1,4 @@
-# Genereaza "CGConvertor-Imbunatatiri-3.17.0.pdf" (doar RO) — rezumat uman al noutatilor din v3.17.0.
+# Genereaza "CGConvertor-Imbunatatiri-3.17.0.pdf" (doar RO) — rezumat uman al noutatilor din v3.18.0.
 # Ruleaza: python3 installer/generate_improvements_pdf.py [calea_iesire]
 import os, sys
 from reportlab.lib.pagesizes import A4
@@ -9,7 +9,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph, ListFlowable, ListItem, Spacer, Table, TableStyle, KeepTogether
 
-VERSION = "3.17.0"
+VERSION = "3.18.0"
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), f"CGConvertor-Imbunatatiri-{VERSION}.pdf")
 TITLE = f"CGConvertor — Îmbunătățiri în versiunea {VERSION}"
 
@@ -41,60 +41,55 @@ def tbl(rows, widths):
     return t
 
 S = []
-S += [P(TITLE, title), P("Ce aduce noua versiune, cum te ajută și ce limite are, spus direct.", sub)]
+S += [P(TITLE, title), P("Ce se schimbă în aplicație, cum te ajută și ce limite are, spus direct.", sub)]
 
 S += [P("1. Pe scurt", h2), bl([
-    "Timecode-ul clipului (inclusiv drop-frame la Sony) trece în rezultat și este recitit din fișier ca să fie verificat.",
-    "La clipurile Canon, pista de metadate a camerei rămâne în ProRes, iar DaVinci Resolve o citește singur.",
-    "Poți extrage doar un interval dintr-un clip, cu imaginea, sunetul și timecode-ul rămase la locul lor.",
-    "Fiecare clip are un raport: ce s-a păstrat, ce nu și de ce. Un clip cu metadate incomplete nu apare ca succes complet.",
-    "Poți exporta un diagnostic local, fără chei, fără media și fără căi personale în clar.",
-    "Proba nouă durează 5 zile; licențele sunt de 3, 6, 12 luni sau perpetue.",
+    "Aplicația are acum un cadru unic cu trei spații de lucru: <b>Transcodare</b>, <b>Offload</b> (copiere verificată) și <b>Metadate</b>.",
+    "Un inspector în dreapta arată și modifică setările clipurilor selectate, cu o previzualizare cu redare.",
+    "Poți marca clipurile care se procesează, le selectezi separat și vezi clar când setările diferă între ele.",
+    "Înainte de pornire vezi un rezumat și avertismente; nimic nu se suprascrie niciodată.",
+    "Copierea verificată trimite la transcodare doar fișierele verificate prin sumă de control.",
+    "Spațiul Metadate arată profilul de culoare (gamut și curbă separat), timecode-ul și de unde provine fiecare valoare.",
+    "Temă Sistem / Deschisă / Închisă, în română, engleză și spaniolă.",
 ])]
 
-S += [P("2. Păstrarea metadatelor și compatibilitatea verificată", h2),
-      P("Ce înseamnă fiecare cuvânt din raportul aplicației:"),
-      bl(["<b>Detectat</b> — aplicația a găsit informația în fișierul sursă (de exemplu timecode, modelul camerei, profilul de imagine).",
-          "<b>Încorporat</b> — informația a fost scrisă în fișierul ProRes rezultat.",
-          "<b>Recuperabil</b> — informația scrisă poate fi citită înapoi din fișier; aplicația o verifică după conversie.",
-          "<b>Folosit automat de Resolve</b> — DaVinci Resolve o preia singur la import, fără să faci nimic."]),
-      P("Aceste patru lucruri sunt diferite. O informație poate fi încorporată și recuperabilă fără ca Resolve să o folosească automat."),
-      P("Ce am verificat concret, în DaVinci Resolve Studio 21.2, într-un proiect Color Managed cu import proaspăt:"),
-      tbl([["Cameră testată", "Timecode", "Piste native păstrate", "Resolve folosește automat"],
-           ["Canon EOS C50", "da", "da (Canon „cndm”)", "da: informațiile camerei și spațiul de culoare (Canon Cinema Gamut / Canon Log 2)"],
-           ["Sony A7 IV", "da, inclusiv drop-frame", "da (Sony „rtmd”)", "doar timecode-ul; profilul Log trebuie ales în Resolve"],
-           ["Panasonic DC-S1", "da", "nu există piste native de păstrat", "doar timecode-ul; profilul V-Log trebuie ales în Resolve"]],
-          [3.2*cm, 3.0*cm, 4.0*cm, 6.8*cm]),
-      P("Rezultatele sunt pentru camerele și clipurile testate. Nu înseamnă că toată marca se comportă la fel, iar celelalte mărci (Nikon, Fujifilm, Blackmagic, ARRI, RED, DJI, GoPro, Apple) nu au fost verificate în aplicație.", note),
-      P("Pistele native se păstrează doar când imaginea rămâne Log, rămâne în MOV și nu schimbi cadrele pe secundă. Dacă alegi o etichetă de culoare sau o transformare, aplicația spune în raport că pistele nu au fost păstrate și de ce. Aplicația nu transformă imaginea și nu etichetează drept Rec.709 o imagine rămasă Log.")]
+S += [P("2. Transcodare", h2),
+      bl(["<b>Import:</b> tragi fișierele peste fereastră sau folosești „Adaugă fișiere…”. Lista se vede ca grilă cu miniaturi sau ca listă.",
+          "<b>Marcat și selectat:</b> căsuța de pe clip hotărăște ce se convertește; selecția hotărăște ce editezi în inspector. Bannerul din inspector spune mereu cărui grup i se aplică modificarea.",
+          "<b>Valori diferite:</b> dacă selecția are presetări sau setări diferite, vezi „Valori diferite” în loc de o valoare înșelătoare. O setare individuală nu se schimbă decât dacă alegi tu o valoare nouă.",
+          "<b>Cadre pe secundă și viteză:</b> aplicația explică diferența. Conversia ratei de cadre păstrează durata și sunetul. Schimbarea vitezei nu există în această versiune și de aceea nu este afișată.",
+          "<b>Rezumat și avertismente:</b> bara de jos arată câte clipuri se produc și cu ce presetare; te avertizează când un rezultat există deja (cel nou primește _2, _3…), când spațiul pare insuficient sau când o combinație nu poate păstra anumite informații.",
+          "<b>Progres:</b> progres pe clip și total; viteza și timpul rămas apar doar când pot fi estimate credibil. Oprirea anulează conversia în curs."]),
+      ]
 
-S += [P("3. Extragerea intervalelor", h2),
-      P("Cu pictograma foarfecă de pe un clip alegi începutul și sfârșitul pe cadre. Aplicația taie imaginea exact pe cadru, taie sunetul la aceeași durată, recalculează timecode-ul (începutul sursei plus decalajul, corect și pentru drop-frame) și taie pistele native la cadrele păstrate. La final verifică numărul de cadre așteptat."),
-      P("Verificat pe clipuri Canon, Sony și Panasonic: numărul de cadre, timecode-ul și sunetul corespund intervalului ales. Intervalul se poate extrage la transcodare; la rewrap (copiere fără recodare) nu, pentru că rewrap-ul nu poate tăia exact pe cadru.")]
+S += [P("3. Offload — copiere verificată", h2),
+      bl(["O copiere verificată din card către una sau mai multe destinații, cu raport (inclusiv MHL).",
+          "Originalele nu sunt modificate și aplicația nu șterge nimic automat din card sau sursă.",
+          "„Copiat” și „verificat” sunt tratate separat: un fișier copiat dar neverificat nu este prezentat ca verificat. Eșecurile sunt arătate pe fiecare destinație.",
+          "„Trimite la transcodare” pune în coadă doar fișierele verificate prin sumă de control. Nu pornește conversia singur, iar fișierele eșuate sau verificate doar prin mărime nu se trimit.",
+          "Coadă de operații (una câte una, păstrată între lansări) și opțiunea „Extrage metadatele”: fișe .gdc-metadata.json scrise lângă copiile verificate, separat de verdictul copierii.",
+          "„Raport PDF” cu fișierele sursă și copiile verificate pe fiecare destinație; la anulare, fișierele terminate dar neverificate sunt numite separat.",
+          "Viteze afișate separat (scriere și citire la verificare), doar când sunt măsurate; la 1000×652 interfața se adaptează fără tăieturi.",
+          "Transcodarea funcționează independent, fără offload."])]
 
-S += [P("4. Raportul pe clip, interfața și diagnosticul", h2),
-      bl(["<b>Raport per clip</b> (butonul „Raport”): ce s-a detectat, ce s-a încorporat și verificat, ce necesită aplicare separată și ce nu s-a păstrat, fiecare cu motivul.",
-          "<b>Interfață</b>: cardurile laterale au aceeași lățime, iar butonul principal rămâne vizibil și pe ferestre mici. Textele sunt în română, engleză și spaniolă.",
-          "<b>Diagnostic</b>: Setări → „Exportă diagnosticul” creează un ZIP local. Nu conține chei, tokenuri, fișiere media sau căi în clar. Aplicația ține și un jurnal local cu rotire și scrie un singur rezultat final per conversie, inclusiv la anulare.",
-          "<b>Sidecar</b>: lângă rezultat se scrie un fișier „.gdc-metadata.json” cu ce a fost detectat, pentru informațiile pe care Resolve nu le citește din fișier. Este un supliment, nu înlocuiește metadatele din ProRes.",
-          "Comutatorul „Păstrează metadatele” din Setări îți permite să oprești păstrarea metadatelor."])]
+S += [P("4. Metadate", h2),
+      bl(["Spațiu dedicat, cu căutare, plus fila „Metadate” din inspectorul de transcodare.",
+          "Secțiuni: fișier, video, audio, producător și model, profil de culoare (gamut și curbă separat), timecode și tipul lui, obiectiv și captură, proveniență, conflicte, câmpuri brute (avansat).",
+          "Fiecare valoare arată dacă a fost detectată, declarată de producător, dedusă sau introdusă manual. Valorile necunoscute rămân „necunoscute”.",
+          "Valorile introduse manual se păstrează doar în CGConvertor și în fișa exportată; fișierul original nu este modificat.",
+          "Poți compara metadatele a două sau mai multe clipuri."]),
+      P("<b>Limită importantă:</b> faptul că aplicația afișează un profil nu înseamnă că DaVinci Resolve îl atribuie automat. Verificat: Canon C50. La Sony A7 IV și Panasonic DC-S1 Resolve citește doar timecode-ul. Alte mărci nu au fost testate.", note)]
 
-S += [P("5. Proba de 5 zile și licențiere", h2),
-      bl(["Proba nouă durează 5 zile. Probele începute înainte de această versiune își păstrează durata inițială.",
-          "Licențele disponibile: 3 luni, 6 luni, 12 luni sau perpetuă.",
-          "Din aplicație au dispărut donațiile și sumele.",
-          "Activarea rămâne legată de calculatorul tău, ca până acum."])]
+S += [P("5. Ce s-a păstrat neschimbat", h2),
+      bl(["Motorul de conversie și metodele de păstrare a metadatelor din versiunea anterioară.",
+          "Licențierea: probă de 5 zile pentru utilizatorii noi, probele începute își păstrează durata, licențe de 3, 6, 12 luni sau perpetue, fără donații.",
+          "Fișierele nu se suprascriu și nu se șterg automat."])]
 
-S += [P("6. Optimizări măsurate", h2),
-      P("Pe un clip Canon 4K la 50 fps (10 secunde, ProRes HQ), scrierea timecode-ului la sfârșit durează sub o secundă din aproximativ nouă, deci nu a fost nevoie să rescriem acel pas. Decodarea hardware a fost încercată: a scurtat cu aproximativ un sfert conversia clipului HEVC testat, dar pe un clip Panasonic H.264 4:2:2 a dat o imagine diferită de decodarea software. Din acest motiv <b>rămâne dezactivată</b>. Nu promitem alte câștiguri de viteză.")]
-
-S += [P("7. Limite cunoscute", h2),
-      bl(["Resolve nu atribuie automat profilul Log la Sony A7 IV și Panasonic DC-S1 pe clipurile testate; alegi profilul în Resolve.",
-          "Compatibilitatea e verificată doar pe camerele și clipurile menționate; alte camere sunt netestate, nu neapărat nesuportate.",
-          "Pistele native nu se păstrează la etichete de culoare, schimbarea cadrelor pe secundă sau alt container decât MOV.",
-          "Intervalul nu se poate extrage la rewrap.",
-          "ExifTool este opțional și nu este inclus; fără el, unele câmpuri apar ca „necunoscut”.",
-          "Versiunea pentru Windows nu a fost modificată în această versiune.",
+S += [P("6. Limite cunoscute", h2),
+      bl(["Schimbarea vitezei clipului și redimensionarea imaginii nu sunt disponibile.",
+          "Previzualizarea redă direct doar formatele pe care macOS le poate reda; pentru restul rămâne previzualizarea pe cadre.",
+          "Presetarea „H.264 1080p” nu redimensionează imaginea.",
+          "Versiunea pentru Windows nu a fost modificată în această versiune (rămâne 3.15.0).",
           "Instalarea automată a actualizării cu parolă de administrator nu a fost verificată pe un Mac curat."])]
 S += [P(f"CGConvertor {VERSION} · gordas.dev", foot)]
 

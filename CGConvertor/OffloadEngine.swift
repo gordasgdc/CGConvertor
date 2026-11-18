@@ -101,7 +101,7 @@ func offloadIsPermissionError(_ error: Error) -> Bool {
 /// `autoreleasepool` per iterație e obligatoriu (Regula 21) — altfel
 /// obiectele `NSData` din spatele fiecărui `Data` bridge-uit se acumulează
 /// pe tot parcursul copierii unui fișier mare.
-func offloadCopyFile(src: String, dst: String, cancel: CancelToken, chunkSize: Int) throws {
+func offloadCopyFile(src: String, dst: String, cancel: CancelToken, chunkSize: Int, onBytes: ((Int) -> Void)? = nil) throws {
     let fm = FileManager.default
     if fm.fileExists(atPath: dst) { try? fm.removeItem(atPath: dst) }
     fm.createFile(atPath: dst, contents: nil)
@@ -123,11 +123,12 @@ func offloadCopyFile(src: String, dst: String, cancel: CancelToken, chunkSize: I
         try autoreleasepool {
             try output.write(contentsOf: data)
         }
+        onBytes?(data.count)
     }
     try? fm.setAttributes(try fm.attributesOfItem(atPath: src), ofItemAtPath: dst)
 }
 
-private func offloadGenericHash<H: HashFunction>(_ type: H.Type, path: String, cancel: CancelToken, chunkSize: Int) throws -> String {
+private func offloadGenericHash<H: HashFunction>(_ type: H.Type, path: String, cancel: CancelToken, chunkSize: Int, onBytes: ((Int) -> Void)? = nil) throws -> String {
     guard let input = FileHandle(forReadingAtPath: path) else {
         throw NSError(domain: "Offload", code: 3, userInfo: [NSLocalizedDescriptionKey: "Nu pot citi \(path)"])
     }
@@ -139,11 +140,12 @@ private func offloadGenericHash<H: HashFunction>(_ type: H.Type, path: String, c
         try autoreleasepool { chunk = try input.read(upToCount: chunkSize) }
         guard let data = chunk, !data.isEmpty else { break }
         autoreleasepool { hasher.update(data: data) }
+        onBytes?(data.count)
     }
     return hasher.finalize().map { String(format: "%02x", $0) }.joined()
 }
 
-func offloadXXHash64(path: String, cancel: CancelToken, chunkSize: Int) throws -> String {
+func offloadXXHash64(path: String, cancel: CancelToken, chunkSize: Int, onBytes: ((Int) -> Void)? = nil) throws -> String {
     guard let input = FileHandle(forReadingAtPath: path) else {
         throw NSError(domain: "Offload", code: 3, userInfo: [NSLocalizedDescriptionKey: "Nu pot citi \(path)"])
     }
@@ -155,16 +157,17 @@ func offloadXXHash64(path: String, cancel: CancelToken, chunkSize: Int) throws -
         try autoreleasepool { chunk = try input.read(upToCount: chunkSize) }
         guard let data = chunk, !data.isEmpty else { break }
         autoreleasepool { hasher.update(data) }
+        onBytes?(data.count)
     }
     return hasher.hexDigest
 }
 
-func offloadHashOfFile(path: String, model: VerificationModel, cancel: CancelToken, chunkSize: Int) throws -> String {
+func offloadHashOfFile(path: String, model: VerificationModel, cancel: CancelToken, chunkSize: Int, onBytes: ((Int) -> Void)? = nil) throws -> String {
     switch model {
-    case .xxhash64: return try offloadXXHash64(path: path, cancel: cancel, chunkSize: chunkSize)
-    case .md5: return try offloadGenericHash(Insecure.MD5.self, path: path, cancel: cancel, chunkSize: chunkSize)
-    case .sha1: return try offloadGenericHash(Insecure.SHA1.self, path: path, cancel: cancel, chunkSize: chunkSize)
-    case .sha256: return try offloadGenericHash(SHA256.self, path: path, cancel: cancel, chunkSize: chunkSize)
+    case .xxhash64: return try offloadXXHash64(path: path, cancel: cancel, chunkSize: chunkSize, onBytes: onBytes)
+    case .md5: return try offloadGenericHash(Insecure.MD5.self, path: path, cancel: cancel, chunkSize: chunkSize, onBytes: onBytes)
+    case .sha1: return try offloadGenericHash(Insecure.SHA1.self, path: path, cancel: cancel, chunkSize: chunkSize, onBytes: onBytes)
+    case .sha256: return try offloadGenericHash(SHA256.self, path: path, cancel: cancel, chunkSize: chunkSize, onBytes: onBytes)
     case .sizeOnly: return ""
     }
 }
@@ -192,6 +195,16 @@ struct OffloadDestinationResult {
     let csvPath: String?
     let mhlPath: String?
     let htmlPath: String?
+    /// Căi complete la destinație ale fișierelor copiate ȘI verificate prin sumă de control
+    /// (gol când verificarea e „doar mărime”: copiat ≠ verificat).
+    var verifiedFiles: [String] = []
+    /// Oprit de utilizator înainte de final.
+    var cancelled = false
+    /// Rândurile raportului (pentru exportul PDF): un rând per fișier sursă copiat pe această destinație.
+    var rows: [OffloadReportRow] = []
+    var startedAt = Date()
+    var finishedAt = Date()
+    var verificationLabel = ""
 }
 
 /// Verificare de spațiu liber, ÎNAINTE de primul octet copiat (port din
@@ -200,8 +213,7 @@ struct OffloadDestinationResult {
 /// transfer, minim 100 MB.
 func offloadHasEnoughSpace(destinationRoot: String, neededBytes: UInt64) -> (ok: Bool, availableBytes: Int64?) {
     let url = URL(fileURLWithPath: destinationRoot)
-    guard let values = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
-          let available = values.volumeAvailableCapacityForImportantUsage else {
+    guard let available = freeSpaceBytes(at: url) else {
         return (true, nil) // nu putem citi capacitatea — nu blocăm transferul pe o necunoscută
     }
     let margin = max(UInt64(Double(neededBytes) * 0.01), 100 * 1024 * 1024)
@@ -225,14 +237,15 @@ final class OffloadDestinationJob {
     let meta: ProductionMeta
     let cancel: CancelToken
     let pause: PauseToken
-    let onFileDone: (UInt64) -> Void
+    let onFileDone: (UInt64, Bool, String) -> Void
+    let onProgress: (Int, Bool) -> Void
     let onActivity: (String) -> Void
 
     private let startedAt = Date()
 
     init(destination: String, folderName: String, files: [OffloadFileEntry], sourceRoot: String, model: VerificationModel,
          meta: ProductionMeta, cancel: CancelToken, pause: PauseToken,
-         onFileDone: @escaping (UInt64) -> Void, onActivity: @escaping (String) -> Void) {
+         onFileDone: @escaping (UInt64, Bool, String) -> Void, onProgress: @escaping (Int, Bool) -> Void = { _, _ in }, onActivity: @escaping (String) -> Void) {
         self.destination = destination
         self.folderName = folderName
         self.files = files
@@ -242,6 +255,7 @@ final class OffloadDestinationJob {
         self.cancel = cancel
         self.pause = pause
         self.onFileDone = onFileDone
+        self.onProgress = onProgress
         self.onActivity = onActivity
     }
 
@@ -294,7 +308,7 @@ final class OffloadDestinationJob {
             if isRetry { try? fm.removeItem(atPath: dstPath) } // fisierul partial anterior nu trebuie sa induca in eroare verificarea
 
             do {
-                try offloadCopyFile(src: entry.fullPath, dst: dstPath, cancel: cancel, chunkSize: chunkSize)
+                try offloadCopyFile(src: entry.fullPath, dst: dstPath, cancel: cancel, chunkSize: chunkSize, onBytes: { [onProgress] n in onProgress(n, false) })
                 let statusOK = isRetry ? "OK (reîncercat)" : "OK"
                 if model == .sizeOnly {
                     let dstSize = (try? fm.attributesOfItem(atPath: dstPath)[.size] as? UInt64) ?? 0
@@ -308,7 +322,7 @@ final class OffloadDestinationJob {
                     }
                 } else {
                     let srcHash = try offloadHashOfFile(path: entry.fullPath, model: model, cancel: cancel, chunkSize: chunkSize)
-                    let dstHash = try offloadHashOfFile(path: dstPath, model: model, cancel: cancel, chunkSize: chunkSize)
+                    let dstHash = try offloadHashOfFile(path: dstPath, model: model, cancel: cancel, chunkSize: chunkSize, onBytes: { [onProgress] n in onProgress(n, true) })
                     if srcHash == dstHash {
                         logRow(OffloadReportRow(relPath: entry.relPath, sizeBytes: entry.size, srcHash: srcHash, dstHash: dstHash, status: statusOK, error: "", destPath: dstPath))
                         mhl?.add(relPath: entry.relPath, size: Int64(entry.size), modificationDate: nil, hashHex: srcHash, hashedAt: Date())
@@ -329,12 +343,13 @@ final class OffloadDestinationJob {
 
         for entry in files {
             if cancel.isCancelled { break }
+            var confirmed = false
             switch processOne(entry, isRetry: false) {
-            case .ok: ok += 1
+            case .ok: ok += 1; confirmed = true
             case .mismatch: mismatch += 1; failedEntries.append((entry, false))
             case .error: errors += 1; failedEntries.append((entry, true))
             }
-            onFileDone(entry.size)
+            onFileDone(entry.size, confirmed, entry.relPath)
         }
 
         // Reîncercare automată, O SINGURĂ dată — fișierele care mai eșuează
@@ -367,7 +382,10 @@ final class OffloadDestinationJob {
         return OffloadDestinationResult(
             destination: destination, targetRoot: targetRoot, okCount: ok, mismatchCount: mismatch,
             errorCount: errors, recoveredCount: recovered, csvPath: csvPath,
-            mhlPath: mhlFinalPath, htmlPath: htmlOK ? htmlPath : nil
+            mhlPath: mhlFinalPath, htmlPath: htmlOK ? htmlPath : nil,
+            verifiedFiles: model == .sizeOnly ? [] : Array(Set(rows.filter { $0.status.hasPrefix("OK") && !$0.destPath.isEmpty }.map(\.destPath))).sorted(),
+            cancelled: cancel.isCancelled,
+            rows: rows, startedAt: startedAt, finishedAt: Date(), verificationLabel: model.label
         )
     }
 
@@ -392,18 +410,37 @@ final class OffloadRunner: ObservableObject {
     @Published var activityLog: [String] = []
     @Published var lastResults: [OffloadDestinationResult] = []
     @Published var permissionErrorPath: String?
-    /// Port DataMover (Etapa 2026-09-03) — spațiu insuficient detectat
-    /// ÎNAINTE de primul octet copiat; nil = totul e în regulă sau nu s-a
-    /// putut verifica (nu blocăm transferul pe o necunoscută).
+    /// Spațiu insuficient detectat ÎNAINTE de primul octet copiat; nil = în regulă sau necunoscut.
     @Published var insufficientSpaceWarning: String?
+    // Stare publicată pentru traseu (sursă → verificare → copii).
+    @Published private(set) var phase: TransferPhase = .idle
+    @Published private(set) var destinationStates: [DestinationLiveState] = []
+    @Published private(set) var lastOutcome: TransferOutcome? = nil
+    @Published private(set) var bytesDone: Int64 = 0
+    @Published private(set) var totalBytes: Int64 = 0
+    @Published private(set) var destinationCount = 1
+    @Published private(set) var elapsedSeconds: Double = 0
+    @Published private(set) var currentFile = ""
+    @Published private(set) var bytesPerSecond: Double = 0
+    /// Viteze măsurate SEPARAT, pe fereastră glisantă (~3 s): octeți scriși pe destinații vs. octeți recitiți la verificare.
+    /// 0 = nicio activitate de acel fel în fereastră (nu e o valoare estimată).
+    @Published private(set) var writeBytesPerSecond: Double = 0
+    @Published private(set) var verifyReadBytesPerSecond: Double = 0
+    private var writeSamples: [(t: Date, b: Int)] = []
+    private var verifySamples: [(t: Date, b: Int)] = []
+    @Published private(set) var etaSeconds: Double? = nil
+    @Published private(set) var lastFolderName = ""
+    @Published private(set) var lastModel: VerificationModel = .xxhash64
+    /// Extragerea metadatelor: stare separată de verdictul integrității copiei.
+    @Published private(set) var metadataRunning = false
+    @Published private(set) var metadataProgress = ""
+    @Published private(set) var metadataSummary: MetadataSummary? = nil
+    private var metadataCancelled = false
 
     private let activityLogLimit = 200
     private var cancelToken = CancelToken()
     private var pauseToken = PauseToken()
     private var startedAt: Date = .init()
-    private var totalBytes: UInt64 = 0
-    private var bytesDoneShared: UInt64 = 0
-    private let bytesLock = NSLock()
 
     func togglePause() {
         if pauseToken.isPaused { pauseToken.resume(); isPaused = false }
@@ -411,36 +448,64 @@ final class OffloadRunner: ObservableObject {
     }
 
     func cancel() {
+        metadataCancelled = true
         cancelToken.cancel()
         statusText = L.t("offload.status.cancelling")
     }
 
-    /// `namingTemplate` gol → `NamingTemplate.defaultTemplate` (identic cu
-    /// comportamentul vechi, un singur folder `<data>_<Proiect>_<Card>`
-    /// per destinație — nimeni nu e afectat dacă nu schimbă șablonul).
-    /// `ignoreSpaceWarning: true` forțează pornirea chiar dacă vreo
-    /// destinație pare fără spațiu suficient (userul a confirmat explicit).
+    /// Un singur folder sursă (compatibilitate: selftest).
     func start(sourceRoot: String, destinations: [String], model: VerificationModel,
                meta: ProductionMeta = ProductionMeta(), namingTemplate: String = "",
                ignoreSpaceWarning: Bool = false) {
-        guard !destinations.isEmpty else { return }
+        start(sources: [sourceRoot], destinations: destinations, model: model, meta: meta,
+              namingTemplate: namingTemplate, ignoreSpaceWarning: ignoreSpaceWarning)
+    }
+
+    /// Una sau mai multe surse. Cu mai multe surse, fiecare ajunge într-un subfolder cu numele ei,
+    /// ca fișierele cu același nume să nu se suprapună.
+    func start(sources: [String], destinations: [String], model: VerificationModel,
+               meta: ProductionMeta = ProductionMeta(), namingTemplate: String = "",
+               ignoreSpaceWarning: Bool = false, extractMetadata: Bool = false) {
+        guard !destinations.isEmpty, !sources.isEmpty else { return }
+        metadataSummary = nil
+        metadataRunning = false
+        metadataCancelled = false
         cancelToken = CancelToken()
         pauseToken = PauseToken()
         isPaused = false
         activityLog.removeAll()
         lastResults.removeAll()
+        lastOutcome = nil
         permissionErrorPath = nil
         insufficientSpaceWarning = nil
+        phase = .preparing
 
-        let files = offloadListAllFiles(root: sourceRoot)
+        var files: [OffloadFileEntry] = []
+        for src in sources {
+            var isDir: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: src, isDirectory: &isDir) else { continue }
+            if isDir.boolValue {
+                let list = offloadListAllFiles(root: src)
+                if sources.count > 1 {
+                    let prefix = (src as NSString).lastPathComponent
+                    files += list.map { OffloadFileEntry(fullPath: $0.fullPath, relPath: prefix + "/" + $0.relPath, size: $0.size) }
+                } else { files += list }
+            } else {
+                let size = (try? FileManager.default.attributesOfItem(atPath: src)[.size] as? UInt64) ?? 0
+                files.append(OffloadFileEntry(fullPath: src, relPath: (src as NSString).lastPathComponent, size: size))
+            }
+        }
         guard !files.isEmpty else {
             statusText = L.t("offload.status.noFiles")
+            phase = .idle
             return
         }
+        let sourceRoot = sources[0]
         let neededBytes = files.reduce(UInt64(0)) { $0 + $1.size }
         let folderName = NamingTemplate.render(namingTemplate, context: .init(
             project: meta.project, card: meta.card, camera: meta.camera, operatorName: meta.operatorName, date: Date()
         ))
+        lastFolderName = folderName
 
         if !ignoreSpaceWarning {
             for dest in destinations {
@@ -450,17 +515,29 @@ final class OffloadRunner: ObservableObject {
                     let availableText = formatBytes(check.availableBytes)
                     insufficientSpaceWarning = String(format: L.t("offload.status.insufficientSpace"),
                                                        (dest as NSString).lastPathComponent, formatBytes(Int64(neededBytes)), availableText)
+                    phase = .idle
                     return
                 }
             }
         }
 
         totalFiles = files.count * destinations.count
-        totalBytes = neededBytes * UInt64(destinations.count)
+        totalBytes = Int64(neededBytes) * Int64(destinations.count)
+        destinationCount = destinations.count
+        destinationStates = destinations.map { DestinationLiveState(destRoot: $0) }
+        bytesDone = 0
+        verifiedBytes = 0
         filesDone = 0
-        bytesDoneShared = 0
         progressPercent = 0
+        bytesPerSecond = 0
+        writeBytesPerSecond = 0; verifyReadBytesPerSecond = 0
+        writeSamples = []; verifySamples = []
+        etaSeconds = nil
+        elapsedSeconds = 0
+        currentFile = ""
+        lastModel = model
         isRunning = true
+        phase = .copying
         startedAt = Date()
         statusText = String(format: L.t("offload.status.running"), files.count, destinations.count)
 
@@ -476,8 +553,12 @@ final class OffloadRunner: ObservableObject {
                 let job = OffloadDestinationJob(
                     destination: dest, folderName: folderName, files: files, sourceRoot: sourceRoot, model: model,
                     meta: meta, cancel: cancel, pause: pause,
-                    onFileDone: { size in
-                        Task { @MainActor in self?.advance(bytes: size) }
+                    onFileDone: { size, confirmed, rel in
+                        let alive = FileManager.default.fileExists(atPath: dest)
+                        Task { @MainActor in self?.advance(bytes: size, dest: dest, confirmed: confirmed, file: rel, available: alive) }
+                    },
+                    onProgress: { n, verify in
+                        Task { @MainActor in self?.progress(bytes: n, dest: dest, verify: verify) }
                     },
                     onActivity: { line in
                         Task { @MainActor in self?.logActivity(line) }
@@ -491,14 +572,36 @@ final class OffloadRunner: ObservableObject {
 
         group.notify(queue: .main) { [weak self] in
             guard let self else { return }
+            self.phase = .reporting
             self.isRunning = false
-            self.lastResults = results
+            // Ordinea destinațiilor = ordinea aleasă de utilizator.
+            let ordered = destinations.compactMap { d in results.first { $0.destination == d } }
+            self.lastResults = ordered
+            self.elapsedSeconds = Date().timeIntervalSince(self.startedAt)
+            self.lastOutcome = cancel.isCancelled ? .cancelled : TransferOutcome.evaluate(ordered.map(\.outcome))
+            self.destinationStates = self.destinationStates.map { st in
+                var s = st
+                s.outcome = ordered.first { $0.destination == st.destRoot }?.outcome
+                return s
+            }
+            self.phase = .finished
+            if extractMetadata, !cancel.isCancelled, ordered.contains(where: { !$0.verifiedFiles.isEmpty }) {
+                self.runMetadataExtraction(files: files, results: ordered)
+            }
             let totalOK = results.reduce(0) { $0 + $1.okCount }
             let totalMismatch = results.reduce(0) { $0 + $1.mismatchCount }
             let totalErrors = results.reduce(0) { $0 + $1.errorCount }
             let totalRecovered = results.reduce(0) { $0 + $1.recoveredCount }
             if cancel.isCancelled {
-                self.statusText = L.t("offload.status.cancelled")
+                // Finalizat ≠ verificat: fișierele prezente pe disc dar fără sumă confirmată nu sunt copii verificate.
+                let verified = ordered.reduce(0) { $0 + $1.verifiedFiles.count }
+                let verifiedSet = Set(ordered.flatMap(\.verifiedFiles))
+                var finishedUnverified = 0
+                for r in ordered { for f in files {
+                    let p = (r.targetRoot as NSString).appendingPathComponent(f.relPath)
+                    if !verifiedSet.contains(p), FileManager.default.fileExists(atPath: p) { finishedUnverified += 1 }
+                } }
+                self.statusText = String(format: L.t("offload.status.cancelledDetail"), verified, finishedUnverified)
             } else {
                 self.statusText = totalRecovered > 0
                     ? String(format: L.t("offload.status.doneWithRecovered"), totalOK, totalMismatch, totalErrors, totalRecovered)
@@ -512,18 +615,77 @@ final class OffloadRunner: ObservableObject {
         }
     }
 
-    private func advance(bytes: UInt64) {
-        filesDone += 1
-        bytesLock.lock(); bytesDoneShared += bytes; bytesLock.unlock()
-        progressPercent = totalFiles > 0 ? (Double(filesDone) / Double(totalFiles)) * 100 : 0
+    private func runMetadataExtraction(files: [OffloadFileEntry], results: [OffloadDestinationResult]) {
+        metadataRunning = true
+        metadataProgress = ""
+        var verifiedOn: [String: [String]] = [:]
+        for f in files {
+            for r in results {
+                let dest = (r.targetRoot as NSString).appendingPathComponent(f.relPath)
+                if r.verifiedFiles.contains(dest) { verifiedOn[f.relPath, default: []].append(r.targetRoot) }
+            }
+        }
+        let list = files.map { (rel: $0.relPath, source: $0.fullPath) }
+        DiagnosticLog("offload").info("metadata extraction start clips=\(list.filter { OffloadMetadataExtraction.isClip($0.rel) }.count)")
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let summary = OffloadMetadataExtraction.run(
+                files: list, verifiedOn: verifiedOn,
+                isCancelled: { [weak self] in self?.metadataCancelled ?? true },
+                onProgress: { n, total in Task { @MainActor in self?.metadataProgress = "\(n)/\(total)" } })
+            Task { @MainActor in
+                self?.metadataSummary = summary
+                self?.metadataRunning = false
+                DiagnosticLog("offload").info("metadata extraction done found=\(summary.found) failed=\(summary.failed) written=\(summary.written)")
+            }
+        }
+    }
+
+    private var verifiedBytes: Int64 = 0
+    private var verifyRequired: Bool { lastModel != .sizeOnly }
+
+    private func progress(bytes: Int, dest: String, verify: Bool) {
+        if verify {
+            verifiedBytes += Int64(bytes)
+        } else {
+            bytesDone += Int64(bytes)
+            if let i = destinationStates.firstIndex(where: { $0.destRoot == dest }) { destinationStates[i].bytesWritten += Int64(bytes) }
+        }
+        if phase == .copying || phase == .verifying { phase = (bytesDone >= totalBytes && verifyRequired) ? .verifying : .copying }
+        let units = Double(totalBytes) * (verifyRequired ? 2 : 1)
+        let done = Double(bytesDone + (verifyRequired ? verifiedBytes : 0))
+        progressPercent = units > 0 ? min(100, done / units * 100) : 0
         let elapsed = max(Date().timeIntervalSince(startedAt), 0.001)
-        let bps = Double(bytesDoneShared) / elapsed
-        speedText = Self.formatSpeed(bps)
+        elapsedSeconds = elapsed
+        bytesPerSecond = done / elapsed
+        let now = Date()
+        if verify { verifySamples.append((now, bytes)) } else { writeSamples.append((now, bytes)) }
+        writeBytesPerSecond = Self.windowRate(&writeSamples, now: now)
+        verifyReadBytesPerSecond = Self.windowRate(&verifySamples, now: now)
+        speedText = Self.formatSpeed(bytesPerSecond)
+        etaSeconds = (elapsed > 3 && progressPercent >= 2 && bytesPerSecond > 0) ? max(units - done, 0) / bytesPerSecond : nil
+    }
+
+    private func advance(bytes: UInt64, dest: String, confirmed: Bool, file: String, available: Bool) {
+        filesDone += 1
+        currentFile = file
+        if let i = destinationStates.firstIndex(where: { $0.destRoot == dest }) {
+            if confirmed { destinationStates[i].filesConfirmed += 1 } else { destinationStates[i].filesFailed += 1 }
+            destinationStates[i].available = available
+        }
     }
 
     private func logActivity(_ line: String) {
         activityLog.append(line)
         if activityLog.count > activityLogLimit { activityLog.removeFirst(activityLog.count - activityLogLimit) }
+    }
+
+    /// Octeți/s în ultimele ~3 s, calculați din eșantioanele reale; 0 dacă nu există ≥2 eșantioane recente.
+    private static func windowRate(_ samples: inout [(t: Date, b: Int)], now: Date) -> Double {
+        samples.removeAll { now.timeIntervalSince($0.t) > 3 }
+        guard let first = samples.first, samples.count >= 2 else { return 0 }
+        let span = now.timeIntervalSince(first.t)
+        guard span > 0.2 else { return 0 }
+        return Double(samples.dropFirst().reduce(0) { $0 + $1.b }) / span
     }
 
     private static func formatSpeed(_ bytesPerSecond: Double) -> String {

@@ -15,6 +15,10 @@ final class ConvertorViewModel: ObservableObject {
     @Published var seRuleazaCoada: Bool = false
     @Published var estePauza: Bool = false
     @Published var ffmpegInstalat: Bool = MotorFFmpeg.gasesteBinar() != nil
+    /// Clipurile incluse în rularea curentă și momentul pornirii (pentru progres total, viteză, timp estimat).
+    @Published private(set) var multimeRulare: Set<UUID> = []
+    private(set) var startRulare: Date?
+    private var destinatiiRezervate: Set<String> = []
 
     /// Joburi simultane (Faza 1, secțiunea F) — configurabil din Setări,
     /// implicit 1 (un singur VideoToolbox session e adesea limitarea
@@ -73,11 +77,11 @@ final class ConvertorViewModel: ObservableObject {
     /// (ffprobe/ffmpeg pot dura câteva sute de ms pe fișiere mari) — starea
     /// jobului se actualizează abia la final, pe MainActor.
     private func analizeazaFisier(_ jobID: UUID, url: URL) {
-        Task.detached(priority: .utility) {
+        BackgroundWork.run {
             let meta = MediaInspector.probe(url: url)
             let thumbURL = MediaInspector.folderThumbnailuri().appendingPathComponent(jobID.uuidString + ".jpg")
             let thumbOK = MediaInspector.genereazaThumbnail(url: url, lutPath: nil, iesire: thumbURL)
-            await MainActor.run { [weak self] in
+            Task { @MainActor [weak self] in
                 guard let self, let idx = self.joburi.firstIndex(where: { $0.id == jobID }) else { return }
                 self.joburi[idx].metadataMedia = meta
                 if thumbOK { self.joburi[idx].caleThumbnail = thumbURL.path }
@@ -202,11 +206,147 @@ final class ConvertorViewModel: ObservableObject {
         }
     }
 
-    private func urlDestinatie(pentru job: VideoJob, preset: OutputPreset) -> URL {
+    // ── Configurare efectivă per clip (override explicit, altfel valoarea implicită din inspector) ──
+    func presetEfectiv(_ job: VideoJob) -> OutputPreset? {
+        if let id = job.presetOverrideID, let p = presets.first(where: { $0.id == id }) { return p }
+        return presetSelectat
+    }
+    func sufixEfectiv(_ job: VideoJob) -> String {
+        job.sufixOverride ?? presetEfectiv(job)?.fileSuffix ?? ""
+    }
+    func folderEfectiv(_ job: VideoJob) -> URL {
+        job.destinatieOverride ?? folderDestinatie ?? job.urlSursa.deletingLastPathComponent()
+    }
+    /// Numele pe care îl va avea rezultatul, fără a ține cont de coliziuni (afișat ca exemplu în inspector).
+    func numeRezultat(_ job: VideoJob) -> String {
+        guard let preset = presetEfectiv(job) else { return job.numeFisier }
+        let baza = job.urlSursa.deletingPathExtension().lastPathComponent
+        return "\(baza)\(sufixEfectiv(job)).\(MotorFFmpeg.extensieContainer(pentru: preset))"
+    }
+
+    /// Ce se va produce pentru un set de clipuri: avertismente afișate înainte de pornire.
+    struct Previzualizare {
+        var clipuri = 0
+        var existente = 0          // rezultate care ar exista deja și vor primi un nume nou (nu se suprascrie nimic)
+        var peSursa = 0            // rezultate care ar coincide cu sursa
+        var faraSpatiu: [String] = []
+        var avertismente: [String] = []
+    }
+    func previzualizeaza(_ ids: Set<UUID>) -> Previzualizare {
+        var r = Previzualizare()
+        let fm = FileManager.default
+        var folosite = Set<String>()
+        var necesarPerVolum: [String: Int64] = [:]
+        for job in joburi where ids.contains(job.id) {
+            r.clipuri += 1
+            guard let preset = presetEfectiv(job) else { continue }
+            var p = preset; p.fileSuffix = sufixEfectiv(job)
+            let d = urlDestinatieBrut(pentru: job, preset: p)
+            if d == job.urlSursa { r.peSursa += 1 }
+            if fm.fileExists(atPath: d.path) || folosite.contains(d.path) { r.existente += 1 }
+            folosite.insert(d.path)
+            if preset.profileID == FormatRegistry.rewrapProfileID, job.areInterval {
+                r.avertismente.append(String(format: L.t("tw.warn.rewrapInterval"), job.numeFisier))
+            }
+            let dim = (try? job.urlSursa.resourceValues(forKeys: [.fileSizeKey]).fileSize).flatMap { $0 } ?? 0
+            let vol = folderEfectiv(job).path
+            necesarPerVolum[vol, default: 0] += Int64(dim) * (preset.profileID.hasPrefix("prores") ? 3 : 1)
+        }
+        for (vol, nec) in necesarPerVolum {
+            if let lib = freeSpaceBytes(at: URL(fileURLWithPath: vol)), lib < nec {
+                r.faraSpatiu.append((vol as NSString).lastPathComponent)
+            }
+        }
+        if r.existente > 0 { r.avertismente.append(String(format: L.t("tw.warn.exists"), r.existente)) }
+        if !r.faraSpatiu.isEmpty { r.avertismente.append(String(format: L.t("tw.warn.space"), r.faraSpatiu.joined(separator: ", "))) }
+        return r
+    }
+
+    /// Aplică un preset / sufix / destinație pe clipurile indicate (None = revine la valoarea implicită).
+    func aplicaPreset(_ id: String?, pe ids: Set<UUID>) {
+        for i in joburi.indices where ids.contains(joburi[i].id) { joburi[i].presetOverrideID = id }
+    }
+    func aplicaSufix(_ sufix: String?, pe ids: Set<UUID>) {
+        for i in joburi.indices where ids.contains(joburi[i].id) { joburi[i].sufixOverride = sufix }
+    }
+    func aplicaDestinatie(_ url: URL?, pe ids: Set<UUID>) {
+        for i in joburi.indices where ids.contains(joburi[i].id) { joburi[i].destinatieOverride = url }
+    }
+    func marcheaza(_ ids: Set<UUID>, _ valoare: Bool) {
+        for i in joburi.indices where ids.contains(joburi[i].id) { joburi[i].marcat = valoare }
+    }
+
+    /// Profilul de sursă (nucleul GDC Metadata), citit pe cerere pentru spațiul Metadate.
+    func scaneazaProfil(_ job: VideoJob) {
+        guard !job.scanTerminat else { return }
+        let id = job.id, url = job.urlSursa
+        BackgroundWork.run {
+            let prof = MetadataCore.scan(url)
+            Task { @MainActor [weak self] in
+                guard let self, let i = self.joburi.firstIndex(where: { $0.id == id }) else { return }
+                self.joburi[i].profilSursa = prof
+                self.joburi[i].scanTerminat = true
+            }
+        }
+    }
+
+    // ── Progres total, viteză și timp estimat (doar când pot fi calculate credibil) ──
+    var progresTotal: Double? {
+        let j = joburi.filter { multimeRulare.contains($0.id) }
+        guard !j.isEmpty else { return nil }
+        let sum = j.reduce(0.0) { acc, x in
+            switch x.stare {
+            case .inLucru(let p): return acc + p
+            case .finalizat, .finalizatCuAvertisment, .anulat, .eroare: return acc + 1
+            case .astept: return acc
+            }
+        }
+        return sum / Double(j.count)
+    }
+    /// Viteza ca multiplu al timpului real (secunde de material / secunde scurse); nil dacă durata nu e cunoscută.
+    var vitezaRulare: Double? {
+        guard let start = startRulare else { return nil }
+        let scurs = Date().timeIntervalSince(start)
+        guard scurs > 4 else { return nil }
+        var material = 0.0
+        for j in joburi where multimeRulare.contains(j.id) {
+            guard let d = j.metadataMedia?.durataSecunde else { return nil }
+            let dur = (j.intervalEnd ?? d) - (j.intervalStart ?? 0)
+            switch j.stare {
+            case .inLucru(let p): material += dur * p
+            case .finalizat, .finalizatCuAvertisment: material += dur
+            default: break
+            }
+        }
+        return material > 0 ? material / scurs : nil
+    }
+    var timpRamas: TimeInterval? {
+        guard let start = startRulare, let p = progresTotal, p > 0.05, p < 1 else { return nil }
+        let scurs = Date().timeIntervalSince(start)
+        guard scurs > 6 else { return nil }
+        return scurs / p * (1 - p)
+    }
+
+    private func urlDestinatieBrut(pentru job: VideoJob, preset: OutputPreset) -> URL {
         let numeBaza = job.urlSursa.deletingPathExtension().lastPathComponent
         let extensie = MotorFFmpeg.extensieContainer(pentru: preset)
-        let folder = folderDestinatie ?? job.urlSursa.deletingLastPathComponent()
-        return folder.appendingPathComponent("\(numeBaza)\(preset.fileSuffix).\(extensie)")
+        return folderEfectiv(job).appendingPathComponent("\(numeBaza)\(preset.fileSuffix).\(extensie)")
+    }
+
+    /// Nu suprascrie niciodată o sursă sau un rezultat existent: dacă numele e ocupat, adaugă _2, _3…
+    private func urlDestinatie(pentru job: VideoJob, preset: OutputPreset) -> URL {
+        let brut = urlDestinatieBrut(pentru: job, preset: preset)
+        let fm = FileManager.default
+        var candidat = brut
+        var n = 2
+        while fm.fileExists(atPath: candidat.path) || destinatiiRezervate.contains(candidat.path) {
+            let baza = brut.deletingPathExtension().lastPathComponent
+            candidat = brut.deletingLastPathComponent()
+                .appendingPathComponent("\(baza)_\(n)").appendingPathExtension(brut.pathExtension)
+            n += 1
+        }
+        destinatiiRezervate.insert(candidat.path)
+        return candidat
     }
 
     /// `doarSelectate` (2026-09-05, fix bug real raportat de Cristi: "dacă
@@ -222,6 +362,7 @@ final class ConvertorViewModel: ObservableObject {
         seRuleazaCoada = true
         estePauza = false
         stopTotal = false
+        destinatiiRezervate.removeAll()
 
         // Procesare paralelă (Faza 1, secțiunea F): joburile deja
         // "in asteptare" sunt împărțite pe un număr limitat de sloturi
@@ -236,6 +377,10 @@ final class ConvertorViewModel: ObservableObject {
             coadaIndexuri = Array(joburi.indices)
         }
         let numarSloturi = min(joburiSimultane, max(1, coadaIndexuri.count))
+        multimeRulare = Set(coadaIndexuri.map { joburi[$0].id })
+        startRulare = Date()
+        // Fiecare clip din rulare pornește curat (progresul total se calculează doar pe ele).
+        for i in coadaIndexuri { joburi[i].stare = .astept; joburi[i].raport = nil }
 
         func porneseUrmatorul() {
             Task { @MainActor in
@@ -244,7 +389,10 @@ final class ConvertorViewModel: ObservableObject {
                 guard indexUrmator < coadaIndexuri.count else { return }
                 let idx = coadaIndexuri[indexUrmator]
                 indexUrmator += 1
-                self.proceseaza(job: self.joburi[idx], preset: preset) {
+                let jobCurent = self.joburi[idx]
+                var presetJob = self.presetEfectiv(jobCurent) ?? preset
+                presetJob.fileSuffix = self.sufixEfectiv(jobCurent)
+                self.proceseaza(job: jobCurent, preset: presetJob) {
                     porneseUrmatorul()
                 }
             }
@@ -278,7 +426,7 @@ final class ConvertorViewModel: ObservableObject {
         // `porneseUrmatorul()` odata ce `stopTotal` e true — marcate
         // direct "Anulat", altfel ar ramane vesnic "In asteptare" si
         // `verificaFinalizareaCozii()` n-ar inchide niciodata coada.
-        for idx in joburi.indices where joburi[idx].stare == .astept {
+        for idx in joburi.indices where joburi[idx].stare == .astept && multimeRulare.contains(joburi[idx].id) {
             joburi[idx].stare = .anulat
         }
         verificaFinalizareaCozii()
@@ -369,7 +517,7 @@ final class ConvertorViewModel: ObservableObject {
         // inca". Apelat dupa fiecare job finalizat (nu o singura data la
         // capatul unei bucle secventiale, ca la varianta anterioara).
         guard seRuleazaCoada, handleuriActive.isEmpty else { return }
-        let toateAuStareFinala = joburi.allSatisfy { job in
+        let toateAuStareFinala = joburi.filter { multimeRulare.contains($0.id) }.allSatisfy { job in
             switch job.stare {
             case .finalizat, .finalizatCuAvertisment, .anulat, .eroare: return true
             case .astept, .inLucru: return false

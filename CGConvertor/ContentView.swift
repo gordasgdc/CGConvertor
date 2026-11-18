@@ -1,14 +1,15 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Fereastra principală: toolbar comun + unul din cele trei spații de lucru (Transcodare, Offload, Metadate).
 struct ContentView: View {
     @StateObject private var vm = ConvertorViewModel()
+    @StateObject private var shell = ShellState()
     @ObservedObject private var license = LicenseManager.shared
     @ObservedObject private var deps = DependencyManager.shared
     @ObservedObject private var revocation = RevocationCheck.shared
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var watchFolders = WatchFolderManager.shared
-    @State private var seAfiseazaDropTarget = false
     @State private var showActivation = false
     @State private var showUpdateAlert = false
     @State private var updateAlertVersion = ""
@@ -16,19 +17,10 @@ struct ContentView: View {
     @State private var showDependencyPanel = false
     @State private var showPresetsManager = false
     @State private var showSettingsSheet = false
-    @State private var mainMode: MainMode = .convert
-    @State private var selectedJobIDs: Set<UUID> = []
-    /// Biblioteca de LUT-uri memorate (2026-09-11) — vezi LUTLibrary.swift.
-    @StateObject private var lutLibrary = LUTLibrary.shared
     @State private var showWatchFolderExistingSheet = false
     @State private var pendingWatchFolderPath = ""
     @State private var pendingWatchFolderFiles: [URL] = []
-
-    enum MainMode: String, CaseIterable, Identifiable {
-        case convert, offload
-        var id: String { rawValue }
-        var label: String { self == .convert ? L.t("mainMode.convert") : L.t("mainMode.offload") }
-    }
+    @State private var langVersion = 0
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
@@ -36,25 +28,35 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            antet
+            toolbar
             if !license.isLicensed || revocation.isRevoked {
                 trialBanner
             }
-
-            if mainMode == .convert {
-                HStack(spacing: 0) {
-                    panouSetari
-                        .frame(width: 300)
-                    Divider().overlay(Shift.border)
-                    panouListaJoburi
+            Group {
+                switch shell.workspace {
+                case .transcode:
+                    TranscodeWorkspace(vm: vm, shell: shell,
+                                       onActivate: { showActivation = true },
+                                       onPresets: { showPresetsManager = true },
+                                       onAddWatchFolder: { alegeWatchFolder() })
+                case .offload:
+                    OffloadView(onSendToTranscode: { urls in
+                        vm.adaugaFisiere(urls)
+                        shell.workspace = .transcode
+                    })
+                case .metadata:
+                    MetadataWorkspace(vm: vm, shell: shell)
                 }
-            } else {
-                OffloadView()
             }
+        }
+        .id("\(langVersion)-\(settings.themePreference.rawValue)")
+        .onReceive(DistributedNotificationCenter.default().publisher(for: Notification.Name("AppleInterfaceThemeChangedNotification"))) { _ in
+            if settings.themePreference == .system { langVersion += 1 }
         }
         .background(Shift.bg)
         .foregroundStyle(Shift.text)
         .dynamicTypeSize(settings.textScale.dynamicTypeSize)
+        .preferredColorScheme(settings.themePreference.colorScheme)
         .onAppear {
             #if DEBUG
             // Doar pentru verificari vizuale in build Debug: incarca fisiere in coada.
@@ -83,6 +85,9 @@ struct ContentView: View {
             if ProcessInfo.processInfo.environment["CGC_OPEN_SETTINGS"] == "1" {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSettingsSheet = true }
             }
+            #endif
+            #if DEBUG
+            UISnapshot.runIfRequested(vm: vm, shell: shell)
             #endif
             vm.verificaFFmpeg()
             deps.refreshAll()
@@ -140,62 +145,59 @@ struct ContentView: View {
         }
     }
 
-    // ── Antet ────────────────────────────────────────────────────────────────
-    private var antet: some View {
+    // ── Toolbar comun ───────────────────────────────────────────────────────
+    private var toolbar: some View {
         HStack(spacing: 14) {
-            Image(systemName: "film.stack")
-                .font(.system(size: 20))
-                .foregroundStyle(Shift.accent)
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 6) {
-                    Text(L.t("app.title")).font(.system(size: 16, weight: .bold))
-                    Text("v\(appVersion)")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(Shift.faint)
+            HStack(spacing: 8) {
+                Image(systemName: "film.stack").font(.system(size: 18)).foregroundStyle(Shift.accent)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(L.t("app.title")).font(.system(size: 14, weight: .bold))
+                    Text("v\(appVersion)").font(.system(size: 9.5, design: .monospaced)).foregroundStyle(Shift.faint)
                 }
-                Text(L.t("app.subtitle"))
-                    .font(.system(size: 11))
-                    .foregroundStyle(Shift.muted)
             }
+            Picker("", selection: $shell.workspace) {
+                ForEach(Workspace.allCases) { w in Label(w.label, systemImage: w.icon).tag(w) }
+            }
+            .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 420)
+            .accessibilityLabel(L.t("ws.picker"))
             Spacer()
-            Picker("", selection: $mainMode) {
-                ForEach(MainMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 180)
-            if vm.seRuleazaCoada {
-                ProgressView().controlSize(.small).tint(Shift.accent)
-            }
+            if vm.seRuleazaCoada { ProgressView().controlSize(.small).tint(Shift.accent) }
             DependencyBadge(deps: deps, showPanel: $showDependencyPanel)
-            langSwitch
-            Button { UpdateChecker.checkAndShowAlert() } label: {
-                Image(systemName: "arrow.triangle.2.circlepath")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Shift.muted)
-            .help(L.t("menu.checkForUpdates"))
+            themeMenu
+            langMenu
+            Button { UpdateChecker.checkAndShowAlert() } label: { Image(systemName: "arrow.triangle.2.circlepath") }
+                .buttonStyle(.plain).foregroundStyle(Shift.muted).help(L.t("menu.checkForUpdates"))
+            Button { HelpGuide.openPDF() } label: { Image(systemName: "questionmark.circle") }
+                .buttonStyle(.plain).foregroundStyle(Shift.muted).help(L.t("menu.helpGuide"))
+            Button { showSettingsSheet = true } label: { Image(systemName: "gearshape") }
+                .buttonStyle(.plain).foregroundStyle(Shift.muted).help(L.t("sidebar.settings"))
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16).padding(.vertical, 9)
         .background(Shift.panel)
         .overlay(Rectangle().frame(height: 1).foregroundStyle(Shift.border), alignment: .bottom)
     }
 
-    private var langSwitch: some View {
-        HStack(spacing: 3) {
-            ForEach(AppLanguage.allCases) { lang in
-                Button(lang.rawValue.uppercased()) { L.current = lang }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .padding(.horizontal, 6).padding(.vertical, 3)
-                    .background(L.current == lang ? Shift.accent : Shift.elevated)
-                    .foregroundStyle(L.current == lang ? Shift.accentInk : Shift.muted)
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
+    private var themeMenu: some View {
+        Menu {
+            ForEach(ThemePreference.allCases) { t in
+                Button { settings.themePreference = t } label: {
+                    if settings.themePreference == t { Label(t.label, systemImage: "checkmark") } else { Text(t.label) }
+                }
             }
-        }
+        } label: { Image(systemName: "circle.lefthalf.filled") }
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().foregroundStyle(Shift.muted)
+        .help(L.t("settings.theme"))
+    }
+
+    private var langMenu: some View {
+        Menu {
+            ForEach(AppLanguage.allCases) { lang in
+                Button { L.current = lang; langVersion += 1 } label: {
+                    if L.current == lang { Label(lang.displayName, systemImage: "checkmark") } else { Text(lang.displayName) }
+                }
+            }
+        } label: { Text(L.current.rawValue.uppercased()).font(.system(size: 10.5, weight: .semibold, design: .monospaced)) }
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().foregroundStyle(Shift.muted)
     }
 
     private var trialBanner: some View {
@@ -221,122 +223,6 @@ struct ContentView: View {
         .overlay(Rectangle().frame(height: 1).foregroundStyle(Shift.border), alignment: .bottom)
     }
 
-    // ── Panou setari (stanga) ───────────────────────────────────────────────
-    private var panouSetari: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    ShiftCard {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ShiftSectionLabel(text: L.t("preset.title"))
-                            Picker("", selection: $vm.presetSelectatID) {
-                                ForEach(vm.presets) { preset in
-                                    Text(preset.label).tag(preset.id)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .labelsHidden()
-                            .tint(Shift.text)
-
-                            if let hint = presetHint {
-                                Text(hint)
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(Shift.muted)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-
-                            Button(L.t("preset.edit")) { showPresetsManager = true }
-                                .buttonStyle(ShiftGhostButtonStyle())
-
-                            // Accelerare hardware — pe Mac e mereu VideoToolbox
-                            // (Faza 1, secțiunea B); spre deosebire de Windows,
-                            // nu există alt vânzător de ales.
-                            Text("\(L.t("gpu.accel.prefix")) Apple VideoToolbox")
-                                .font(.system(size: 10))
-                                .foregroundStyle(Shift.faint)
-                        }
-                    }
-
-                    ShiftCard {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ShiftSectionLabel(text: L.t("destination.title"))
-                            Text(vm.folderDestinatie?.path ?? L.t("destination.sameAsSource"))
-                                .font(.system(size: 11.5, design: .monospaced))
-                                .foregroundStyle(Shift.muted)
-                                .lineLimit(2)
-                                .truncationMode(.middle)
-                            Button(L.t("destination.choose")) { vm.alegeFolderDestinatie() }
-                                .buttonStyle(ShiftGhostButtonStyle())
-                        }
-                    }
-
-                    watchFoldersCard
-
-                    Text(L.t("shortcuts.hint"))
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(Shift.faint)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                }
-                .padding(16)
-            }
-            .background(Shift.bg)
-
-            // Actiunea principala ramane vizibila indiferent de inaltimea ferestrei
-            // (frate al ScrollView-ului, Regula 24).
-            actiuneButon
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(Shift.bg)
-
-            // Sidebar Profil + Setari (Regula 12 — sidebar obligatoriu,
-            // FRATE al ScrollView-ului de mai sus, nu safeAreaInset direct
-            // pe scroll — Regula 24, evită bug-ul de suprapunere la resize).
-            Divider().overlay(Shift.border)
-            profilSidebar
-        }
-    }
-
-    private var watchFoldersCard: some View {
-        ShiftCard {
-            VStack(alignment: .leading, spacing: 8) {
-                ShiftSectionLabel(text: L.t("watchFolders.title"))
-                if watchFolders.folders.isEmpty {
-                    Text(L.t("watchFolders.empty"))
-                        .font(.system(size: 11))
-                        .foregroundStyle(Shift.faint)
-                } else {
-                    ForEach(watchFolders.folders) { folder in
-                        HStack(spacing: 6) {
-                            Toggle("", isOn: Binding(
-                                get: { folder.enabled },
-                                set: { _ in watchFolders.toggle(folder) }
-                            ))
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .controlSize(.mini)
-                            Text((folder.path as NSString).lastPathComponent)
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(Shift.muted)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                            Spacer()
-                            Button {
-                                watchFolders.removeFolder(folder)
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(Shift.faint)
-                        }
-                    }
-                }
-                Button(L.t("watchFolders.add")) { alegeWatchFolder() }
-                    .buttonStyle(ShiftGhostButtonStyle())
-            }
-        }
-    }
-
     private func alegeWatchFolder() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -360,284 +246,6 @@ struct ContentView: View {
             }
         }
     }
-
-    private var presetHint: String? {
-        guard let preset = vm.presetSelectat, preset.profileID != FormatRegistry.rewrapProfileID,
-              let profil = FormatRegistry.profile(id: preset.profileID) else { return nil }
-        return L.t(profil.hintKey)
-    }
-
-    private var profilSidebar: some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(AppSettings.shared.userName.isEmpty ? L.t("sidebar.anonymous") : AppSettings.shared.userName)
-                    .font(.system(size: 11, weight: .semibold))
-                Text("\(L.t("sidebar.machineID")): \(MachineID.display)")
-                    .font(.system(size: 9, design: .monospaced))
-                    .foregroundStyle(Shift.faint)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            Spacer()
-            Button { showSettingsSheet = true } label: {
-                Image(systemName: "gearshape")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Shift.muted)
-            .help(L.t("sidebar.settings"))
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Shift.elevated)
-    }
-
-    private var actiuneButon: some View {
-        Group {
-            if vm.seRuleazaCoada {
-                VStack(spacing: 6) {
-                    Button { vm.comutaPauza() } label: {
-                        Label(vm.estePauza ? L.t("resume.action") : L.t("pause.action"),
-                              systemImage: vm.estePauza ? "play.fill" : "pause.fill")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                    }
-                    .buttonStyle(ShiftGhostButtonStyle())
-
-                    Button { vm.opresteCoada() } label: {
-                        Label(L.t("action.stop"), systemImage: "stop.fill")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.vertical, 8)
-                    .background(Shift.error)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .font(.system(size: 13, weight: .semibold))
-                }
-            } else {
-                // [2026-09-11] Aplicare de LUT pe TOATĂ selecția, dintr-un
-                // singur meniu. Înainte, LUT-ul se alegea individual, din
-                // fereastra fiecărui clip — cerut explicit de Cristi: „să nu
-                // stau pe fiecare să tot dau aplică LUT".
-                // [CORECTAT 2026-09-11] Butonul era afișat DOAR când exista o
-                // selecție — Cristi l-a căutat și nu l-a găsit, fiindcă în mod
-                // normal nu ai nimic bifat când deschizi aplicația. O funcție
-                // pe care n-o poți descoperi practic nu există.
-                //
-                // Acum e mereu vizibil (cât timp există clipuri în coadă) și,
-                // dacă nu ai selectat nimic, se aplică pe TOATE — comportamentul
-                // firesc, și eticheta o spune explicit.
-                if !vm.joburi.isEmpty {
-                    Menu {
-                        if lutLibrary.memorate.isEmpty {
-                            Text(L.t("lut.library.empty"))
-                        } else {
-                            ForEach(lutLibrary.memorate) { lut in
-                                Button {
-                                    lutLibrary.aplica(url: lut.url, pe: jobTintaLUT)
-                                } label: {
-                                    // Un LUT al cărui fișier a dispărut e
-                                    // marcat, nu ascuns — altfel ar părea că
-                                    // l-am uitat noi.
-                                    Label(lut.numeAfisat + (lut.lipsesteFisierul ? " ⚠︎" : ""),
-                                          systemImage: "swatchpalette")
-                                }
-                                .disabled(lut.lipsesteFisierul)
-                            }
-                            Divider()
-                        }
-                        Button(L.t("lut.library.choose")) { alegeLUTPentruSelectie() }
-                        if jobTintaLUT.contains(where: { lutLibrary.lutPerJob[$0] != nil }) {
-                            Divider()
-                            Button(L.t("lut.library.clear"), role: .destructive) {
-                                lutLibrary.elimina(dePe: jobTintaLUT)
-                            }
-                        }
-                    } label: {
-                        Label(selectedJobIDs.isEmpty
-                              ? String(format: L.t("lut.library.applyToAll"), vm.joburi.count)
-                              : String(format: L.t("lut.library.applyToSelected"), selectedJobIDs.count),
-                              systemImage: "swatchpalette.fill")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                    }
-                    .menuStyle(.borderlessButton)
-                    .padding(.vertical, 4)
-                }
-
-                Button {
-                    guard !revocation.isRevoked else { return }
-                    guard license.isUnlocked else { showActivation = true; return }
-                    vm.pornesteCoada(doarSelectate: selectedJobIDs)
-                } label: {
-                    Label(selectedJobIDs.isEmpty ? L.t("action.start") : String(format: L.t("action.startSelected"), selectedJobIDs.count), systemImage: "play.fill")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
-                }
-                .buttonStyle(.plain)
-                .padding(.vertical, 8)
-                .background(pornireDezactivata ? Shift.elevated : Shift.accent)
-                .foregroundStyle(pornireDezactivata ? Shift.faint : Shift.accentInk)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .font(.system(size: 13, weight: .semibold))
-                .disabled(vm.joburi.isEmpty || !deps.isReady || revocation.isRevoked)
-                .keyboardShortcut(.return, modifiers: [.command])
-            }
-        }
-    }
-
-    private var pornireDezactivata: Bool {
-        vm.joburi.isEmpty || !deps.isReady
-    }
-
-    // ── Panou lista joburi (dreapta) ────────────────────────────────────────
-    private var panouListaJoburi: some View {
-        VStack(spacing: 0) {
-            if vm.joburi.isEmpty {
-                zonaDropGoala
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(vm.joburi) { job in
-                            RandJob(job: job, seRuleazaCoada: vm.seRuleazaCoada,
-                                    esteSelectat: selectedJobIDs.contains(job.id),
-                                    onSterge: { vm.stergeJob(job) },
-                                    onInterval: { a, b in vm.seteazaInterval(job, start: a, end: b) },
-                                    onMutaSus: { vm.mutaJob(job, delta: -1) },
-                                    onMutaJos: { vm.mutaJob(job, delta: 1) },
-                                    onToggleSelectie: {
-                                        if selectedJobIDs.contains(job.id) { selectedJobIDs.remove(job.id) }
-                                        else { selectedJobIDs.insert(job.id) }
-                                    })
-                        }
-                    }
-                    .padding(14)
-                }
-
-                HStack {
-                    Button(L.t("queue.clear")) { vm.golesteLista() }
-                        .buttonStyle(ShiftGhostButtonStyle())
-                        .disabled(vm.seRuleazaCoada)
-                        .keyboardShortcut("k", modifiers: [.command])
-                    Button(L.t("queue.report")) {
-                        if let url = vm.genereazaRaportHTML() { NSWorkspace.shared.open(url) }
-                    }
-                    .buttonStyle(ShiftGhostButtonStyle())
-                    if selectedJobIDs.count >= 2 {
-                        // Fix real (2026-09-06, cerut de Cristi): fereastra
-                        // nativa era "un pop-up mic in care nu pot sa vad
-                        // nimica" - acum deschide direct o pagina HTML in
-                        // browser, exact ca "Genereaza raport", navigabila
-                        // liber, fara nicio limita de dimensiune.
-                        Button(String(format: L.t("compare.button"), selectedJobIDs.count)) {
-                            MetadataCompareEngine.deschideComparatie(jobs: vm.joburi.filter { selectedJobIDs.contains($0.id) })
-                        }
-                        .buttonStyle(ShiftGhostButtonStyle())
-                    }
-                    // Cerute explicit de Cristi (2026-09-05) - fara ele,
-                    // bifarea individuala a fiecarui fisier pentru
-                    // comparatie/conversie-partiala e greoaie la o coada
-                    // lunga. Vizibile doar cand au sens (nu la coada goala/
-                    // deja in starea respectiva).
-                    if !vm.joburi.isEmpty && selectedJobIDs.count < vm.joburi.count {
-                        Button(L.t("queue.selectAll")) {
-                            selectedJobIDs = Set(vm.joburi.map { $0.id })
-                        }
-                        .buttonStyle(ShiftGhostButtonStyle())
-                    }
-                    if !selectedJobIDs.isEmpty {
-                        Button(L.t("queue.selectNone")) {
-                            selectedJobIDs.removeAll()
-                        }
-                        .buttonStyle(ShiftGhostButtonStyle())
-                    }
-                    Spacer()
-                    Button { deschideSelectorFisiere() } label: {
-                        Label(L.t("queue.addFiles"), systemImage: "plus")
-                    }
-                    .buttonStyle(ShiftGhostButtonStyle())
-                    .keyboardShortcut("o", modifiers: [.command])
-                }
-                .padding(12)
-                .overlay(Rectangle().frame(height: 1).foregroundStyle(Shift.border), alignment: .top)
-            }
-        }
-        .background(Shift.bg)
-        .onDrop(of: [.fileURL], isTargeted: $seAfiseazaDropTarget) { providers in
-            primesteFisiereDinDrop(providers)
-            return true
-        }
-        .overlay {
-            if seAfiseazaDropTarget {
-                RoundedRectangle(cornerRadius: 0)
-                    .strokeBorder(Shift.accent, lineWidth: 2)
-                    .background(Shift.accent.opacity(0.06))
-            }
-        }
-    }
-
-    private var zonaDropGoala: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "arrow.down.doc")
-                .font(.system(size: 40))
-                .foregroundStyle(Shift.faint)
-            Text(L.t("queue.empty.title"))
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(Shift.text)
-            Text(L.t("queue.empty.or"))
-                .font(.system(size: 11))
-                .foregroundStyle(Shift.muted)
-            Button(L.t("queue.chooseFiles")) { deschideSelectorFisiere() }
-                .buttonStyle(ShiftGhostButtonStyle())
-                .keyboardShortcut("o", modifiers: [.command])
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Shift.bg)
-    }
-
-    private func deschideSelectorFisiere() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = true
-        panel.allowedContentTypes = [.movie, .video, .mpeg4Movie, .quickTimeMovie]
-        if panel.runModal() == .OK {
-            vm.adaugaFisiere(panel.urls)
-        }
-    }
-
-    private func primesteFisiereDinDrop(_ providers: [NSItemProvider]) {
-        for provider in providers {
-            _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                guard let url else { return }
-                DispatchQueue.main.async {
-                    vm.adaugaFisiere([url])
-                }
-            }
-        }
-    }
-
-    /// Clipurile pe care se aplică LUT-ul: cele bifate, sau TOATE dacă nu e
-    /// bifat niciunul.
-    private var jobTintaLUT: [UUID] {
-        selectedJobIDs.isEmpty ? vm.joburi.map(\.id) : Array(selectedJobIDs)
-    }
-
-    /// Alege un `.cube` din disc și îl aplică pe toate clipurile selectate,
-    /// adăugându-l automat în bibliotecă pentru data viitoare.
-    private func alegeLUTPentruSelectie() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        if let cubeType = UTType(filenameExtension: "cube") {
-            panel.allowedContentTypes = [cubeType]
-        }
-        if panel.runModal() == .OK, let url = panel.url {
-            lutLibrary.aplica(url: url, pe: jobTintaLUT)
-        }
-    }
 }
 
 // ── Stil de buton "ghost" (folosit peste tot in UI-ul Shift) ───────────────
@@ -652,227 +260,4 @@ struct ShiftGhostButtonStyle: ButtonStyle {
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Shift.border, lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: 6))
     }
-}
-
-// ── Rand individual pentru un job ───────────────────────────────────────────
-private struct RandJob: View {
-    /// [2026-09-11] OBLIGATORIU observat, nu citit prin `.shared` direct în
-    /// body: altfel badge-ul cu LUT-ul atribuit n-ar apărea decât la
-    /// următoarea redesenare întâmplătoare a rândului — ar părea că „aplică
-    /// LUT" n-a făcut nimic.
-    @ObservedObject private var lutLibrary = LUTLibrary.shared
-    let job: VideoJob
-    let seRuleazaCoada: Bool
-    let esteSelectat: Bool
-    let onSterge: () -> Void
-    let onInterval: (Double?, Double?) -> Void
-    let onMutaSus: () -> Void
-    let onMutaJos: () -> Void
-    let onToggleSelectie: () -> Void
-    @State private var showPreview = false
-    @State private var showReport = false
-    @State private var showInterval = false
-    @State private var showLUTPlayer = false
-
-    var body: some View {
-        ShiftCard(padding: 12) {
-            HStack(spacing: 12) {
-                // Selecție pentru comparația de metadate (2026-09-05) — un
-                // simplu checkmark, nu o coloană nouă în layout, ca să nu
-                // strice designul rândului pentru cazul comun (nimeni nu
-                // compară nimic).
-                Button { onToggleSelectie() } label: {
-                    Image(systemName: esteSelectat ? "checkmark.circle.fill" : "circle")
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(esteSelectat ? Shift.accent : Shift.faint)
-                .help(L.t("compare.select"))
-
-                thumbnailJob
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(job.numeFisier)
-                        .font(.system(size: 12.5))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-
-                    if let metaText = metadataText {
-                        Text(metaText)
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(Shift.faint)
-                    }
-
-                    // [2026-09-11] LUT-ul atribuit clipului, vizibil direct în
-                    // listă — altfel n-ai avea de unde ști ce s-a aplicat
-                    // decât deschizând fiecare clip în parte.
-                    if let numeLUT = lutLibrary.numeLUT(pentru: job.id) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "swatchpalette.fill").font(.system(size: 9))
-                            Text(numeLUT).font(.system(size: 10))
-                        }
-                        .foregroundStyle(Shift.accent)
-                    }
-
-                    switch job.stare {
-                    case .astept:
-                        Text(L.t("queue.status.waiting"))
-                            .font(.system(size: 10.5))
-                            .foregroundStyle(Shift.muted)
-                    case .inLucru(let progres):
-                        ProgressView(value: progres)
-                            .frame(maxWidth: 260)
-                            .tint(Shift.accent)
-                    case .finalizat:
-                        HStack(spacing: 10) {
-                            Label(L.t("queue.status.done"), systemImage: "checkmark.circle.fill")
-                                .font(.system(size: 10.5))
-                                .foregroundStyle(Shift.success)
-                            if let destinatie = job.urlDestinatie {
-                                Button(L.t("job.openFile")) { NSWorkspace.shared.open(destinatie) }
-                                    .buttonStyle(.plain)
-                                    .font(.system(size: 10.5, weight: .medium))
-                                    .foregroundStyle(Shift.accent)
-                                Button(L.t("job.showInFinder")) { NSWorkspace.shared.activateFileViewerSelecting([destinatie]) }
-                                    .buttonStyle(.plain)
-                                    .font(.system(size: 10.5, weight: .medium))
-                                    .foregroundStyle(Shift.accent)
-                            }
-                            if job.raport != nil {
-                                Button(L.t("report.open")) { showReport = true }
-                                    .buttonStyle(.plain)
-                                    .font(.system(size: 10.5, weight: .medium))
-                                    .foregroundStyle(Shift.accent)
-                            }
-                        }
-                    case .finalizatCuAvertisment(let mesaj):
-                        HStack(spacing: 10) {
-                            Label(L.t("queue.status.integrityWarning"), systemImage: "exclamationmark.triangle.fill")
-                                .font(.system(size: 10.5))
-                                .foregroundStyle(.orange)
-                            if let destinatie = job.urlDestinatie {
-                                Button(L.t("job.showInFinder")) { NSWorkspace.shared.activateFileViewerSelecting([destinatie]) }
-                                    .buttonStyle(.plain)
-                                    .font(.system(size: 10.5, weight: .medium))
-                                    .foregroundStyle(Shift.accent)
-                            }
-                            if job.raport != nil {
-                                Button(L.t("report.open")) { showReport = true }
-                                    .buttonStyle(.plain)
-                                    .font(.system(size: 10.5, weight: .medium))
-                                    .foregroundStyle(Shift.accent)
-                            }
-                        }
-                        .help(mesaj)
-                    case .anulat:
-                        Label(L.t("queue.status.canceled"), systemImage: "xmark.circle")
-                            .font(.system(size: 10.5))
-                            .foregroundStyle(Shift.muted)
-                    case .eroare(let mesaj):
-                        Label(mesaj, systemImage: "xmark.circle.fill")
-                            .font(.system(size: 10.5))
-                            .foregroundStyle(Shift.error)
-                            .lineLimit(2)
-                    }
-                }
-
-                Spacer()
-
-                if job.metadataMedia != nil {
-                    Button { showPreview = true } label: {
-                        Image(systemName: "eye")
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Shift.muted)
-
-                    // Player real-time LUT/LOG (Mac, 2026-09-05) — fereastra
-                    // SEPARATA, pe langa preview-ul static de mai sus, cerut
-                    // explicit de Cristi in aceasta forma (nu inlocuieste
-                    // preview-ul rapid existent). Vezi LUTPlayerSheet.swift.
-                    Button { showLUTPlayer = true } label: {
-                        Image(systemName: "play.circle")
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Shift.muted)
-                    .help(L.t("player.open"))
-                }
-
-                if !seRuleazaCoada, job.stare == .astept || job.stare == .anulat {
-                    Button { showInterval = true } label: {
-                        Image(systemName: "scissors").foregroundStyle(job.areInterval ? Shift.accent : Shift.muted)
-                    }
-                    .buttonStyle(.plain)
-                    .help(L.t("interval.title"))
-                }
-
-                Button { onSterge() } label: {
-                    Image(systemName: "trash")
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Shift.faint)
-            }
-        }
-        // Reordonare (Faza 1, secțiunea F) — dezactivată cât timp coada rulează.
-        .contextMenu {
-            Button(L.t("queue.moveUp"), action: onMutaSus).disabled(seRuleazaCoada)
-            Button(L.t("queue.moveDown"), action: onMutaJos).disabled(seRuleazaCoada)
-        }
-        .sheet(isPresented: $showInterval) {
-            IntervalSheet(job: job, isPresented: $showInterval, onApply: onInterval)
-        }
-        #if DEBUG
-        .onAppear {
-            if ProcessInfo.processInfo.environment["CGC_OPEN_INTERVAL"] == job.numeFisier {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showInterval = true }
-            }
-        }
-        .onChange(of: job.raport != nil) { _, has in
-            if has, ProcessInfo.processInfo.environment["CGC_SHOW_REPORT"] == job.numeFisier { showReport = true }
-        }
-        #endif
-        .sheet(isPresented: $showReport) {
-            if let r = job.raport { ReportSheet(fileName: job.numeFisier, report: r, isPresented: $showReport) }
-        }
-        .sheet(isPresented: $showPreview) {
-            MediaPreviewSheet(job: job, isPresented: $showPreview)
-        }
-        .sheet(isPresented: $showLUTPlayer) {
-            LUTPlayerSheet(job: job, isPresented: $showLUTPlayer)
-        }
-    }
-
-    // Inspecție/Metadata (Faza 2) — thumbnail extras cu ffmpeg, populat
-    // asincron de `ConvertorViewModel.analizeazaFisier`; icoana generică
-    // rămâne fallback-ul cât timp analiza nu s-a terminat încă (sau a eșuat).
-    @ViewBuilder
-    private var thumbnailJob: some View {
-        if let cale = job.caleThumbnail, let nsImage = NSImage(contentsOfFile: cale) {
-            Image(nsImage: nsImage)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 48, height: 32)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-        } else {
-            Image(systemName: "film")
-                .foregroundStyle(Shift.muted)
-                .frame(width: 48, height: 32)
-        }
-    }
-
-    private var metadataText: String? {
-        guard let m = job.metadataMedia else { return nil }
-        let parts = [
-            m.rezolutieText,
-            m.codecVideo?.uppercased(),
-            m.frameRate.map { "\($0) fps" },
-            m.durataSecunde.map { String(format: "%.1fs", $0) }
-        ].compactMap { $0 }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
-
-
-}
-
-#Preview {
-    ContentView()
-
 }

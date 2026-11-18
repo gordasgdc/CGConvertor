@@ -17,7 +17,7 @@ struct DiagnosticLog {
 
     static let subsystem = "dev.gordas.CGConvertor"
     static let fileURL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Logs/CGConvertor.log")
+        .appendingPathComponent("Library/Logs/\(AppIsolation.folderName).log")
     /// Peste plafon, fișierul devine `CGConvertor.log.1` și se începe unul nou
     /// (Regula 21: nimic nu crește la nesfârșit).
     static let maxBytes: UInt64 = 5 * 1024 * 1024
