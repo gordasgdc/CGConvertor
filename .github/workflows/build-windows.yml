@@ -49,8 +49,8 @@ jobs:
           $coreHash = (Get-FileHash tools\gdc-metadata-core.exe -Algorithm SHA256).Hash.ToLower()
           if (-not (Select-String -Path windows\vendor\PROVENANCE.txt -Pattern $coreHash -Quiet)) { Write-Error "gdc-metadata-core nu corespunde PROVENANCE.txt"; exit 1 }
           Copy-Item THIRD_PARTY_NOTICES.md tools\
-          # ExifTool oficial (exiftool.org), neschimbat, SHA-256 verificat; rulează ca proces separat
-          Invoke-WebRequest "https://exiftool.org/exiftool-$($env:EXIFTOOL_VERSION)_64.zip" -OutFile exiftool.zip
+          # ExifTool oficial (legătura oficială de pe exiftool.org → SourceForge), neschimbat, SHA-256 verificat; rulează ca proces separat
+          Invoke-WebRequest "https://sourceforge.net/projects/exiftool/files/exiftool-$($env:EXIFTOOL_VERSION)_64.zip/download" -OutFile exiftool.zip -UserAgent "Mozilla/5.0" -MaximumRetryCount 3 -RetryIntervalSec 5
           if ((Get-FileHash exiftool.zip -Algorithm SHA256).Hash.ToLower() -ne $env:EXIFTOOL_SHA256) { Write-Error "SHA-256 ExifTool nepotrivit"; exit 1 }
           Expand-Archive exiftool.zip -DestinationPath et
           $etd = (Get-ChildItem et -Directory | Select-Object -First 1).FullName
