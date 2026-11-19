@@ -1,0 +1,9 @@
+CG Convertor — licencia y términos
+
+CG Convertor es un proyecto independiente y no comercial, desarrollado por desarrolladores independientes. El software se ofrece "TAL CUAL", sin garantía de ningún tipo. En la medida máxima permitida por la ley, los autores no se responsabilizan de daños, pérdida de datos o de beneficios derivados de su uso. Conserve siempre una copia independiente de sus medios.
+
+Una licencia activada para esta aplicación queda vinculada al ID del equipo para el que se emitió y no es transferible a otro equipo sin una nueva licencia.
+
+El apoyo al proyecto consiste exclusivamente en contribuciones voluntarias y donaciones; no es una venta de bienes ni de servicios.
+
+Los componentes de terceros (FFmpeg, ExifTool si está presente y otros) conservan sus propias licencias; consulte los avisos incluidos con la aplicación.

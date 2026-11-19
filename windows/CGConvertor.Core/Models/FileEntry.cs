@@ -1,0 +1,61 @@
+namespace CGConvertor.Core.Models;
+
+/// <summary>
+/// O intrare de fisier gasita la scanare - port 1:1 al FileEntry (Mac,
+/// OffloadEngine.swift).
+/// </summary>
+public readonly struct FileEntry
+{
+    public string FullPath { get; }
+    public string RelPath { get; }
+    public long Size { get; }
+    /// Data modificarii la scanare (UTC, microsecunde) — parte din identitatea
+    /// sursei (vezi SourceIdentity). 0 = necunoscuta.
+    public long MtimeMicros { get; }
+    /// „marime:mtime” — amprenta salvata in checkpoint.
+    public string Stamp => $"{Size}:{MtimeMicros}";
+
+    public FileEntry(string fullPath, string relPath, long size, long mtimeMicros = 0)
+    {
+        FullPath = fullPath;
+        RelPath = relPath;
+        Size = size;
+        MtimeMicros = mtimeMicros;
+    }
+
+    public static long MicrosOf(FileInfo info) =>
+        (info.LastWriteTimeUtc.Ticks - DateTime.UnixEpoch.Ticks) / 10;
+}
+
+public sealed class ReportRow
+{
+    public string File { get; init; } = "";
+    public long SizeBytes { get; init; }
+    public string SrcHash { get; init; } = "";
+    public string DstHash { get; init; } = "";
+    public string Status { get; init; } = "";
+    public string Error { get; init; } = "";
+    /// [2026-09-06] Calea REALA a fisierului copiat la destinatie — port
+    /// 1:1 al `ReportRow.destPath` (Mac), necesara pentru thumbnail-ul
+    /// real din raportul HTML (Regula 31).
+    public string DestPath { get; init; } = "";
+}
+
+public sealed class DestinationResult
+{
+    public string DestRoot { get; init; } = "";
+    public int OkCount { get; init; }
+    public int SkipCount { get; init; }
+    public int FailCount { get; init; }
+    public bool Cancelled { get; init; }
+    public string? CsvPath { get; init; }
+    public string? PdfPath { get; init; }
+    /// [2026-09-03] Raport HTML — vezi HtmlReport.
+    public string? HtmlPath { get; init; }
+    /// [2026-09-03] Fisierul MHL scris langa date (null daca generarea a
+    /// fost oprita din Setari sau algoritmul ales nu e in standardul MHL).
+    public string? MhlPath { get; init; }
+    /// Cate fisiere esuate la prima trecere au fost recuperate de pasul
+    /// automat de reincercare.
+    public int RecoveredCount { get; init; }
+}

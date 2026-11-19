@@ -1,0 +1,5 @@
+gdc-metadata-core.exe — nucleul comun GDC Metadata, build Windows x86_64 (x86_64-pc-windows-gnu), licență MIT.
+Sursă: repo gdc-metadata, revizia EXACTĂ 2c8c0bc7abe7b5ab0559381827c45a76bf8a7fb9 (arborele core/ fe10221f6e30346042dd6a811e90b678c23317f5; identic cu HEAD 122571f pentru core/). Neetichetată în gdc-metadata (după v0.3.0); fără modificări ale repo-ului sursă.
+Reproducere: windows/scripts/build-core.sh (rustc 1.100.0 stable, mingw-w64 gcc, --locked, căi remapate, --no-insert-timestamp); două rulări consecutive dau același SHA-256.
+SHA-256: 3576c42aca19e364892293f803e98d86626eb9b626c3d01cd071b9bd1d2ff42a
+Înlocuiește binarul anterior (1d66ba30…, nereproductibil: căi și marcă de timp încorporate).

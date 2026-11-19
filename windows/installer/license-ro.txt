@@ -1,0 +1,9 @@
+CG Convertor — licență și termeni
+
+CG Convertor este un proiect independent, necomercial, dezvoltat de dezvoltatori independenți. Software-ul este oferit „CA ATARE” (AS IS), fără garanții de niciun fel. În măsura maximă permisă de lege, autorii nu răspund pentru daune, pierderi de date sau de profit rezultate din utilizare. Păstrează întotdeauna o copie independentă a materialelor tale.
+
+O licență activată pentru această aplicație este legată de ID-ul calculatorului pentru care a fost emisă și nu poate fi transferată pe alt calculator fără o licență nouă.
+
+Susținerea proiectului este exclusiv sub formă de contribuții voluntare și donații; nu este o vânzare de bunuri sau servicii.
+
+Componentele terțe (FFmpeg, ExifTool dacă este prezent și altele) își păstrează licențele proprii; vezi notele livrate cu aplicația.

@@ -18,7 +18,13 @@
 - Manuale PDF actualizate (RO/EN/ES) cu capturi reale și un PDF separat cu îmbunătățirile versiunii.
 
 ### Notes
-- Windows: neschimbat (TODO paritate Windows/Mac).
+- Windows: aplicație .NET nouă cu aceleași trei spații de lucru (Transcodare, Offload, Metadate), teme și 3 limbi;
+  codificare software verificată (ProRes, DNxHR, H.264, HEVC, rewrap; fără AV1), probă de 5 zile (probele începute
+  nu sunt scurtate), fără donații. FFmpeg, ExifTool și nucleul de metadate sunt incluse (licențe și surse în
+  `tools\`); metadatele complete se citesc fără instalări separate. La MXF (DNxHD/DNxHR) audio devine PCM 24-bit
+  48 kHz înainte de start. Fișiere/foldere se pot deschide din linia de comandă („Deschide cu”). Fereastra se
+  compactează la scalări mari (150 %). Pachetul de la build local este nesemnat; semnarea Authenticode rulează în CI.
+  Tag Windows separat `win-v<versiune>` (tag-ul Mac `v3.18.0` rămâne neatins).
 
 ## v3.17.0 (2026-11-18) — Metadate păstrate, interval, diagnostic, licență fără donații
 

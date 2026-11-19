@@ -1,142 +1,107 @@
 name: Build CGConvertor (Windows installer)
 
 on:
+  # Candidat: doar construire + semnare + artefact de workflow. NU creează release, NU atinge
+  # manifestele publice, NU înlocuiește asset-uri. Publicarea e un pas separat, cu acord separat.
+  # Tag-ul `v*` (macOS, publicat) nu se mută și nu se recreează niciodată.
   push:
-    tags:
-      - 'v*'
+    branches: ['win-candidate']   # ramură dedicată: un push aici pornește doar acest build de candidat
+  workflow_dispatch:
 
 permissions:
-  contents: write
-
-defaults:
-  run:
-    working-directory: python
+  contents: read
 
 jobs:
   build:
     runs-on: windows-latest
-    # [FIX 2026-09-06] `secrets` NU e un context permis direct intr-un `if:`
-    # de pas (confirmat cu actionlint, validatorul real folosit de GitHub -
-    # "context 'secrets' is not allowed here") - workflow-ul intreg esua sa
-    # se valideze (0 joburi create), nu doar pasul respectiv. Fix: valoarea
-    # trece printr-un `env:` la nivel de JOB (aici `secrets` E permis),
-    # iar pasii citesc `env.HAS_WIN_SELFSIGN` (context permis in `if:`).
     env:
+      # `secrets` nu e permis direct într-un `if:`; trece prin env la nivel de job.
       HAS_WIN_SELFSIGN: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 != '' }}
+      FFMPEG_VERSION: '9.0.2'
+      EXIFTOOL_VERSION: '13.64'
+      EXIFTOOL_SHA256: '72c29c44d1e860eebcaefa71692d979af9858fe9a6d7d791a5e7f1dac77804af'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      # Build LGPL "essentials" (fara libx264/libx265) — vezi THIRD_PARTY_NOTICES.md.
-      # Nu foloseste build-ul "full" (GPL), ca sa evitam obligatiile de redistribuire GPL.
-      - name: Download FFmpeg (LGPL essentials)
+      - name: Versiunea aplicației (sursă unică) și garda tag == versiune
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile ffmpeg.zip
-          Expand-Archive ffmpeg.zip -DestinationPath .
-          $dir = Get-ChildItem -Directory -Filter "ffmpeg-*-essentials_build" | Select-Object -First 1
-          New-Item -ItemType Directory -Force -Path ffmpeg
-          Copy-Item "$($dir.FullName)\bin\ffmpeg.exe" ffmpeg\
-          Copy-Item "$($dir.FullName)\bin\ffprobe.exe" ffmpeg\
+          $v = (Select-String -Path windows\CGConvertor.Client\App.xaml.cs -Pattern 'Version\s*=\s*"([0-9.]+)"').Matches[0].Groups[1].Value
+          if (-not $v) { Write-Error "Nu găsesc versiunea în App.xaml.cs"; exit 1 }
+          "APP_VERSION=$v" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
-      # [2026-09-06] mpv bundle-uit direct in instalator - vezi comentariul
-      # din build-windows.spec pentru motiv (elimina bug-ul de permisiuni
-      # la descarcarea dinamica in %APPDATA%). Acelasi tag "git-release"
-      # (nemarcat "Latest") si acelasi tipar de asset dinamic (numele
-      # contine un hash de commit, se schimba la fiecare build al mpv) ca
-      # in dependency_manager.py - MPV_ASSET_PATTERN de acolo, duplicat aici
-      # intentionat (PowerShell, nu Python).
-      - name: Download mpv (standalone player)
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # [FIX 2026-09-06] Esec real de CI: apel NEAUTENTIFICAT catre
-          # api.github.com a lovit rate-limit-ul per-IP (60/ora, partajat
-          # de multi runneri GitHub Actions pe acelasi range de IP-uri) -
-          # "API rate limit exceeded for <ip-runner>". GITHUB_TOKEN
-          # (automat, injectat de Actions) autentifica cererea CATRE ORICE
-          # repo public, nu doar al nostru - limita urca la 5000/ora.
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/mpv-player/mpv/releases/tags/git-release" -Headers @{ "User-Agent" = "CGConvertor-CI"; "Authorization" = "Bearer $env:GH_TOKEN" }
-          $asset = $release.assets | Where-Object { $_.name -match "^mpv-.*-x86_64-pc-windows-msvc\.zip$" } | Select-Object -First 1
-          if (-not $asset) { Write-Error "Nu s-a gasit asset-ul mpv (x86_64-msvc) in release-ul git-release."; exit 1 }
-          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile mpv.zip
-          Expand-Archive mpv.zip -DestinationPath mpv_extracted
-          New-Item -ItemType Directory -Force -Path mpv
-          Copy-Item "mpv_extracted\mpv.exe" mpv\
-
-      - name: Build .exe
-        run: pyinstaller build-windows.spec
-
-      - name: Verifica .exe rezultat
+      - name: Dependențe incluse (FFmpeg verificat SHA-256 + nucleul gdc-metadata)
         shell: pwsh
         run: |
-          if (-not (Test-Path "dist\CGConvertor.exe")) {
-            Write-Error "Build-ul nu a produs CGConvertor.exe"
-            exit 1
-          }
+          $z = "ffmpeg-$env:FFMPEG_VERSION-essentials_build.zip"
+          Invoke-WebRequest "https://www.gyan.dev/ffmpeg/builds/packages/$z" -OutFile ffmpeg.zip
+          Invoke-WebRequest "https://www.gyan.dev/ffmpeg/builds/packages/$z.sha256" -OutFile ffmpeg.zip.sha256
+          $exp = (Get-Content ffmpeg.zip.sha256 -Raw).Trim().Split(' ')[0].ToLower()
+          $got = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash.ToLower()
+          if ($exp -ne $got) { Write-Error "SHA-256 FFmpeg nepotrivit"; exit 1 }
+          Expand-Archive ffmpeg.zip -DestinationPath ff
+          $bin = (Get-ChildItem ff -Directory | Select-Object -First 1).FullName
+          New-Item -ItemType Directory -Force tools | Out-Null
+          Copy-Item "$bin\bin\ffmpeg.exe","$bin\bin\ffprobe.exe" tools\
+          Copy-Item "$bin\LICENSE" tools\FFMPEG-LICENSE.txt
+          Copy-Item "$bin\README.txt" tools\FFMPEG-README.txt
+          Copy-Item windows\vendor\gdc-metadata-core.exe tools\
+          $coreHash = (Get-FileHash tools\gdc-metadata-core.exe -Algorithm SHA256).Hash.ToLower()
+          if (-not (Select-String -Path windows\vendor\PROVENANCE.txt -Pattern $coreHash -Quiet)) { Write-Error "gdc-metadata-core nu corespunde PROVENANCE.txt"; exit 1 }
+          Copy-Item THIRD_PARTY_NOTICES.md tools\
+          # ExifTool oficial (exiftool.org), neschimbat, SHA-256 verificat; rulează ca proces separat
+          Invoke-WebRequest "https://exiftool.org/exiftool-$($env:EXIFTOOL_VERSION)_64.zip" -OutFile exiftool.zip
+          if ((Get-FileHash exiftool.zip -Algorithm SHA256).Hash.ToLower() -ne $env:EXIFTOOL_SHA256) { Write-Error "SHA-256 ExifTool nepotrivit"; exit 1 }
+          Expand-Archive exiftool.zip -DestinationPath et
+          $etd = (Get-ChildItem et -Directory | Select-Object -First 1).FullName
+          Copy-Item "$etd\exiftool(-k).exe" tools\exiftool.exe
+          Copy-Item "$etd\exiftool_files" tools\exiftool_files -Recurse
+          Copy-Item "$etd\exiftool_files\LICENSE" tools\EXIFTOOL-LICENSE-GPL3.txt
+          Copy-Item "$etd\README.txt" tools\EXIFTOOL-README.txt
 
-      # [CLAUDE.md Regula 34, 2026-09-06] Semnare Self-Signed, DOAR pentru
-      # testare interna/cerc restrans (NU elimina SmartScreen pentru
-      # publicul larg - vezi codesigning/README-windows.md). Ruleaza DOAR
-      # daca secretele exista (Cristi le incarca o singura data, direct de
-      # pe Windows real - certificatul nu trece niciodata prin conversatia
-      # cu Claude) - altfel build-ul continua NESEMNAT, exact ca inainte,
-      # fara nicio eroare (acelasi tipar ca semnarea Mac, APPLE_SIGN_IDENTITY_APP).
-      - name: Semneaza CGConvertor.exe (Self-Signed, test intern)
+      - name: Publică aplicația (self-contained win-x64)
+        shell: pwsh
+        run: |
+          dotnet publish windows\CGConvertor.Client\CGConvertor.Client.csproj -c Release -r win-x64 --self-contained true `
+            -p:CGC_TOOLS_DIR="$env:GITHUB_WORKSPACE\tools" -p:Version=$env:APP_VERSION -o publish
+          if (-not (Test-Path publish\CGConvertor.exe)) { Write-Error "Lipsește CGConvertor.exe"; exit 1 }
+
+      - name: Semnează CGConvertor.exe (Authenticode, doar dacă există secretele)
         if: ${{ env.HAS_WIN_SELFSIGN == 'true' }}
         shell: pwsh
         env:
           WIN_SELFSIGN_PFX_BASE64: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 }}
           WIN_SELFSIGN_PFX_PASSWORD: ${{ secrets.WIN_SELFSIGN_PFX_PASSWORD }}
-        run: ..\codesigning\sign-windows.ps1 -TargetPath "dist\CGConvertor.exe"
+        run: .\codesigning\sign-windows.ps1 -TargetPath "publish\CGConvertor.exe"
 
-      - name: Sincronizeaza versiunea installer-ului cu config.py
+      - name: Compilează installerul (Inno Setup 6)
         shell: pwsh
         run: |
-          $version = (python -c "from config import APP_VERSION; print(APP_VERSION)").Trim()
-          (Get-Content installer.iss) -replace '#define MyAppVersion ".*"', "#define MyAppVersion `"$version`"" | Set-Content installer.iss
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /Qp "/DAppVersion=$env:APP_VERSION" "/DPublishDir=$env:GITHUB_WORKSPACE\publish" "/DOutDir=$env:GITHUB_WORKSPACE\out" windows\installer\CGConvertor.iss
+          if (-not (Test-Path "out\CGConvertor-Windows-$env:APP_VERSION.exe")) { Write-Error "Installerul lipsește"; exit 1 }
 
-      - name: Compileaza instalatorul (Inno Setup — preinstalat pe runner-ul windows-latest)
-        run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
-
-      - name: Verifica instalatorul rezultat
-        shell: pwsh
-        run: |
-          if (-not (Test-Path "Output\CGConvertorSetup.exe")) {
-            Write-Error "Inno Setup nu a produs CGConvertorSetup.exe"
-            exit 1
-          }
-
-      - name: Semneaza installer-ul final (Self-Signed, test intern)
+      - name: Semnează installerul (Authenticode, doar dacă există secretele)
         if: ${{ env.HAS_WIN_SELFSIGN == 'true' }}
         shell: pwsh
         env:
           WIN_SELFSIGN_PFX_BASE64: ${{ secrets.WIN_SELFSIGN_PFX_BASE64 }}
           WIN_SELFSIGN_PFX_PASSWORD: ${{ secrets.WIN_SELFSIGN_PFX_PASSWORD }}
-        run: ..\codesigning\sign-windows.ps1 -TargetPath "Output\CGConvertorSetup.exe"
+        run: .\codesigning\sign-windows.ps1 -TargetPath "out\CGConvertor-Windows-$env:APP_VERSION.exe"
 
-      - name: Redenumeste artefactul
-        run: Copy-Item Output\CGConvertorSetup.exe "$env:GITHUB_WORKSPACE\CGConvertor-Windows-Setup.exe"
+      - name: Verifică semnătura și calculează SHA-256 (fără a expune secrete)
+        shell: pwsh
+        run: |
+          $f = "out\CGConvertor-Windows-$env:APP_VERSION.exe"
+          $sig = Get-AuthenticodeSignature $f
+          "Authenticode: $($sig.Status) | Subject: $($sig.SignerCertificate.Subject)" | Tee-Object out\VERIFY.txt
+          $h = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
+          "SHA256 $h  $(Split-Path $f -Leaf)" | Tee-Object -Append out\VERIFY.txt
 
-      # [FIX Regula 29, 2026-09-06] `generate_release_notes: true` ar fi
-      # publicat automat, pe un release PUBLIC, un rezumat generat de
-      # GitHub din mesajele de commit — riscant pentru acest repo, unde
-      # commit-urile sunt scrise ca jurnal tehnic intern (nume, cauze de
-      # debugging). Eliminat - actiunea creeaza/actualizeaza acum release-ul
-      # FARA note auto-generate (`gh release edit --notes` din sesiunea
-      # Claude ramane locul unde se scriu notele publice, curate).
-      - name: Creeaza / actualizeaza Release
-        uses: softprops/action-gh-release@v2
+      - name: Încarcă candidatul ca artefact (fără release)
+        uses: actions/upload-artifact@v4
         with:
-          files: CGConvertor-Windows-Setup.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: CGConvertor-Windows-candidate-${{ env.APP_VERSION }}
+          path: |
+            out/CGConvertor-Windows-${{ env.APP_VERSION }}.exe
+            out/VERIFY.txt
+          retention-days: 14

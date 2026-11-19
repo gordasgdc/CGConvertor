@@ -1,0 +1,20 @@
+<Project>
+  <!-- STORAGE_POLICY: build-urile și cache-urile merg pe volumul extern. Fără CGC_WIN_BUILD build-ul eșuează (fără fallback intern). -->
+  <PropertyGroup>
+    <CgcBuildRoot>$(CGC_WIN_BUILD)</CgcBuildRoot>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+    <Version>3.18.0</Version>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <RollForward>LatestMajor</RollForward>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(CgcBuildRoot)' != ''">
+    <BaseIntermediateOutputPath>$(CgcBuildRoot)/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(CgcBuildRoot)/bin/$(MSBuildProjectName)/</BaseOutputPath>
+  </PropertyGroup>
+  <Target Name="CgcRequireExternal" BeforeTargets="PreBuildEvent;CoreCompile;_CheckForInvalidConfigurationAndPlatform" Condition="'$(CgcBuildRoot)' == ''">
+    <Error Text="CGC_WIN_BUILD nedefinit: EXTERNAL TEST STORAGE NOT AVAILABLE (vezi windows/scripts/env.sh)." />
+  </Target>
+</Project>

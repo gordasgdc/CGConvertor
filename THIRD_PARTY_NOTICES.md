@@ -12,10 +12,15 @@ ca utilizatorul să instaleze nimic separat.
 
 ### Build-ul pentru Windows
 
-Folosim build-ul **"essentials" (LGPL)** publicat de gyan.dev
-(https://www.gyan.dev/ffmpeg/builds/). Acest build **nu** include componente GPL
-(precum libx264/libx265), deci poate fi redistribuit sub termenii LGPL 2.1+ fără
-obligația de a oferi codul sursă al aplicației care îl include.
+Folosim build-ul **"essentials"** (versiunea 9.0.2) publicat de gyan.dev
+(https://www.gyan.dev/ffmpeg/builds/). Verificat cu `ffmpeg -buildconf`: acest build este
+compilat cu `--enable-gpl` și include libx264 și libx265, deci binarul FFmpeg este licențiat
+**GPL v3**; se respectă condițiile GPL pentru acest binar (cod sursă corespunzător: https://github.com/FFmpeg/FFmpeg, comitul `946fcce07b` indicat în
+`tools\\FFMPEG-README.txt`; configurația completă de build, inclusiv bibliotecile terțe cu
+licențele lor, este în același fișier și pe https://www.gyan.dev/ffmpeg/builds/; la cerere,
+putem furniza și o ofertă scrisă pentru sursa corespunzătoare). Textul GPL v3 este în
+`tools\\FFMPEG-LICENSE.txt`. Aplicația rulează FFmpeg ca proces separat.
+Nu include libsvtav1: presetul AV1 nu este disponibil în versiunea Windows. mpv nu este inclus.
 
 ### Build-ul pentru macOS
 
@@ -35,16 +40,25 @@ https://github.com/FFmpeg/FFmpeg
 
 ## GDC Metadata (nucleul `gdc-metadata-core`)
 
-Livrat ca binar alături de aplicație (versiunea 0.3.0, commit 65e07a8), apelat ca subproces
-pentru a citi fișa de metadate a sursei și a scrie fișierul sidecar. Licență: MIT.
-Dependențe Rust compilate în binar: `serde`, `serde_json` și dependențele lor tranzitive
-(licențe MIT sau Apache-2.0).
+Livrat ca binar alături de aplicație, apelat ca subproces pentru a citi fișa de metadate a
+sursei și a scrie fișierul sidecar. Licență: MIT. Pachetul Windows folosește binarul
+compilat reproductibil din revizia exactă `2c8c0bc7abe7b5ab0559381827c45a76bf8a7fb9`
+(`windows/scripts/build-core.sh`, `--locked`, fără amprentă de timp; SHA-256 în
+`windows/vendor/PROVENANCE.txt`). Dependențe Rust compilate în binar: `serde`, `serde_json`
+și dependențele lor tranzitive (licențe MIT sau Apache-2.0).
 
-## ExifTool (opțional, NEINCLUS)
+## ExifTool (inclus în pachetul Windows; neinclus pe macOS)
 
-Dacă este instalat separat (de exemplu prin Homebrew), nucleul îl poate apela pentru mai
-multe câmpuri. CGConvertor nu îl include și nu îl redistribuie. ExifTool © Phil Harvey,
-licență Artistic License / GPL. https://exiftool.org
+**Pachetul Windows include ExifTool 13.64** (`tools\exiftool.exe` și folderul
+`tools\exiftool_files`), neschimbat, descărcat de pe https://exiftool.org (arhivă verificată
+cu SHA-256 la asamblare). ExifTool © Phil Harvey, licență dublă Artistic License / GPL;
+CGConvertor îl rulează ca proces separat și nu îl modifică. Textul GPL v3 este în
+`tools\EXIFTOOL-LICENSE-GPL3.txt`, iar notele pachetului în `tools\EXIFTOOL-README.txt`.
+Folderul `exiftool_files` conține și interpretorul Perl (Strawberry Perl, licențele lui în
+`exiftool_files\perl`), distribuit sub licențele proprii Artistic/GPL.
+Sursa ExifTool: https://exiftool.org și https://github.com/exiftool/exiftool.
+Pe macOS ExifTool nu este inclus: dacă este instalat separat (de exemplu prin Homebrew),
+nucleul îl poate apela.
 
 ## tkinterdnd2
 

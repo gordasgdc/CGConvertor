@@ -13,3 +13,7 @@ xcuserdata/
 
 # Stare de lucru internă (Regula 50), doar local
 PROJECT_STATE.md
+
+# Windows: rezultate de build
+windows/**/bin/
+windows/**/obj/

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>CGConvertor.Client</RootNamespace>
+    <AssemblyName>CGConvertor</AssemblyName>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- QuestPDF nu are build ARM64: x64 (Regula 22), emulat pe Windows ARM64 -->
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" Version="3.0.5" />
+    <ProjectReference Include="..\CGConvertor.Core\CGConvertor.Core.csproj" />
+  </ItemGroup>
+  <!-- Dependențe redistribuibile (ffmpeg, ffprobe, gdc-metadata-core) puse în folderul tools/ de scripts/stage-tools.sh -->
+  <ItemGroup Condition="'$(CGC_TOOLS_DIR)' != '' And Exists('$(CGC_TOOLS_DIR)')">
+    <Content Include="$(CGC_TOOLS_DIR)\**\*" Link="tools\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="app.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\README.md')" />
+  </ItemGroup>
+</Project>
