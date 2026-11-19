@@ -7,7 +7,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import SimpleDocTemplate, Paragraph, ListFlowable, ListItem, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, KeepTogether, ListFlowable, ListItem, Spacer, Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUTDIR = os.environ.get("CGC_GUIDE_OUT", HERE)
@@ -31,9 +31,9 @@ DOCS = {
  ("Transcodare", ["1. Apasă „Adaugă fișiere” sau „Adaugă folder”, ori trage fișiere în listă. Comută între Listă și Grilă.",
    "2. Alege o presetare (ProRes, DNxHR, H.264, HEVC, necomprimat sau Rewrap rapid). Opțional: cadre/s la ieșire și eticheta spațiului de culoare (doar etichetă, nu transformare de pixeli).",
    "3. Interval: introdu începutul și sfârșitul în secunde (sau mm:ss) ori apasă „Previzualizare”, mută cursorul și folosește „de la” / „până la”. Intervalul se aplică la transcodare, nu la Rewrap.",
-   "4. Alege folderul de ieșire (implicit lângă sursă; niciodată nu se suprascrie un fișier existent) și apasă „Pornește”. „Anulează” oprește conversia curentă și șterge fișierele temporare.",
+   "4. Alege folderul de ieșire (implicit lângă sursă; niciodată nu se suprascrie un fișier existent) și apasă „Convertește”. „Anulează” oprește conversia curentă și șterge fișierele temporare.",
    "5. După fiecare clip, „Raport” arată cadrele sursă/rezultat, pistele audio, timecode-ul și ce s-a păstrat. Destinația apare doar după verificare."]),
- ("Offload", ["Adaugă una sau mai multe surse (card, folder) și una sau mai multe destinații; dublu-clic pe o unitate detectată o adaugă ca sursă. Alege verificarea (xxHash64 implicit), completează proiectul/cardul și apasă „Pornește”. Fiecare fișier se copiază și se verifică prin sumă de control pe fiecare destinație; la final se scriu raport PDF, MHL și (opțional) metadatele clipurilor. „Trimite fișierele verificate la Transcodare” adaugă în Transcodare numai fișierele cu verdict verificat."]),
+ ("Offload", ["Adaugă una sau mai multe surse (card, folder) și una sau mai multe destinații; dublu-clic pe o unitate detectată o adaugă ca sursă. Alege verificarea (xxHash64 implicit), completează proiectul/cardul și apasă „Pornește transferul”. Fiecare fișier se copiază și se verifică prin sumă de control pe fiecare destinație; la final se scriu raport PDF, MHL și (opțional) metadatele clipurilor. „Trimite fișierele verificate la Transcodare” adaugă în Transcodare numai fișierele cu verdict verificat."]),
  ("Metadate", ["Adaugă clipuri și apasă „Citește metadatele”. Pentru fiecare valoare apare proveniența (citită din date native, declarată de producător sau dedusă). „Exportă fișier însoțitor” scrie <i>clip.gdc-metadata.json</i> lângă clip."]),
  ("Setări, licență, probă", ["Temă: Sistem, Deschisă sau Închisă. Limbă: română, engleză sau spaniolă. Proba nouă durează 5 zile; probele începute înainte nu sunt scurtate. Pentru activare, copiază ID-ul calculatorului, trimite-l emitentului și lipește codul serial primit.",
    "Pentru suport: Setări → „Exportă diagnostic (ZIP)” creează un arhivă cu loguri fără parole sau conținut de fișiere."]),
@@ -50,9 +50,9 @@ DOCS = {
  ("Transcode", ["1. Press “Add files” or “Add folder”, or drag files into the list. Switch between List and Grid.",
    "2. Pick a preset (ProRes, DNxHR, H.264, HEVC, uncompressed or fast Rewrap). Optional: output frame rate and colour-space tag (a tag only, not a pixel transform).",
    "3. Range: type start and end in seconds (or mm:ss) or press “Preview”, move the slider and use “from” / “to”. A range applies to transcoding, not to Rewrap.",
-   "4. Choose the output folder (next to the source by default; an existing file is never overwritten) and press “Start”. “Cancel” stops the current conversion and removes temporary files.",
+   "4. Choose the output folder (next to the source by default; an existing file is never overwritten) and press “Convert”. “Cancel” stops the current conversion and removes temporary files.",
    "5. After each clip, “Report” shows source/result frames, audio tracks, timecode and what was kept. The destination only appears after verification."]),
- ("Offload", ["Add one or more sources (card, folder) and one or more destinations; double-click a detected drive to add it as a source. Choose the verification (xxHash64 by default), fill in project/card and press “Start”. Every file is copied and checksum-verified on each destination; at the end a PDF report, an MHL and (optionally) the clips’ metadata are written. “Send verified files to Transcode” adds only files with a verified verdict to Transcode."]),
+ ("Offload", ["Add one or more sources (card, folder) and one or more destinations; double-click a detected drive to add it as a source. Choose the verification (xxHash64 by default), fill in project/card and press “Start transfer”. Every file is copied and checksum-verified on each destination; at the end a PDF report, an MHL and (optionally) the clips’ metadata are written. “Send verified files to Transcode” adds only files with a verified verdict to Transcode."]),
  ("Metadata", ["Add clips and press “Read metadata”. Each value shows its provenance (decoded from native data, declared by the manufacturer or derived). “Export sidecar” writes <i>clip.gdc-metadata.json</i> next to the clip."]),
  ("Settings, license, trial", ["Theme: System, Light or Dark. Language: Romanian, English or Spanish. A new trial lasts 5 days; trials started earlier are not shortened. To activate, copy the Machine ID, send it to the issuer and paste the serial code you receive.",
    "For support: Settings → “Export diagnostics (ZIP)” creates an archive with logs and no passwords or file contents."]),
@@ -69,9 +69,9 @@ DOCS = {
  ("Transcodificar", ["1. Pulsa «Añadir archivos» o «Añadir carpeta», o arrastra archivos a la lista. Alterna entre Lista y Cuadrícula.",
    "2. Elige un preajuste (ProRes, DNxHR, H.264, HEVC, sin comprimir o Rewrap rápido). Opcional: fotogramas/s de salida y etiqueta de espacio de color (solo etiqueta, no transformación de píxeles).",
    "3. Intervalo: escribe inicio y fin en segundos (o mm:ss) o pulsa «Vista previa», mueve el control y usa «desde» / «hasta». El intervalo se aplica al transcodificar, no al Rewrap.",
-   "4. Elige la carpeta de salida (junto al origen por defecto; nunca se sobrescribe un archivo existente) y pulsa «Iniciar». «Cancelar» detiene la conversión actual y borra los temporales.",
+   "4. Elige la carpeta de salida (junto al origen por defecto; nunca se sobrescribe un archivo existente) y pulsa «Convertir». «Cancelar» detiene la conversión actual y borra los temporales.",
    "5. Tras cada clip, «Informe» muestra fotogramas origen/resultado, pistas de audio, timecode y lo que se conservó. El destino solo aparece tras la verificación."]),
- ("Offload", ["Añade uno o varios orígenes (tarjeta, carpeta) y uno o varios destinos; doble clic en una unidad detectada la añade como origen. Elige la verificación (xxHash64 por defecto), rellena proyecto/tarjeta y pulsa «Iniciar». Cada archivo se copia y se verifica por suma de comprobación en cada destino; al final se escriben informe PDF, MHL y (opcionalmente) los metadatos de los clips. «Enviar archivos verificados a Transcodificar» añade solo los archivos con veredicto verificado."]),
+ ("Offload", ["Añade uno o varios orígenes (tarjeta, carpeta) y uno o varios destinos; doble clic en una unidad detectada la añade como origen. Elige la verificación (xxHash64 por defecto), rellena proyecto/tarjeta y pulsa «Iniciar transferencia». Cada archivo se copia y se verifica por suma de comprobación en cada destino; al final se escriben informe PDF, MHL y (opcionalmente) los metadatos de los clips. «Enviar archivos verificados a Transcodificar» añade solo los archivos con veredicto verificado."]),
  ("Metadatos", ["Añade clips y pulsa «Leer metadatos». Cada valor muestra su procedencia (leída de datos nativos, declarada por el fabricante o deducida). «Exportar archivo acompañante» escribe <i>clip.gdc-metadata.json</i> junto al clip."]),
  ("Ajustes, licencia, prueba", ["Tema: Sistema, Clara u Oscura. Idioma: rumano, inglés o español. Una prueba nueva dura 5 días; las pruebas iniciadas antes no se acortan. Para activar, copia el ID del equipo, envíalo al emisor y pega el código de serie recibido.",
    "Para soporte: Ajustes → «Exportar diagnóstico (ZIP)» crea un archivo con registros sin contraseñas ni contenido de archivos."]),
@@ -87,9 +87,14 @@ def build(lang):
     doc = SimpleDocTemplate(out, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm, title=title, author="CG Convertor")
     st = [Paragraph(title, T), Paragraph(f"CG Convertor {VERSION}", N), Spacer(1, 8)]
     for h, items in sections:
-        st.append(Paragraph(h, H))
+        blk = [Paragraph(h, H)]
         for it in items:
-            st.append(Paragraph(it, B)); st.append(Spacer(1, 4))
+            blk.append(Paragraph(it, B)); blk.append(Spacer(1, 4))
+        key = {2: "transcode", 3: "offload", 4: "metadata", 5: "settings"}.get(sections.index((h, items)))
+        img = os.path.join(HERE, "img", lang, f"{key}.png") if key else None
+        if img and os.path.exists(img):  # captură reală din aplicația Windows 3.18.0 (VM Parallels, Windows 11)
+            blk.append(Image(img, width=15.5*cm, height=15.5*cm*822/1320)); blk.append(Spacer(1, 6))
+        st.append(KeepTogether(blk))
     doc.build(st)
     return out
 
