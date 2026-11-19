@@ -3,3 +3,4 @@ Sursă: repo gdc-metadata, revizia EXACTĂ 2c8c0bc7abe7b5ab0559381827c45a76bf8a7
 Reproducere: windows/scripts/build-core.sh (rustc 1.100.0 stable, mingw-w64 gcc, --locked, căi remapate, --no-insert-timestamp); două rulări consecutive dau același SHA-256.
 SHA-256: 3576c42aca19e364892293f803e98d86626eb9b626c3d01cd071b9bd1d2ff42a
 Înlocuiește binarul anterior (1d66ba30…, nereproductibil: căi și marcă de timp încorporate).
+exiftool-13.64_64.zip: arhiva oficială exiftool.org (legătură SourceForge), neschimbată, sha256 72c29c44d1e860eebcaefa71692d979af9858fe9a6d7d791a5e7f1dac77804af; inclusă în repo deoarece URL-ul direct al versiunii a dispărut. Licență: Artistic/GPL.
