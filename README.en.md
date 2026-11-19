@@ -4,11 +4,11 @@
 
 # CG Convertor
 
-**Transcode, verified copy and metadata for DaVinci Resolve, on Mac.**
+**Transcode, verified copy and metadata for DaVinci Resolve, on Mac and Windows.**
 
 [🇷🇴 Română](README.md) · [🇬🇧 English](README.en.md) · [🇪🇸 Español](README.es.md)
 
-[**Product page**](https://gordas.dev/cgconvertor/) · [**Download (.dmg)**](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) · [Releases](https://github.com/gordasgdc/CGConvertor/releases) · [Manual (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf)
+[**Product page**](https://gordas.dev/cgconvertor/) · [**Download (.dmg)**](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) · [**Download for Windows (preview)**](https://github.com/gordasgdc/CGConvertor/releases/download/win-v3.18.0/CGConvertor-Windows-3.18.0.exe) · [Releases](https://github.com/gordasgdc/CGConvertor/releases) · [Manual (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf)
 
 <br>
 
@@ -38,7 +38,19 @@ Convert clips for DaVinci Resolve while timecode and the camera's native tracks 
 3. The 5-day trial starts on first launch. Pick the language (RO / EN / ES) and theme (System / Light / Dark) in settings.
 4. First run: in **Offload** choose the source and destinations, start the transfer, then use “Send to transcode”.
 
-Windows: a separate version is available under [Releases](https://github.com/gordasgdc/CGConvertor/releases); it does not include the 3.18 improvements.
+### Download by platform
+
+| | macOS | Windows (preview) |
+|:--|:--|:--|
+| Download | [`CGConvertor.dmg`](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) / [`.pkg`](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.pkg) | [`CGConvertor-Windows-3.18.0.exe`](https://github.com/gordasgdc/CGConvertor/releases/download/win-v3.18.0/CGConvertor-Windows-3.18.0.exe) · [release page](https://github.com/gordasgdc/CGConvertor/releases/tag/win-v3.18.0) |
+| Version | 3.18.0 | 3.18.0, marked “preview” |
+| Requirements | macOS 14+, Apple Silicon Mac | Windows 10/11, 64-bit (also runs on Windows on ARM via x64 emulation) |
+| Signature | Developer ID, notarized by Apple | Signed with a self-issued certificate, **not publicly trusted**: Windows may show a SmartScreen warning (“More info” → “Run anyway”). It is not the equivalent of an Apple-notarized package. |
+| Manual | [PDF RO / EN / ES](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf) | Windows PDF: [RO](https://github.com/gordasgdc/CGConvertor/blob/main/windows/guides/Instructiuni_Utilizare_RO.pdf) · [EN](https://github.com/gordasgdc/CGConvertor/blob/main/windows/guides/Instructiuni_Utilizare_EN.pdf) · [ES](https://github.com/gordasgdc/CGConvertor/blob/main/windows/guides/Instructiuni_Utilizare_ES.pdf) |
+
+The screenshots above are from the macOS version. On Windows, the same three workspaces (Transcode, Offload, Metadata):
+
+<img src="windows/guides/img/EN/offload.png" width="720" alt="CG Convertor on Windows: verified Offload">
 
 ## Documentation
 
@@ -68,7 +80,7 @@ Xcode project (SwiftUI) at the repository root.
 ./build_installer.sh  # signed and notarized .pkg (Developer ID certificates required)
 ```
 
-The `ffmpeg`, `ffprobe` and `gdc-metadata-core` binaries are bundled with the app; their licences: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The legacy Python variant, used for Windows, lives in [`python/`](python/README.md). The code is public for reference; the repository does not declare a separate code licence.
+The `ffmpeg`, `ffprobe` and `gdc-metadata-core` binaries are bundled with the app; their licences: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The legacy Python variant (older Windows versions, no longer distributed) lives in [`python/`](python/README.md). The code is public for reference; the repository does not declare a separate code licence. The Windows 3.18 sources are in [`windows/`](windows/).
 
 ---
 

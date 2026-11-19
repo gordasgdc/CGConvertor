@@ -4,11 +4,11 @@
 
 # CG Convertor
 
-**Transcodare, copiere verificată și metadate pentru DaVinci Resolve, pe Mac.**
+**Transcodare, copiere verificată și metadate pentru DaVinci Resolve, pe Mac și Windows.**
 
 [🇷🇴 Română](README.md) · [🇬🇧 English](README.en.md) · [🇪🇸 Español](README.es.md)
 
-[**Pagina produsului**](https://gordas.dev/cgconvertor/) · [**Descarcă (.dmg)**](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) · [Versiuni](https://github.com/gordasgdc/CGConvertor/releases) · [Manual (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf)
+[**Pagina produsului**](https://gordas.dev/cgconvertor/) · [**Descarcă (.dmg)**](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) · [**Descarcă pentru Windows (preliminar)**](https://github.com/gordasgdc/CGConvertor/releases/download/win-v3.18.0/CGConvertor-Windows-3.18.0.exe) · [Versiuni](https://github.com/gordasgdc/CGConvertor/releases) · [Manual (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf)
 
 <br>
 
@@ -38,7 +38,19 @@ Convertești clipurile pentru DaVinci Resolve, iar timecode-ul și pistele nativ
 3. La prima pornire începe proba de 5 zile. Alege limba (RO / EN / ES) și tema (Sistem / Deschisă / Închisă) din setări.
 4. Prima operație: în **Offload** alege sursa și destinațiile, apoi pornește transferul; la final folosește „Trimite la transcodare”.
 
-Windows: există o versiune separată în [Versiuni](https://github.com/gordasgdc/CGConvertor/releases); nu are îmbunătățirile din 3.18.
+### Descărcare pe platformă
+
+| | macOS | Windows (versiune preliminară) |
+|:--|:--|:--|
+| Descărcare | [`CGConvertor.dmg`](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) / [`.pkg`](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.pkg) | [`CGConvertor-Windows-3.18.0.exe`](https://github.com/gordasgdc/CGConvertor/releases/download/win-v3.18.0/CGConvertor-Windows-3.18.0.exe) · [pagina versiunii](https://github.com/gordasgdc/CGConvertor/releases/tag/win-v3.18.0) |
+| Versiune | 3.18.0 | 3.18.0, marcată „preliminară” |
+| Cerințe | macOS 14+, Mac cu Apple Silicon | Windows 10/11, 64 de biți (rulează și pe Windows ARM prin emulare x64) |
+| Semnătură | Developer ID, notarizat de Apple | Semnat cu un certificat propriu, **fără încredere publică**: Windows poate afișa avertismentul SmartScreen („Mai multe informații” → „Rulează oricum”). Nu este echivalentul unui pachet notarizat Apple. |
+| Manual | [PDF RO / EN / ES](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf) | PDF Windows: [RO](https://github.com/gordasgdc/CGConvertor/blob/main/windows/guides/Instructiuni_Utilizare_RO.pdf) · [EN](https://github.com/gordasgdc/CGConvertor/blob/main/windows/guides/Instructiuni_Utilizare_EN.pdf) · [ES](https://github.com/gordasgdc/CGConvertor/blob/main/windows/guides/Instructiuni_Utilizare_ES.pdf) |
+
+Capturile de mai sus sunt din versiunea macOS. Pe Windows, aceleași trei spații de lucru (Transcodare, Offload, Metadate):
+
+<img src="windows/guides/img/RO/offload.png" width="720" alt="CG Convertor pe Windows: Offload verificat">
 
 ## Documentație
 
@@ -68,7 +80,7 @@ Proiect Xcode (SwiftUI), în rădăcina depozitului.
 ./build_installer.sh  # pachet .pkg semnat și notarizat (certificate Developer ID necesare)
 ```
 
-Binarele `ffmpeg`, `ffprobe` și `gdc-metadata-core` sunt incluse în aplicație; licențele lor: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Varianta Python moștenită, folosită pentru Windows, e în [`python/`](python/README.md). Codul este public pentru consultare; depozitul nu declară o licență de cod separată.
+Binarele `ffmpeg`, `ffprobe` și `gdc-metadata-core` sunt incluse în aplicație; licențele lor: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Varianta Python moștenită (versiunile Windows vechi, nemaidistribuite) e în [`python/`](python/README.md). Codul este public pentru consultare; depozitul nu declară o licență de cod separată. Sursele versiunii Windows 3.18 sunt în [`windows/`](windows/).
 
 ---
 

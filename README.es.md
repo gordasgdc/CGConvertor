@@ -4,11 +4,11 @@
 
 # CG Convertor
 
-**Transcodificación, copia verificada y metadatos para DaVinci Resolve, en Mac.**
+**Transcodificación, copia verificada y metadatos para DaVinci Resolve, en Mac y Windows.**
 
 [🇷🇴 Română](README.md) · [🇬🇧 English](README.en.md) · [🇪🇸 Español](README.es.md)
 
-[**Página del producto**](https://gordas.dev/cgconvertor/) · [**Descargar (.dmg)**](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) · [Versiones](https://github.com/gordasgdc/CGConvertor/releases) · [Manual (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf)
+[**Página del producto**](https://gordas.dev/cgconvertor/) · [**Descargar (.dmg)**](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) · [**Descargar para Windows (preliminar)**](https://github.com/gordasgdc/CGConvertor/releases/download/win-v3.18.0/CGConvertor-Windows-3.18.0.exe) · [Versiones](https://github.com/gordasgdc/CGConvertor/releases) · [Manual (PDF)](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf)
 
 <br>
 
@@ -38,7 +38,19 @@ Convierte clips para DaVinci Resolve mientras el timecode y las pistas nativas d
 3. La prueba de 5 días empieza en el primer arranque. Elige idioma (RO / EN / ES) y tema (Sistema / Claro / Oscuro) en los ajustes.
 4. Primera operación: en **Offload** elige origen y destinos, inicia la transferencia y usa «Enviar a transcodificar».
 
-Windows: hay una versión independiente en [Versiones](https://github.com/gordasgdc/CGConvertor/releases); no incluye las mejoras de la 3.18.
+### Descarga por plataforma
+
+| | macOS | Windows (versión preliminar) |
+|:--|:--|:--|
+| Descarga | [`CGConvertor.dmg`](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.dmg) / [`.pkg`](https://github.com/gordasgdc/CGConvertor/releases/latest/download/CGConvertor.pkg) | [`CGConvertor-Windows-3.18.0.exe`](https://github.com/gordasgdc/CGConvertor/releases/download/win-v3.18.0/CGConvertor-Windows-3.18.0.exe) · [página de la versión](https://github.com/gordasgdc/CGConvertor/releases/tag/win-v3.18.0) |
+| Versión | 3.18.0 | 3.18.0, marcada como «preliminar» |
+| Requisitos | macOS 14+, Mac con Apple Silicon | Windows 10/11 de 64 bits (también funciona en Windows ARM mediante emulación x64) |
+| Firma | Developer ID, notarizada por Apple | Firmado con un certificado propio, **sin confianza pública**: Windows puede mostrar el aviso de SmartScreen («Más información» → «Ejecutar de todas formas»). No equivale a un paquete notarizado por Apple. |
+| Manual | [PDF RO / EN / ES](https://github.com/gordasgdc/CGConvertor/releases/latest/download/Instructiuni_Utilizare.pdf) | PDF de Windows: [RO](https://github.com/gordasgdc/CGConvertor/blob/main/windows/guides/Instructiuni_Utilizare_RO.pdf) · [EN](https://github.com/gordasgdc/CGConvertor/blob/main/windows/guides/Instructiuni_Utilizare_EN.pdf) · [ES](https://github.com/gordasgdc/CGConvertor/blob/main/windows/guides/Instructiuni_Utilizare_ES.pdf) |
+
+Las capturas de arriba son de la versión de macOS. En Windows, los mismos tres espacios de trabajo (Transcodificar, Offload, Metadatos):
+
+<img src="windows/guides/img/ES/offload.png" width="720" alt="CG Convertor en Windows: Offload verificado">
 
 ## Documentación
 
@@ -68,7 +80,7 @@ Proyecto Xcode (SwiftUI) en la raíz del repositorio.
 ./build_installer.sh  # .pkg firmado y notarizado (requiere certificados Developer ID)
 ```
 
-Los binarios `ffmpeg`, `ffprobe` y `gdc-metadata-core` se incluyen en la app; sus licencias: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). La variante Python heredada, usada para Windows, está en [`python/`](python/README.md). El código es público para consulta; el repositorio no declara una licencia de código aparte.
+Los binarios `ffmpeg`, `ffprobe` y `gdc-metadata-core` se incluyen en la app; sus licencias: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). La variante Python heredada (versiones antiguas de Windows, ya no distribuidas) está en [`python/`](python/README.md). El código es público para consulta; el repositorio no declara una licencia de código aparte. Las fuentes de la versión de Windows 3.18 están en [`windows/`](windows/).
 
 ---
 
