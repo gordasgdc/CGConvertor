@@ -1,5 +1,5 @@
 <Project>
-  <!-- STORAGE_POLICY: build-urile și cache-urile merg pe volumul extern. Fără CGC_WIN_BUILD build-ul eșuează (fără fallback intern). -->
+  <!-- STORAGE_POLICY: build-urile și cache-urile merg pe volumul extern. Fără CGC_WIN_BUILD build-ul eșuează (fără fallback intern). Excepție: runnerul CI efemer (GITHUB_ACTIONS=true). -->
   <PropertyGroup>
     <CgcBuildRoot>$(CGC_WIN_BUILD)</CgcBuildRoot>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
@@ -14,7 +14,7 @@
     <BaseIntermediateOutputPath>$(CgcBuildRoot)/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
     <BaseOutputPath>$(CgcBuildRoot)/bin/$(MSBuildProjectName)/</BaseOutputPath>
   </PropertyGroup>
-  <Target Name="CgcRequireExternal" BeforeTargets="PreBuildEvent;CoreCompile;_CheckForInvalidConfigurationAndPlatform" Condition="'$(CgcBuildRoot)' == ''">
+  <Target Name="CgcRequireExternal" BeforeTargets="PreBuildEvent;CoreCompile;_CheckForInvalidConfigurationAndPlatform" Condition="'$(CgcBuildRoot)' == '' And '$(GITHUB_ACTIONS)' != 'true'">
     <Error Text="CGC_WIN_BUILD nedefinit: EXTERNAL TEST STORAGE NOT AVAILABLE (vezi windows/scripts/env.sh)." />
   </Target>
 </Project>
